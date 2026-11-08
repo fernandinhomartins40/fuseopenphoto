@@ -221,6 +221,8 @@ fn blend_channel(mode: i32, cb: f32, cs: f32) -> f32 {
         }
         default: { return cs; }                                 // Normal, Dissolve, PassThrough
     }
+    // FXC (Direct3D without DXC) rejects a function whose only returns are inside a switch.
+    return cs;
 }
 
 fn lum(c: vec3<f32>) -> f32 { return 0.3 * c.r + 0.59 * c.g + 0.11 * c.b; }
@@ -265,6 +267,8 @@ fn blend_rgb(mode: i32, cb: vec3<f32>, cs: vec3<f32>) -> vec3<f32> {
             return vec3(blend_channel(mode, cb.r, cs.r), blend_channel(mode, cb.g, cs.g), blend_channel(mode, cb.b, cs.b));
         }
     }
+    // FXC (Direct3D without DXC) rejects a function whose only returns are inside a switch.
+    return cs;
 }
 
 fn composite(mode: i32, b: vec4<f32>, s: vec4<f32>, opacity: f32) -> vec4<f32> {
@@ -784,6 +788,8 @@ fn adjust(c: vec3<f32>) -> vec3<f32> {
         }
         default: { return c; }
     }
+    // FXC (Direct3D without DXC) rejects a function whose only returns are inside a switch.
+    return c;
 }
 
 // ---- fills ----------------------------------------------------------------------------------
@@ -1230,6 +1236,8 @@ fn fs_fxinit(in: VOut) -> @location(0) vec4<f32> {
         case 7: { return vec4(c.rgb, max(c.a, map_value(doc_px(p), 0.0))); }
         default: { return vec4(c.rgb, c.a * op.opacity); }
     }
+    // FXC (Direct3D without DXC) rejects a function whose only returns are inside a switch.
+    return vec4(c.rgb, c.a * op.opacity);
 }
 
 // effects::outline_share: an outside stroke's share of an edge pixel the outline covers `cov` of,
