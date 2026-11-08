@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Build, sign and package PhotoCraft for Windows.
+  Build, sign and package the app for Windows (product name: photocraft.wxs).
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
@@ -112,7 +112,8 @@ if ($CodexDir) {
 $Docs = Join-Path $Stage 'font-licences'
 New-Item -ItemType Directory -Force -Path $Docs | Out-Null
 # The existing MSI document group also carries notices for bundled egui font inputs.
-Copy-Item -LiteralPath (Join-Path $Root 'NOTICE'), (Join-Path $Root 'ATTRIBUTION.md') -Destination $Docs
+# The MIT/Apache-2.0 licence texts must ship with the binaries, not only NOTICE.
+Copy-Item -LiteralPath (Join-Path $Root 'LICENSE-MIT'), (Join-Path $Root 'LICENSE-APACHE'), (Join-Path $Root 'NOTICE'), (Join-Path $Root 'ATTRIBUTION.md') -Destination $Docs
 $HasCraftFontLicences = 1
 if ($env:CRAFT_FONTS_DIR) {
   foreach ($ofl in Get-ChildItem -Path (Join-Path $env:CRAFT_FONTS_DIR 'fonts\*\OFL.txt') -File -ErrorAction SilentlyContinue) {
@@ -123,7 +124,7 @@ if ($env:CRAFT_FONTS_DIR) {
 # ---- end font notices for the MSI --------------------------------------------------------------
 
 # ---- MSI ---------------------------------------------------------------------------------------
-# The setup wizard's art, drawn here from the app icon so the MSI shows PhotoCraft rather than
+# The setup wizard's art, drawn here from the app icon so the MSI shows the app icon rather than
 # WiX's stock bitmaps: a 493x58 banner across the top of the inner pages (the page title is drawn
 # over its left side, so that stays white) and a 493x312 backdrop for the Welcome and Finish pages
 # (their text sits on the right; the left 164 px are ours). Both must be 24-bit BMPs.

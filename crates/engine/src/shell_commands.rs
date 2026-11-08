@@ -95,13 +95,8 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.theme.softLight", "Soft", &["Window", "Theme", "Light Theme"], None),
     ("window.theme.system", "Sync with system", &["Window", "Theme"], None),
     ("edit.search", "Search…", &["Edit"], Some("Cmd+F")),
-    ("help.discord", "Join the ArtCraft Discord…", &[], None),
-    ("help.website", "PhotoCraft Website", &[], None),
-    ("help.artcraftWebsite", "ArtCraft Website", &[], None),
-    ("help.github", "PhotoCraft on GitHub", &[], None),
-    ("help.reportIssue", "Report an Issue…", &[], None),
     ("help.systemInfo", "System Info…", &["Help"], None),
-    ("help.about", "About PhotoCraft", &["Help"], None),
+    ("help.about", "About {app}", &["Help"], None),
 ];
 
 /// The tools, in toolbar order: shortcut id (`tools.select.<tool>`), Photoshop's name for it

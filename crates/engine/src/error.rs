@@ -72,13 +72,10 @@ fn memory_limit_for(is_wasm32: bool, is_32_bit: bool) -> BuildMemoryLimit {
 /// The text after "hard limit": where the limit comes from and, where another build could open
 /// the file, where to get it. Its sentences stand apart so the action isn't lost in the cause.
 fn build_limit_scope(limit: BuildMemoryLimit) -> String {
-    let releases = crate::updates_cmds::RELEASES;
     match limit {
         BuildMemoryLimit::Measured => " on this machine".to_owned(),
-        BuildMemoryLimit::Desktop32Bit => format!(
-            " on this machine. This 32-bit build of PhotoCraft can use at most 2 GiB of memory for a file, or less if the computer has less memory free. The 64-bit build may be able to open it: download it from {releases}"
-        ),
-        BuildMemoryLimit::FixedWeb => format!(" of the browser version of PhotoCraft. To open it, download the desktop app from {releases}"),
+        BuildMemoryLimit::Desktop32Bit => " on this machine. This 32-bit build can use at most 2 GiB of memory for a file, or less if the computer has less memory free. The 64-bit build may be able to open it.".to_owned(),
+        BuildMemoryLimit::FixedWeb => " of the browser version. To open it, use the desktop app.".to_owned(),
     }
 }
 
@@ -182,17 +179,11 @@ mod tests {
     #[test]
     fn hard_budget_scope_text_per_build() {
         assert_eq!(build_limit_scope(BuildMemoryLimit::Measured), " on this machine");
-        let releases = crate::updates_cmds::RELEASES;
         assert_eq!(
             build_limit_scope(BuildMemoryLimit::Desktop32Bit),
-            format!(
-                " on this machine. This 32-bit build of PhotoCraft can use at most 2 GiB of memory for a file, or less if the computer has less memory free. The 64-bit build may be able to open it: download it from {releases}"
-            )
+            " on this machine. This 32-bit build can use at most 2 GiB of memory for a file, or less if the computer has less memory free. The 64-bit build may be able to open it."
         );
-        assert_eq!(
-            build_limit_scope(BuildMemoryLimit::FixedWeb),
-            format!(" of the browser version of PhotoCraft. To open it, download the desktop app from {releases}")
-        );
+        assert_eq!(build_limit_scope(BuildMemoryLimit::FixedWeb), " of the browser version. To open it, use the desktop app.");
     }
 
     #[test]

@@ -4595,3 +4595,8 @@ studio	Paths	Caminhos
 	What Codex works on	Onde o Codex trabalha
 	MCP connected	MCP conectado
 @plural	Finished in {n} step.|Finished in {n} steps.	Concluído em {n} etapa.|Concluído em {n} etapas.
+	Open-source licenses	Licenças de código aberto
+	{app} is built on open-source software. Its licenses and copyright notices are below; the full third-party list is in ATTRIBUTION.md, installed with the app.	O {app} é feito com software de código aberto. As licenças e os avisos de direitos autorais estão abaixo; a lista completa de terceiros está no ATTRIBUTION.md, instalado com o aplicativo.
+	{app} — a native image editor by {company}.	{app} — um editor de imagens nativo da {company}.
+	Screen Color Picker	Seletor de cor da tela
+	{app} could not start	Não foi possível iniciar o {app}
