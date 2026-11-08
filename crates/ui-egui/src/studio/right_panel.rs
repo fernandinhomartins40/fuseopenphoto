@@ -1,10 +1,12 @@
 //! The contextual panel beside the rail: Texto (Caractere/Parágrafo), the adjustment editor
 //! (Ajuste/Máscara), Efeitos, the layer or document Properties, and the panel picked on the rail.
 //!
-//! It only wraps the existing panels' bodies (`panels::dock_body`, the type sections, the mask
-//! properties, the Layer Style dialog) in the studio card chrome, so every editor stays one.
+//! It reuses the existing panels' bodies (`panels::dock_body`, the type sections, the adjustment
+//! editors, the mask properties) and the Layer Style dialog's model (`layer_style::panel`, the
+//! inline Efeitos editor) in the studio card chrome, so every editor stays one. Sections the
+//! mockups fold (Transformar, Avançado, Máscara) are [`fold`] rows.
 
-use egui::{Align, CornerRadius, Layout, Rect, Response, RichText, Sense, Stroke, pos2, vec2};
+use egui::{Align, CornerRadius, Layout, Rect, Response, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
 use photocraft_doc::LayerContent;
 use serde_json::{Value, json};
 
@@ -29,6 +31,8 @@ pub struct State {
     /// The selected header tab, and the view it was picked in (a new view starts on its first).
     tab: usize,
     tab_view: Option<View>,
+    /// The Efeitos editor's session (the style being edited, what Reverter brings back).
+    fx: Option<crate::layer_style::panel::FxEdit>,
 }
 
 /// What the card shows.
@@ -213,17 +217,10 @@ fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: View, tab: usize) {
             }
         }
         (View::Text | View::Properties, 1) => scrolled(ui, |ui| effects(app, ui)),
-        (View::Text, _) if selected(app) != Selected::Text => {
-            // No type layer: Character and Paragraph edit the next type layer's defaults.
-            scrolled(ui, |ui| {
-                crate::panels::dock_body(app, ui, Group::Character, 0);
-                crate::panels::dock_body(app, ui, Group::Character, 1);
-            });
-        }
+        (View::Text, _) => scrolled(ui, |ui| text(app, ui)),
         (View::Adjustment, 1) => scrolled(ui, |ui| mask(app, ui)),
+        (View::Adjustment, _) if selected(app) == Selected::Adjustment => scrolled(ui, |ui| adjustment(app, ui)),
         (View::AddAdjustment, _) => dock_panel(app, ui, Group::Properties, "Adjustments"),
-        // A type layer's Properties are its Character and Paragraph sections; an adjustment
-        // layer's are its editor.
         _ => dock_panel(app, ui, Group::Properties, "Properties"),
     }
 }
@@ -289,59 +286,158 @@ fn row(ui: &mut egui::Ui, t: &Tokens, label: &str, icon: &str) -> Response {
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
-/// Efeitos: Blending Options and each effect kind with its on/off box; a row's chevron opens the
-/// Layer Style dialog on it, as does checking a kind the layer doesn't have yet.
+/// Efeitos: the inline Layer Style editor (every effect kind, its parameters, Preview, Reverter
+/// and Aplicar); the full dialog stays one button away.
 fn effects(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
-    use crate::layer_style::{BLENDING, KINDS};
-    let t = Tokens::get(ui.ctx());
-    let Some((layer, items)) = app.session.active().and_then(|st| {
-        let layer = st.doc.layer(st.active_layer?)?;
-        Some((layer.id.0, layer.effects.items.iter().map(|e| (photocraft_engine::layer_style::kind_of(e), e.enabled())).collect::<Vec<_>>()))
-    }) else {
-        ui.label(RichText::new(tl!("Select a layer to edit its effects.")).color(t.text_faint));
-        return;
-    };
-    let mut open: Option<Option<&str>> = None;
-    let mut runs: Vec<(&str, Value)> = Vec::new();
-    if row(ui, &t, tl!("Blending Options"), "chevron-right").clicked() {
-        open = Some(Some(BLENDING));
+    let mut fx = app.studio.panel.fx.take();
+    crate::layer_style::panel::show(app, ui, &mut fx);
+    app.studio.panel.fx = fx;
+}
+
+/// Texto: Character, Paragraph and Type Options of the selected type layer, then the folded
+/// Transform (position, size, opacity, fill) and Advanced (the type layer's quick actions). With no
+/// type layer, Character and Paragraph edit the next type layer's defaults.
+fn text(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+    let Some((doc, Some(id))) = app.session.active().map(|st| (st.doc.clone(), st.active_layer)) else { return defaults_text(app, ui) };
+    let Some(layer) = doc.layer(id).filter(|l| matches!(l.content, LayerContent::Text(_))) else { return defaults_text(app, ui) };
+    crate::type_tool::type_properties(app, ui);
+    if fold(ui, "text-transform", tl!("Transform"), None) {
+        crate::panels::layer_controls(app, ui, layer);
     }
-    for &(kind, name) in KINDS {
-        let mine: Vec<usize> = items.iter().enumerate().filter(|(_, (k, _))| *k == kind).map(|(i, _)| i).collect();
-        let mut on = mine.iter().any(|&i| items.get(i).is_some_and(|e| e.1));
-        ui.horizontal(|ui| {
-            ui.set_min_height(26.0);
-            if widgets::checkbox(ui, &mut on, name).changed() {
-                if mine.is_empty() {
-                    open = Some(Some(kind));
-                }
-                for &index in &mine {
-                    runs.push(("layer.setEffectsVisible", json!({"layer": layer, "visible": on, "index": index})));
-                }
-            }
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if icons::button(ui, "chevron-right", 22.0, false, "Edit Layer Style…").clicked() {
-                    open = Some(Some(kind));
-                }
-            });
-        });
+    if fold(ui, "text-advanced", tl!("Advanced"), Some(tl!("Quick actions for the type layer"))) {
+        quick_actions(app, ui, &layer.content);
     }
-    ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        if widgets::secondary_button(ui, tl!("Layer Style…"), 0.0).clicked() {
-            open = Some(None);
+}
+
+fn defaults_text(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+    crate::panels::dock_body(app, ui, Group::Character, 0);
+    crate::panels::dock_body(app, ui, Group::Character, 1);
+}
+
+/// The layer kind's Quick Actions (Convert to Shape, Rasterize Type…), one outlined button each.
+fn quick_actions(app: &mut PhotocraftApp, ui: &mut egui::Ui, content: &LayerContent) {
+    let ctx = ui.ctx().clone();
+    for &(label, id) in crate::props_layout::quick_actions(content) {
+        if outlined_button(ui, None, tl!(label), ui.available_width()).clicked() {
+            let result = crate::menus::invoke(app, &ctx, id, json!({}));
+            report(app, result);
         }
-        if !items.is_empty() && widgets::secondary_button(ui, tl!("Clear Layer Style"), 0.0).clicked() {
-            runs.push(("layer.layerStyle.clear", json!({"layer": layer})));
+        ui.add_space(4.0);
+    }
+}
+
+/// An adjustment layer (Níveis, Matiz/Saturação…): its name, the shared editor, Preview (the
+/// layer's visibility) and Clip to layer, Reset, then the folded Mask and Advanced (opacity, fill).
+fn adjustment(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+    let t = Tokens::get(ui.ctx());
+    let Some((doc, Some(id))) = app.session.active().map(|st| (st.doc.clone(), st.active_layer)) else { return };
+    let Some(layer) = doc.layer(id) else { return };
+    let LayerContent::Adjustment(adj) = &layer.content else { return };
+    // A targeted mask thumbnail shows the mask, as the classic Properties panel does.
+    if crate::mask_props_ui::targeted(app, layer) || crate::mask_props_ui::vector_targeted(app, layer) {
+        return mask(app, ui);
+    }
+    ui.horizontal(|ui| {
+        ui.set_min_height(28.0);
+        let (r, _) = ui.allocate_exact_size(vec2(20.0, 20.0), Sense::hover());
+        icons::paint(ui, r, crate::props_layout::kind_icon(&layer.content), 18.0, t.icon);
+        ui.label(RichText::new(tl!(adj.label())).size(15.0).color(t.text));
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            let (r, resp) = ui.allocate_exact_size(vec2(20.0, 20.0), Sense::hover());
+            icons::paint(ui, r, "info", 16.0, t.text_faint);
+            resp.on_hover_text(&layer.name);
+        });
+    });
+    ui.add_space(6.0);
+    crate::adjust_editors::layer_editor(app, ui, id, adj);
+    ui.add_space(10.0);
+    let (mut visible, mut clipped) = (layer.visible, layer.clipped);
+    let mut run: Option<Value> = None;
+    ui.horizontal(|ui| {
+        let preview = crate::i18n::tr_ctx(crate::i18n::current(), "studio", "Preview");
+        if widgets::checkbox(ui, &mut visible, preview).changed() {
+            run = Some(json!({"layer": id.0, "visible": visible}));
+        }
+        ui.add_space(16.0);
+        if widgets::checkbox(ui, &mut clipped, tl!("Clip to layer")).changed() {
+            run = Some(json!({"layer": id.0, "clipped": clipped}));
         }
     });
-    for (id, params) in runs {
-        let result = app.run(id, params);
+    if let Some(p) = run {
+        let result = app.run("layer.setProps", p);
         report(app, result);
     }
-    if let Some(select) = open {
-        crate::layer_style::open(app, select);
+    ui.add_space(8.0);
+    if outlined_button(ui, Some("rotate-ccw"), tl!("Reset to defaults"), ui.available_width()).clicked() {
+        // Photoshop's two-step Reset where measured (Color Balance), else the defaults.
+        let params = crate::adjust_editors::properties_reset(ui.ctx(), doc.id.0, id, adj).unwrap_or_else(|| json!({"layer": id.0}));
+        let result = app.run("layer.setAdjustment", params);
+        report(app, result);
+        app.live_adjust = None;
     }
+    if fold(ui, "adjustment-mask", tl!("Mask"), Some(tl!("The layer's mask"))) {
+        mask(app, ui);
+    }
+    if fold(ui, "adjustment-advanced", tl!("Advanced"), Some(tl!("Opacity and fill of the layer"))) {
+        crate::panels::layer_controls(app, ui, layer);
+    }
+}
+
+/// A folding section row: a hairline, then the chevron, the title and an optional ⓘ with `tip`
+/// (closed until opened, as the mockups show Transformar, Avançado and Máscara). Returns whether
+/// it is open.
+fn fold(ui: &mut egui::Ui, id: &str, title: &str, tip: Option<&str>) -> bool {
+    let t = Tokens::get(ui.ctx());
+    let key = egui::Id::unique(("studio-fold", id));
+    let mut open = ui.data(|d| d.get_temp::<bool>(key)).unwrap_or(false);
+    ui.add_space(6.0);
+    widgets::hairline(ui);
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 36.0), Sense::click());
+    if resp.clicked() {
+        open = !open;
+        ui.data_mut(|d| d.insert_temp(key, open));
+    }
+    if resp.hovered() {
+        ui.painter().rect_filled(rect, CornerRadius::same(6), t.hover);
+    }
+    let chevron = if open { "chevron-down" } else { "chevron-right" };
+    icons::paint(ui, Rect::from_center_size(pos2(rect.left() + 10.0, rect.center().y), vec2(16.0, 16.0)), chevron, 15.0, t.text_dim);
+    ui.painter().text(pos2(rect.left() + 28.0, rect.center().y), egui::Align2::LEFT_CENTER, title, egui::FontId::proportional(14.0), t.text);
+    if tip.is_some() {
+        icons::paint(ui, Rect::from_center_size(pos2(rect.right() - 12.0, rect.center().y), vec2(16.0, 16.0)), "info", 15.0, t.text_faint);
+    }
+    resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::DisclosureTriangle, true, open, title));
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if let Some(tip) = tip {
+        resp.on_hover_text(tip);
+    }
+    if open {
+        ui.add_space(4.0);
+    }
+    open
+}
+
+/// The mockups' outlined pill button (Redefinir…, Reverter): an optional leading icon, the label
+/// centred, at least `width` wide.
+pub(crate) fn outlined_button(ui: &mut egui::Ui, icon: Option<&str>, label: &str, width: f32) -> Response {
+    let t = Tokens::get(ui.ctx());
+    let enabled = ui.is_enabled();
+    let color = if enabled { t.text } else { t.text_faint };
+    let galley = ui.painter().layout_no_wrap(label.to_owned(), egui::FontId::proportional(13.0), color);
+    let icon_w = if icon.is_some() { 22.0 } else { 0.0 };
+    let content = galley.size().x + icon_w;
+    let (rect, resp) = ui.allocate_exact_size(vec2(width.max(content + 28.0), 30.0), Sense::click());
+    if resp.hovered() && enabled {
+        ui.painter().rect_filled(rect, CornerRadius::same(15), t.hover);
+    }
+    ui.painter().rect_stroke(rect, CornerRadius::same(15), Stroke::new(1.0, if enabled { t.text_dim } else { t.card_border }), StrokeKind::Inside);
+    let x = rect.center().x - content / 2.0;
+    if let Some(icon) = icon {
+        icons::paint(ui, Rect::from_center_size(pos2(x + 8.0, rect.center().y), vec2(16.0, 16.0)), icon, 15.0, color);
+    }
+    ui.painter().galley(pos2(x + icon_w, rect.center().y - galley.size().y / 2.0), galley, color);
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
 /// Máscara: the layer's pixel and vector mask properties, or Add Mask.

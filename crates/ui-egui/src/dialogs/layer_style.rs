@@ -28,6 +28,7 @@ mod contour;
 mod gradient_field;
 #[cfg(test)]
 mod gradient_method_tests;
+pub mod panel;
 
 #[derive(Clone, Copy)]
 enum P {
