@@ -1,14 +1,15 @@
 name: Build Windows installer
 
 # Builds the Windows MSI and portable zip (with the Codex CLI inside for Window › Codex) and
-# uploads them as the run's artifacts: Actions › this run › Artifacts › windows-x64.
+# publishes them: Releases › "Última versão (<branch>)" (direct download links), and the run's
+# artifacts (Actions › this run › Artifacts › windows-x64).
 on:
   workflow_dispatch:
   push:
     branches: [main, studio-redesign]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-windows-${{ github.ref }}
@@ -76,3 +77,14 @@ jobs:
             dist/release/*.msi
             dist/release/*-portable.zip
           if-no-files-found: error
+
+      # A rolling pre-release per branch, so the latest installer is always one click away.
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          tag="latest-${BRANCH//\//-}"
+          gh release delete "$tag" --cleanup-tag --yes -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create "$tag" dist/release/*.msi dist/release/*-portable.zip             -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease             --title "Última versão ($BRANCH)"             --notes "Build automático de $GITHUB_SHA. Baixe o .msi para instalar, ou o -portable.zip para usar sem instalar."
