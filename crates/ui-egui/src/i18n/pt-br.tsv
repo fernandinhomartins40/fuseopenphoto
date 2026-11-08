@@ -4557,3 +4557,9 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	Message Codex (Enter to send)	Mensagem para o Codex (Enter envia)
 	Send	Enviar
 	Classic Layout	Layout clássico
+	Menu	Menu
+	Search command	Buscar comando
+	Not saved	Não salvo
+	Saved {n} s ago	Salvo há {n} s
+	Saved {n} min ago	Salvo há {n} min
+	Saved {n} h ago	Salvo há {n} h
