@@ -99,32 +99,31 @@ fn home_recent_files_preference_defaults_on_persists_and_resets() {
 }
 
 #[test]
-fn appearance_defaults_and_legacy_theme_migrate() {
+fn appearance_defaults_to_studio_dark() {
     let p = Preferences::default();
-    // New users keep Photoshop's default; following the system is opt-in.
     assert_eq!(p.interface.appearance_mode, AppearanceMode::Dark);
-    assert_eq!(p.interface.dark_theme, DarkTheme::ProMedium);
+    assert_eq!(p.interface.dark_theme, DarkTheme::Studio);
     assert_eq!(p.interface.light_theme, LightTheme::ProLight);
-    for (theme, mode, dark, light) in
-        [("pro", AppearanceMode::Dark, DarkTheme::Pro, LightTheme::ProLight), ("classic", AppearanceMode::Light, DarkTheme::ProMedium, LightTheme::Classic)]
-    {
-        let mut s = Session::new();
-        s.load_prefs_json(&json!({"interface": {"theme": theme}}).to_string()).unwrap();
-        assert_eq!(s.prefs().interface.appearance_mode, mode);
-        assert_eq!(s.prefs().interface.dark_theme, dark);
-        assert_eq!(s.prefs().interface.light_theme, light);
-    }
 }
 
+/// Files saved before the Studio redesign (version < 3) switch to Studio once; a theme chosen
+/// since (saved as version 3) sticks across restarts.
 #[test]
-fn legacy_theme_migration_preserves_saved_theme_slots() {
-    for (legacy, slot, saved) in [("proMedium", "darkTheme", "solarizedDark"), ("studioLight", "lightTheme", "adwaita")] {
-        let mut interface = json!({"theme": legacy});
-        interface[slot] = json!(saved);
-        let mut session = Session::new();
-        session.load_prefs_json(&json!({"interface": interface}).to_string()).unwrap();
-        assert_eq!(session.prefs_value()["interface"][slot], saved, "explicit {slot} survives migration");
+fn pre_studio_theme_migrates_once_and_later_choice_sticks() {
+    for old in [json!({"interface": {"theme": "proMedium", "darkTheme": "proMedium", "appearanceMode": "dark"}, "version": 2}), json!({"interface": {"theme": "classic"}})] {
+        let mut s = Session::new();
+        s.load_prefs_json(&old.to_string()).unwrap();
+        assert_eq!(s.prefs().interface.theme, Theme::Studio, "{old}");
+        assert_eq!(s.prefs().interface.dark_theme, DarkTheme::Studio, "{old}");
+        assert_eq!(s.prefs().interface.appearance_mode, AppearanceMode::Dark, "{old}");
     }
+    let mut s = Session::new();
+    s.load_prefs_json(&json!({"interface": {"darkTheme": "proMedium"}, "version": 2}).to_string()).unwrap();
+    s.execute("prefs.set", json!({"path": "interface.theme", "value": "proMedium"})).unwrap();
+    let mut restarted = Session::new();
+    restarted.load_prefs_json(&s.prefs_to_json()).unwrap();
+    assert_eq!(restarted.prefs().interface.dark_theme, DarkTheme::ProMedium);
+    assert_eq!(restarted.prefs().interface.theme, Theme::ProMedium);
 }
 
 #[test]

@@ -1610,23 +1610,15 @@ impl Session {
         {
             tools.remove("useShiftKeyForToolSwitch");
         }
-        // Saved preferences before appearance modes had one concrete theme. Preserve its
-        // appearance instead of silently switching established users to Auto.
-        if let Some(interface) = v.get_mut("interface").and_then(Value::as_object_mut)
-            && !interface.contains_key("appearanceMode")
-            && let Some(theme) = interface.get("theme").and_then(Value::as_str).and_then(Theme::parse)
+        // Files before version 3 predate the Studio redesign; their theme was the old default or a
+        // choice made against the old look. Switch them to Studio once; a choice made since is
+        // saved as version 3 and sticks.
+        if v.get("version").and_then(Value::as_u64).unwrap_or(0) < 3
+            && let Some(interface) = v.get_mut("interface").and_then(Value::as_object_mut)
         {
-            let (mode, slot) = match theme {
-                Theme::Pro | Theme::ProMedium | Theme::Studio | Theme::SolarizedDark | Theme::AdwaitaDark | Theme::BreezeDark | Theme::SoftDark => {
-                    ("dark", "darkTheme")
-                }
-                Theme::StudioLight | Theme::ProLightGray | Theme::ProLight | Theme::Classic | Theme::Adwaita | Theme::BreezeLight | Theme::SoftLight => {
-                    ("light", "lightTheme")
-                }
-            };
-            interface.insert("appearanceMode".into(), json!(mode));
-            // A partially migrated file may already contain a newer theme selection (#5139).
-            interface.entry(slot).or_insert_with(|| json!(theme.name()));
+            interface.insert("theme".into(), json!(Theme::Studio.name()));
+            interface.insert("darkTheme".into(), json!(DarkTheme::Studio.name()));
+            interface.insert("appearanceMode".into(), json!(AppearanceMode::Dark.name()));
         }
         let color = v.as_object_mut().and_then(|m| m.remove("colorSettings"));
         let presets = v.as_object_mut().and_then(|m| m.remove("presets"));

@@ -209,7 +209,7 @@ fn button_impl_h(ui: &mut Ui, label: &str, min_width: f32, height: Option<f32>, 
         if resp.hovered() || down {
             ui.painter().rect_filled(rect, t.radius_sm, if down { t.pressed } else { t.hover });
         }
-        let rim = if resp.hovered() { t.text_dim } else { t.text_faint };
+        let rim = if resp.hovered() { t.text_faint } else { t.field_border };
         ui.painter().rect_stroke(rect, t.radius_sm, Stroke::new(1.0, rim), StrokeKind::Inside);
         ui.painter().galley(rect.center() - galley.size() / 2.0, galley, fg);
         return resp;
