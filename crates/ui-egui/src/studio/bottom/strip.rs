@@ -243,16 +243,32 @@ struct Sel {
     multi: bool,
 }
 
+/// What a card's helpers share once it is laid out.
+struct Card<'a> {
+    doc: &'a Document,
+    l: &'a Layer,
+    sel: Sel,
+    rect: Rect,
+    header: Rect,
+    resp: egui::Response,
+}
+
+/// The header's outcome: whether one of its controls took the click, and where the name went.
+struct Header {
+    taken: bool,
+    name: Option<Rect>,
+    name_left: f32,
+    name_right: f32,
+}
+
 /// One layer card; returns its rect.
 fn card(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, depth: usize, sel: Sel, actions: &mut Vec<(String, Value)>) -> Rect {
     let ctx = ui.ctx().clone();
-    let t = Tokens::get(&ctx);
     let full_h = ui.available_height();
     let inset = (depth.min(4) as f32) * NEST_STEP;
     let h = (full_h - inset).max(60.0);
-    let ts = (h - 50.0).clamp(24.0, 80.0);
-    let masks_w = crate::mask_thumbs_ui::width(l, ts.min(56.0));
-    let w = 12.0 + THUMB_W + masks_w + 30.0 + 8.0;
+    let ts = (h - 50.0).clamp(24.0, 80.0).min(56.0);
+    let w = 12.0 + THUMB_W + crate::mask_thumbs_ui::width(l, ts) + 30.0 + 8.0;
     let (slot, _) = ui.allocate_exact_size(vec2(w, full_h), Sense::hover());
     let rect = Rect::from_min_size(slot.min + vec2(0.0, inset), vec2(w, h));
     let resp = ui.interact(rect, ui.scope_id().with(("studio-card", l.id.0)), Sense::click_and_drag());
@@ -261,32 +277,95 @@ fn card(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, d
         return rect;
     }
     let painter = ui.painter_at(rect.expand(6.0));
-    if depth > 0 {
-        // A band behind a group's contents; neighbouring bands meet across the gap between cards.
-        painter.rect_filled(slot.expand2(vec2(5.0, 0.0)).with_min_y(rect.top() - 4.0), 0.0, t.accent_soft.gamma_multiply(0.35));
+    let header = Rect::from_min_size(rect.min + vec2(8.0, 6.0), vec2(w - 16.0, 24.0));
+    let c = Card { doc, l, sel, rect, header, resp };
+    paint_frame(app, &painter, &c, (depth > 0).then_some(slot));
+    let head = card_header(app, ui, &painter, &c, actions);
+    let (thumb, masks, badge_taken) = card_body(app, ui, &painter, &c, ts, actions);
+    let taken = head.taken || badge_taken;
+    if c.resp.clicked() && !taken && !masks.clicked {
+        card_click(app, ui, &c, thumb, &masks, actions);
     }
-    let hovered = resp.hovered() || app.canvas_hover_layer == Some(l.id);
-    if resp.hovered() {
-        app.hover_layer = Some(l.id);
+    if c.resp.double_clicked() && !taken {
+        card_double_click(app, &ctx, &c, &head, thumb, &masks, actions);
     }
-    painter.rect_filled(rect, RADIUS, if hovered && !sel.selected { t.hover } else { t.card });
-    let border = match (sel.primary, sel.selected) {
+    let edit = Rect::from_min_max(pos2(head.name_left - 3.0, header.top()), pos2(head.name_right.max(head.name_left + 60.0), header.bottom()));
+    if let Some(done) = crate::layer_row_ui::rename_field(ui, l.id.0, edit) {
+        actions.push(done);
+    }
+    card_menu(app, ui, &c, &masks, actions);
+    drag_and_drop(app, &ctx, ui, doc, l, rect, &c.resp, taken, actions);
+    rect
+}
+
+/// The card's background, its selection border, and (`nested` slot) the band behind a group's contents.
+fn paint_frame(app: &mut PhotocraftApp, painter: &egui::Painter, c: &Card<'_>, nested: Option<Rect>) {
+    let t = Tokens::get(&c.resp.ctx);
+    if let Some(slot) = nested {
+        // Neighbouring bands meet across the gap between cards.
+        painter.rect_filled(slot.expand2(vec2(5.0, 0.0)).with_min_y(c.rect.top() - 4.0), 0.0, t.accent_soft.gamma_multiply(0.35));
+    }
+    let hovered = c.resp.hovered() || app.canvas_hover_layer == Some(c.l.id);
+    if c.resp.hovered() {
+        app.hover_layer = Some(c.l.id);
+    }
+    painter.rect_filled(c.rect, RADIUS, if hovered && !c.sel.selected { t.hover } else { t.card });
+    let border = match (c.sel.primary, c.sel.selected) {
         (true, _) => Stroke::new(2.0, t.accent),
         (false, true) => Stroke::new(1.5, t.accent.gamma_multiply(0.6)),
         _ => Stroke::new(1.0, t.card_border),
     };
-    painter.rect_stroke(rect, RADIUS, border, StrokeKind::Inside);
+    painter.rect_stroke(c.rect, RADIUS, border, StrokeKind::Inside);
+}
 
-    // Header: eye, (group disclosure), kind icon, name, fx.
-    let header = Rect::from_min_size(rect.min + vec2(8.0, 6.0), vec2(w - 16.0, 24.0));
-    let cell = |x: f32| Rect::from_min_size(pos2(x, header.top()), vec2(22.0, header.height()));
-    let mut taken = false;
-    let eye_rect = cell(header.left());
-    let eye = ui.interact(eye_rect, ui.scope_id().with(("studio-eye", l.id.0)), Sense::click()).on_hover_text(tl!("Visibility"));
-    let label_tint = t.layer_label_icon(l.label);
-    icons::paint(ui, eye_rect, if l.visible { "eye" } else { "eye-off" }, 16.0, if l.visible { label_tint } else { t.text_faint });
+fn header_cell(header: Rect, x: f32) -> Rect {
+    Rect::from_min_size(pos2(x, header.top()), vec2(22.0, header.height()))
+}
+
+/// Header: eye, group disclosure, clip and kind icons, name, fx.
+fn card_header(app: &mut PhotocraftApp, ui: &mut egui::Ui, painter: &egui::Painter, c: &Card<'_>, actions: &mut Vec<(String, Value)>) -> Header {
+    let t = Tokens::get(ui.ctx());
+    let (l, header) = (c.l, c.header);
+    let mut taken = card_eye(app, ui, c, actions);
+    let mut x = header.left() + 24.0;
+    if let LayerContent::Group(g) = &l.content
+        && l.frame.is_none()
+    {
+        taken |= card_disclosure(ui, c, g.expanded, header_cell(header, x), actions);
+        x += 20.0;
+    }
+    if l.clipped {
+        icons::paint(ui, header_cell(header, x), "clip-below", 14.0, t.text_faint);
+        x += 18.0;
+    }
+    if let Some(icon) = kind_icon(l) {
+        icons::paint(ui, header_cell(header, x), icon, 16.0, t.icon);
+        x += 24.0;
+    }
+    let has_fx = !l.effects.items.is_empty();
+    let fx_rect = Rect::from_min_max(pos2(header.right() - 22.0, header.top()), header.max);
+    let name_right = if has_fx { fx_rect.left() - 4.0 } else { header.right() };
+    let name_color = if l.visible { t.text } else { t.text_faint };
+    let name = crate::layer_row_ui::truncated(painter, &l.name, FontId::proportional(14.0), name_color, false, name_right - x).map(|g| {
+        let p = pos2(x, header.center().y - g.size().y / 2.0);
+        let r = Rect::from_min_size(p, g.size());
+        painter.galley(p, g, name_color);
+        r
+    });
+    if has_fx {
+        taken |= card_fx(app, ui, painter, c, fx_rect);
+    }
+    Header { taken, name, name_left: x, name_right }
+}
+
+/// The eye: toggles visibility (⌥ shows only this layer); right-click picks the label colour.
+fn card_eye(app: &mut PhotocraftApp, ui: &mut egui::Ui, c: &Card<'_>, actions: &mut Vec<(String, Value)>) -> bool {
+    let t = Tokens::get(ui.ctx());
+    let l = c.l;
+    let r = header_cell(c.header, c.header.left());
+    let eye = ui.interact(r, ui.scope_id().with(("studio-eye", l.id.0)), Sense::click()).on_hover_text(tl!("Visibility"));
+    icons::paint(ui, r, if l.visible { "eye" } else { "eye-off" }, 16.0, if l.visible { t.layer_label_icon(l.label) } else { t.text_faint });
     if eye.clicked() {
-        taken = true;
         if ui.input(|i| i.modifiers.alt) {
             actions.push(("layer.showOnly".into(), json!({"layer": l.id.0})));
         } else {
@@ -295,77 +374,74 @@ fn card(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, d
     }
     eye.context_menu(|ui| {
         widgets::style_spectrum_popup_menu(ui);
-        crate::layer_menu_ui::color_choices(app, ui, l, sel.multi && sel.selected, actions);
+        crate::layer_menu_ui::color_choices(app, ui, l, c.sel.multi && c.sel.selected, actions);
     });
-    let mut x = eye_rect.right() + 2.0;
-    if let LayerContent::Group(g) = &l.content
-        && l.frame.is_none()
-    {
-        let r = cell(x);
-        let tip = if g.expanded { tl!("Collapse") } else { tl!("Expand") };
-        let d = ui.interact(r, ui.scope_id().with(("studio-disclosure", l.id.0)), Sense::click()).on_hover_text(tip);
-        icons::paint(ui, r, if g.expanded { "chevron-down" } else { "chevron-right" }, 14.0, if d.hovered() { t.text } else { t.icon });
-        if d.clicked() {
-            taken = true;
-            let all = ui.input(|i| i.modifiers.alt);
-            actions.push(("layer.setExpanded".into(), json!({"layer": l.id.0, "expanded": !g.expanded, "all": all})));
-        }
-        x += 20.0;
-    }
-    if l.clipped {
-        icons::paint(ui, cell(x), "clip-below", 14.0, t.text_faint);
-        x += 18.0;
-    }
-    if let Some(icon) = kind_icon(l) {
-        icons::paint(ui, cell(x), icon, 16.0, t.icon);
-        x += 24.0;
-    }
-    let has_fx = !l.effects.items.is_empty();
-    let fx_rect = Rect::from_min_max(pos2(header.right() - 22.0, header.top()), header.max);
-    let name_right = if has_fx { fx_rect.left() - 4.0 } else { header.right() };
-    let name_color = if l.visible { t.text } else { t.text_faint };
-    let name_rect = crate::layer_row_ui::truncated(&painter, &l.name, FontId::proportional(14.0), name_color, false, name_right - x).map(|g| {
-        let p = pos2(x, header.center().y - g.size().y / 2.0);
-        let r = Rect::from_min_size(p, g.size());
-        painter.galley(p, g, name_color);
-        r
-    });
-    if has_fx {
-        let fx = ui.interact(fx_rect, ui.scope_id().with(("studio-fx", l.id.0)), Sense::click()).on_hover_text(tl!("Layer Style"));
-        let mut job = egui::text::LayoutJob::default();
-        let color = if l.effects.enabled { t.accent } else { t.text_faint };
-        job.append("fx", 0.0, egui::TextFormat { font_id: FontId::proportional(16.0), color, italics: true, ..Default::default() });
-        let g = painter.layout_job(job);
-        painter.galley(fx_rect.center() - g.size() / 2.0, g, color);
-        if fx.clicked() {
-            taken = true;
-            crate::layer_style::open_for_layer(app, l.id, None);
-        }
-    }
+    eye.clicked()
+}
 
-    // Body: thumbnail, masks (with their chains), then link and lock badges.
-    let body = Rect::from_min_max(pos2(rect.left() + 12.0, header.bottom() + 6.0), pos2(rect.left() + 12.0 + THUMB_W, rect.bottom() - 10.0));
-    let thumb = paint_thumb(app, &ctx, ui, &painter, doc, l, body, sel.primary);
-    let mut mx = body.right() + 10.0;
-    let masks = crate::mask_thumbs_ui::paint(app, &ctx, ui, &painter, doc, l, &mut mx, body.center().y, ts.min(56.0), actions);
-    if sel.primary {
-        // The targeted thumbnail (pixels, mask or vector mask) carries the corner brackets.
-        let target = if app.ui.vector_mask_target {
-            masks.thumb(MaskKind::Vector)
-        } else if app.ui.mask_target {
-            masks.thumb(MaskKind::Pixel)
-        } else {
-            None
-        };
-        if let Some(r) = target {
-            crate::mask_thumbs_ui::paint_brackets(&painter, r, t.text);
-        }
+/// A group's chevron: opens or closes it (⌥: every group).
+fn card_disclosure(ui: &mut egui::Ui, c: &Card<'_>, expanded: bool, r: Rect, actions: &mut Vec<(String, Value)>) -> bool {
+    let t = Tokens::get(ui.ctx());
+    let tip = if expanded { tl!("Collapse") } else { tl!("Expand") };
+    let d = ui.interact(r, ui.scope_id().with(("studio-disclosure", c.l.id.0)), Sense::click()).on_hover_text(tip);
+    icons::paint(ui, r, if expanded { "chevron-down" } else { "chevron-right" }, 14.0, if d.hovered() { t.text } else { t.icon });
+    if d.clicked() {
+        let all = ui.input(|i| i.modifiers.alt);
+        actions.push(("layer.setExpanded".into(), json!({"layer": c.l.id.0, "expanded": !expanded, "all": all})));
     }
-    let badge_x = rect.right() - 24.0;
-    let badge = |y: f32| Rect::from_center_size(pos2(badge_x, y), vec2(22.0, 22.0));
+    d.clicked()
+}
+
+/// The italic fx badge: opens Layer Style for the layer.
+fn card_fx(app: &mut PhotocraftApp, ui: &mut egui::Ui, painter: &egui::Painter, c: &Card<'_>, r: Rect) -> bool {
+    let t = Tokens::get(ui.ctx());
+    let fx = ui.interact(r, ui.scope_id().with(("studio-fx", c.l.id.0)), Sense::click()).on_hover_text(tl!("Layer Style"));
+    let mut job = egui::text::LayoutJob::default();
+    let color = if c.l.effects.enabled { t.accent } else { t.text_faint };
+    job.append("fx", 0.0, egui::TextFormat { font_id: FontId::proportional(16.0), color, italics: true, ..Default::default() });
+    let g = painter.layout_job(job);
+    painter.galley(r.center() - g.size() / 2.0, g, color);
+    if fx.clicked() {
+        crate::layer_style::open_for_layer(app, c.l.id, None);
+    }
+    fx.clicked()
+}
+
+/// Body: thumbnail, masks (with their chains), then link and lock badges. Returns the thumbnail,
+/// the masks and whether the lock badge took the click.
+fn card_body(
+    app: &mut PhotocraftApp,
+    ui: &mut egui::Ui,
+    painter: &egui::Painter,
+    c: &Card<'_>,
+    ts: f32,
+    actions: &mut Vec<(String, Value)>,
+) -> (Rect, crate::mask_thumbs_ui::MaskRects, bool) {
+    let ctx = ui.ctx().clone();
+    let t = Tokens::get(&ctx);
+    let (doc, l, rect) = (c.doc, c.l, c.rect);
+    let body = Rect::from_min_max(pos2(rect.left() + 12.0, c.header.bottom() + 6.0), pos2(rect.left() + 12.0 + THUMB_W, rect.bottom() - 10.0));
+    let thumb = paint_thumb(app, &ctx, ui, painter, doc, l, body, c.sel.primary);
+    let mut mx = body.right() + 10.0;
+    let masks = crate::mask_thumbs_ui::paint(app, &ctx, ui, painter, doc, l, &mut mx, body.center().y, ts, actions);
+    // The active layer's targeted mask carries the corner brackets.
+    let target = if !c.sel.primary {
+        None
+    } else if app.ui.vector_mask_target {
+        masks.thumb(MaskKind::Vector)
+    } else if app.ui.mask_target {
+        masks.thumb(MaskKind::Pixel)
+    } else {
+        None
+    };
+    if let Some(r) = target {
+        crate::mask_thumbs_ui::paint_brackets(painter, r, t.text);
+    }
+    let badge = |y: f32| Rect::from_center_size(pos2(rect.right() - 24.0, y), vec2(22.0, 22.0));
     if l.link_group.is_some() {
         icons::paint(ui, badge(body.center().y - 14.0), "link-2", 16.0, t.icon);
     }
+    let mut taken = false;
     if l.locks.any() || doc.is_background(l.id) {
         let r = badge(body.center().y + if l.link_group.is_some() { 14.0 } else { 0.0 });
         let lock = ui.interact(r, ui.scope_id().with(("studio-lock", l.id.0)), Sense::click()).on_hover_text(tl!("Lock layer"));
@@ -375,89 +451,104 @@ fn card(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, d
             actions.push(lock_toggle(doc, l));
         }
     }
+    (thumb, masks, taken)
+}
 
+/// A click on the card: ⌘/Ctrl on a thumbnail loads it as a selection, ⇧/⌥ on a mask toggles or
+/// views it; otherwise select the layer and target its pixels, mask or vector mask.
+fn card_click(app: &mut PhotocraftApp, ui: &egui::Ui, c: &Card<'_>, thumb: Rect, masks: &crate::mask_thumbs_ui::MaskRects, actions: &mut Vec<(String, Value)>) {
+    let l = c.l;
     let m = ui.input(|i| i.modifiers);
-    let pos = resp.interact_pointer_pos();
+    let pos = c.resp.interact_pointer_pos();
     let on_thumb = pos.is_some_and(|p| thumb.expand(2.0).contains(p));
     let mask_hit = pos.and_then(|p| masks.hit(p));
-    let bg = crate::doc_props_ui::is_background(doc, l);
-    if resp.clicked() && !taken && !eye.clicked() && !masks.clicked {
-        // ⌘/Ctrl-click a thumbnail loads it as a selection (⇧ add, ⌥ subtract).
-        let load = if !m.command {
-            None
-        } else if let Some(kind) = mask_hit {
-            Some(crate::mask_thumbs_ui::load_params(l, kind, m))
-        } else {
-            (on_thumb && !bg).then(|| json!({"channel": "transparency", "layer": l.id.0, "operation": crate::channels_panel::load_operation(m)}))
+    let bg = crate::doc_props_ui::is_background(c.doc, l);
+    let load = if !m.command {
+        None
+    } else if let Some(kind) = mask_hit {
+        Some(crate::mask_thumbs_ui::load_params(l, kind, m))
+    } else {
+        (on_thumb && !bg).then(|| json!({"channel": "transparency", "layer": l.id.0, "operation": crate::channels_panel::load_operation(m)}))
+    };
+    if let Some(p) = load {
+        actions.push(("select.loadSelection".into(), p));
+        return;
+    }
+    if let Some(cmd) = mask_hit.and_then(|k| crate::mask_thumbs_ui::click_command(l, k, m)) {
+        actions.push(cmd);
+        return;
+    }
+    let mode = if m.command && on_thumb && bg { "replace" } else { select_mode(m) };
+    actions.push(("layer.select".into(), json!({"layer": l.id.0, "mode": mode})));
+    crate::smart_ui::deselect(ui.ctx(), c.doc.id);
+    let content_less = matches!(l.content, LayerContent::Adjustment(_) | LayerContent::Fill(_));
+    if mask_hit == Some(MaskKind::Vector) {
+        app.ui.selected_path = Some("layer".into());
+        actions.push(("ui.vectorMaskTarget".into(), json!(true)));
+    } else if mask_hit == Some(MaskKind::Pixel) || (content_less && l.mask.is_some() && !on_thumb) {
+        if mask_hit.is_some() {
+            app.ui.properties_layer = None;
+        }
+        actions.push(("ui.maskTarget".into(), json!(true)));
+    } else if on_thumb || !c.sel.primary {
+        actions.push(("ui.maskTarget".into(), json!(false)));
+    }
+}
+
+/// Double-click: the name renames in place, the Background becomes a normal layer, a mask opens
+/// its settings, a content thumbnail its options; elsewhere Layer Style.
+fn card_double_click(
+    app: &PhotocraftApp,
+    ctx: &egui::Context,
+    c: &Card<'_>,
+    head: &Header,
+    thumb: Rect,
+    masks: &crate::mask_thumbs_ui::MaskRects,
+    actions: &mut Vec<(String, Value)>,
+) {
+    let l = c.l;
+    let pos = c.resp.interact_pointer_pos();
+    let on_thumb = pos.is_some_and(|p| thumb.expand(2.0).contains(p));
+    let on_name = head.name.is_some_and(|n| pos.is_some_and(|p| Rect::from_x_y_ranges(n.x_range(), c.header.y_range()).expand(2.0).contains(p)));
+    if crate::doc_props_ui::is_background(c.doc, l) {
+        actions.push(("layer.new.layerFromBackground".into(), json!({})));
+    } else if on_name {
+        actions.extend(crate::layer_row_ui::start_rename(ctx, l.id.0, &l.name));
+    } else if let Some(kind) = pos.and_then(|p| masks.hit(p)) {
+        actions.push((if kind == MaskKind::Pixel { "ui.maskTarget" } else { "ui.vectorMaskTarget" }.into(), json!(true)));
+        match crate::mask_thumbs_ui::double_click_command(app, kind) {
+            Some((cmd, v)) => actions.push((cmd.into(), v)),
+            None => actions.push(("ui.properties".into(), json!(true))),
+        }
+    } else {
+        let id = match &l.content {
+            LayerContent::Adjustment(_) | LayerContent::Fill(_) | LayerContent::Shape(_) if on_thumb => "layer.layerContentOptions",
+            LayerContent::Smart(_) if on_thumb => "layer.smartObjects.editContents",
+            LayerContent::Text(_) if on_thumb => "type.editText",
+            _ => "layer.layerStyle.blendingOptions",
         };
-        if let Some(p) = load {
-            actions.push(("select.loadSelection".into(), p));
-        } else if let Some(cmd) = mask_hit.and_then(|k| crate::mask_thumbs_ui::click_command(l, k, m)) {
-            actions.push(cmd);
-        } else {
-            let mode = if m.command && on_thumb && bg { "replace" } else { select_mode(m) };
-            actions.push(("layer.select".into(), json!({"layer": l.id.0, "mode": mode})));
-            crate::smart_ui::deselect(&ctx, doc.id);
-            let content_less = matches!(l.content, LayerContent::Adjustment(_) | LayerContent::Fill(_));
-            if mask_hit == Some(MaskKind::Vector) {
-                app.ui.selected_path = Some("layer".into());
-                actions.push(("ui.vectorMaskTarget".into(), json!(true)));
-            } else if mask_hit == Some(MaskKind::Pixel) || (content_less && l.mask.is_some() && !on_thumb) {
-                if mask_hit.is_some() {
-                    app.ui.properties_layer = None;
-                }
-                actions.push(("ui.maskTarget".into(), json!(true)));
-            } else if on_thumb || !sel.primary {
-                actions.push(("ui.maskTarget".into(), json!(false)));
-            }
+        if crate::menus::is_enabled(app, id) {
+            actions.push((id.into(), Value::Null));
         }
     }
-    // Double-click: the name renames in place, the Background becomes a normal layer, a mask
-    // opens its settings, a content thumbnail its options; elsewhere Layer Style.
-    if resp.double_clicked() && !taken {
-        let on_name = name_rect.is_some_and(|n| pos.is_some_and(|p| Rect::from_x_y_ranges(n.x_range(), header.y_range()).expand(2.0).contains(p)));
-        if bg {
-            actions.push(("layer.new.layerFromBackground".into(), json!({})));
-        } else if on_name {
-            actions.extend(crate::layer_row_ui::start_rename(&ctx, l.id.0, &l.name));
-        } else if let Some(kind) = mask_hit {
-            actions.push((if kind == MaskKind::Pixel { "ui.maskTarget" } else { "ui.vectorMaskTarget" }.into(), json!(true)));
-            match crate::mask_thumbs_ui::double_click_command(app, kind) {
-                Some((cmd, v)) => actions.push((cmd.into(), v)),
-                None => actions.push(("ui.properties".into(), json!(true))),
-            }
-        } else {
-            let id = match &l.content {
-                LayerContent::Adjustment(_) | LayerContent::Fill(_) | LayerContent::Shape(_) if on_thumb => "layer.layerContentOptions",
-                LayerContent::Smart(_) if on_thumb => "layer.smartObjects.editContents",
-                LayerContent::Text(_) if on_thumb => "type.editText",
-                _ => "layer.layerStyle.blendingOptions",
-            };
-            if crate::menus::is_enabled(app, id) {
-                actions.push((id.into(), Value::Null));
-            }
-        }
-    }
-    let edit = Rect::from_min_max(pos2(x - 3.0, header.top()), pos2(name_right.max(x + 60.0), header.bottom()));
-    if let Some(done) = crate::layer_row_ui::rename_field(ui, l.id.0, edit) {
-        actions.push(done);
-    }
-    // Right-click: the mask thumbnail's menu over a layer mask, the layer menu elsewhere.
+}
+
+/// Right-click: the mask thumbnail's menu over a layer mask, the layer menu elsewhere.
+fn card_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui, c: &Card<'_>, masks: &crate::mask_thumbs_ui::MaskRects, actions: &mut Vec<(String, Value)>) {
+    let l = c.l;
     let on_mask_id = ui.scope_id().with(("studio-mask-menu", l.id.0));
-    if resp.secondary_clicked() {
-        let on_mask = resp.interact_pointer_pos().and_then(|p| masks.hit(p)) == Some(MaskKind::Pixel);
-        ctx.data_mut(|d| d.insert_temp(on_mask_id, on_mask));
+    if c.resp.secondary_clicked() {
+        let on_mask = c.resp.interact_pointer_pos().and_then(|p| masks.hit(p)) == Some(MaskKind::Pixel);
+        ui.ctx().data_mut(|d| d.insert_temp(on_mask_id, on_mask));
     }
-    resp.context_menu(|ui| {
+    c.resp.context_menu(|ui| {
         widgets::style_spectrum_popup_menu(ui);
         if ui.ctx().data(|d| d.get_temp::<bool>(on_mask_id)).unwrap_or(false) {
             crate::layer_menu_ui::show_mask(app, ui, l, actions);
-        } else if crate::layer_menu_ui::show(app, ui, l, sel.multi && sel.selected, actions) {
+        } else if crate::layer_menu_ui::show(app, ui, l, c.sel.multi && c.sel.selected, actions) {
             actions.extend(crate::layer_row_ui::start_rename(ui.ctx(), l.id.0, &l.name));
         }
     });
-    drag_and_drop(app, &ctx, ui, doc, l, rect, &resp, taken, actions);
-    rect
 }
 
 /// The layer thumbnail inside `area`; returns the rect it covers.

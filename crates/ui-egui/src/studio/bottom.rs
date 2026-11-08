@@ -67,7 +67,7 @@ fn status_line(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         {
             let text = status_text(
                 crate::canvas::mode_label(&st.doc),
-                u32::from(st.doc.depth.bits()),
+                st.doc.depth.bits(),
                 (st.doc.size.width, st.doc.size.height),
                 st.doc.layer_count(),
                 &st.doc.name,
