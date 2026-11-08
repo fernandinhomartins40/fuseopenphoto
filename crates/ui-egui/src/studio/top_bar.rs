@@ -38,10 +38,15 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         let right_edge = full.right() - if cap_r > 0.0 { cap_r + 4.0 } else { 12.0 };
         let row = |l: f32, r: f32| Rect::from_x_y_ranges(l..=r.max(l), full.y_range());
 
-        // Left: ☰, app name, document name, undo / redo.
+        // Left: ☰, Home, app name, document name, undo / redo.
         let mut left = ui.new_child(egui::UiBuilder::new().max_rect(row(left_edge, right_edge)).layout(egui::Layout::left_to_right(egui::Align::Center)));
         left.spacing_mut().item_spacing.x = 6.0;
         menu_button(app, &mut left);
+        // The classic options bar's Home toggle (back to the start screen, documents stay open),
+        // shown while there is a document to come back to, as that bar is.
+        if !app.session.documents().is_empty() {
+            crate::chrome_ui::home_button(app, &mut left);
+        }
         left.add_space(6.0);
         left.label(egui::RichText::new(style::APP_NAME).font(theme::semibold(18.0)).color(t.text));
         left.add_space(8.0);
