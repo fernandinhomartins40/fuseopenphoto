@@ -32,7 +32,9 @@ pub struct State {
     tab: usize,
     tab_view: Option<View>,
     /// The Efeitos editor's session (the style being edited, what Reverter brings back).
-    fx: Option<crate::layer_style::panel::FxEdit>,
+    pub(crate) fx: Option<crate::layer_style::panel::FxEdit>,
+    /// The card's rect last frame (what its content must stay inside).
+    pub(crate) card: Option<Rect>,
 }
 
 /// What the card shows.
@@ -138,7 +140,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         st.tab = 0;
         st.tab_view = Some(view);
     }
-    crate::direction::end_panel("studio-right-panel")
+    let card = crate::direction::end_panel("studio-right-panel")
         .resizable(false)
         .exact_size(WIDTH + f32::from(GAP))
         .frame(egui::Frame::NONE.fill(backdrop).inner_margin(egui::Margin { left: GAP, right: 0, top: 12, bottom: 12 }))
@@ -150,6 +152,8 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 .inner_margin(egui::Margin::same(12))
                 .show(ui, |ui| {
                     ui.set_width(ui.available_width());
+                    // Nothing draws past the card: long rows are cut at its padding.
+                    ui.set_clip_rect(ui.clip_rect().intersect(ui.max_rect()));
                     header(app, ui, &t, view);
                     if !app.studio.panel.collapsed {
                         ui.add_space(6.0);
@@ -158,8 +162,11 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         let tab = app.studio.panel.tab;
                         ui.push_id(("studio-panel", view, tab), |ui| body(app, ui, view, tab));
                     }
-                });
+                })
+                .response
+                .rect
         });
+    app.studio.panel.card = Some(card.inner);
 }
 
 /// Grip, title or tabs, then pin (or close for a rail pick) and the collapse chevron.
@@ -488,6 +495,67 @@ mod tests {
                 assert!(group.tabs(pro).contains(&label), "{key}: {label} not in {group:?}");
             }
         }
+    }
+
+    /// Every widget of every view the card shows, in pt-BR (long labels), at the card's width,
+    /// stays within the card left to right: nothing is cut at its edges ("enchimento").
+    #[test]
+    fn every_view_fits_the_card_in_portuguese() {
+        use egui_kittest::{Harness, kittest::NodeT, kittest::Queryable};
+        let mut h = Harness::builder().with_size(vec2(1600.0, 900.0)).with_step_dt(1.0 / 60.0).build_eframe(|cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.session.edit_prefs(|p| p.interface.language = "pt-br".into());
+            app.run("file.new", json!({"width": 1200, "height": 800})).unwrap();
+            app.run("layer.new.layer", json!({})).unwrap();
+            app
+        });
+        h.run_steps(5);
+        let mut views: Vec<(&str, Option<&'static str>, Option<View>, usize)> = vec![("Painéis", Some(PANELS), None, 0)];
+        views.extend(DOCK_PANELS.iter().map(|p| (p.1, Some(p.0), None, 0)));
+        views.extend([("Properties", None, Some(View::Properties), 0), ("Properties/Effects", None, Some(View::Properties), 1)]);
+        let mut bad = Vec::new();
+        let mut check = |h: &mut Harness<'_, crate::PhotocraftApp>, name: &str, pick: Option<&'static str>, pinned: Option<View>, tab: usize| {
+            h.state_mut().studio.rail.pick = pick;
+            h.state_mut().studio.panel.pinned = pinned;
+            h.run_steps(2);
+            h.state_mut().studio.panel.tab = tab;
+            h.run_steps(3);
+            let card = h.state().studio.panel.card.expect("the card draws");
+            // PHOTOCRAFT_PANEL_SNAPSHOTS=<dir> saves each view, to look at.
+            if let Some(dir) = std::env::var_os("PHOTOCRAFT_PANEL_SNAPSHOTS") {
+                let _gpu = photocraft_testkit::gpu_lock();
+                let file = format!("{}-{tab}.png", name.replace(['/', ' '], "-"));
+                h.render().expect("render").save(std::path::Path::new(&dir).join(file)).expect("save");
+            }
+            assert!(card.width() > 100.0, "{name}: no card");
+            for node in h.query_all(egui_kittest::kittest::by().include_labels()) {
+                let r = node.rect();
+                if !r.intersects(card) || r.contains_rect(card) || r.width() < 1.0 {
+                    continue;
+                }
+                if r.left() < card.left() - 0.5 || r.right() > card.right() + 0.5 {
+                    bad.push(format!("{name}: {:?} {:?} at {r:?} outside {card:?}", node.accesskit_node().role(), node.accesskit_node().label()));
+                }
+            }
+        };
+        for (name, pick, pinned, tab) in views {
+            check(&mut h, name, pick, pinned, tab);
+        }
+        // A type layer (Texto | Efeitos) and an adjustment layer (Ajuste | Máscara).
+        h.state_mut().run("type.create", json!({"text": "Preenchimento", "size": 40, "x": 10, "y": 60})).unwrap();
+        for tab in [0, 1] {
+            check(&mut h, "Text", None, Some(View::Text), tab);
+        }
+        h.state_mut().run("layer.newAdjustmentLayer.hueSaturation", json!({})).unwrap();
+        for tab in [0, 1] {
+            check(&mut h, "Adjustment", None, Some(View::Adjustment), tab);
+        }
+        h.state_mut().run("layer.newAdjustmentLayer.levels", json!({})).unwrap();
+        check(&mut h, "Levels", None, Some(View::Adjustment), 0);
+        assert!(bad.is_empty(), "{} widgets leave the card:
+{}", bad.len(), bad.join("
+"));
     }
 
     #[test]
