@@ -362,3 +362,17 @@ fn breeze_themes_parse_and_meet_text_contrast() {
         assert!(contrast(t.caption_close_text, t.caption_close) >= 4.5, "{kind:?}: close button glyph");
     }
 }
+
+/// The amber widget look and airier spacing belong to the Studio theme only (docs/redesign.md).
+#[test]
+fn studio_widget_look_stays_in_studio() {
+    for kind in ThemeKind::ALL {
+        assert_eq!(Tokens::for_kind(kind).is_studio(), kind == ThemeKind::Studio, "{kind:?}");
+        let ctx = egui::Context::default();
+        apply(&ctx, kind);
+        let style = ctx.style_of(egui::Theme::Dark);
+        let (spacing, margin) = if kind == ThemeKind::Studio { (egui::vec2(10.0, 7.0), 8) } else { (egui::vec2(8.0, 6.0), 6) };
+        assert_eq!(style.spacing.item_spacing, spacing, "{kind:?}");
+        assert_eq!(style.spacing.menu_margin, egui::Margin::same(margin), "{kind:?}");
+    }
+}

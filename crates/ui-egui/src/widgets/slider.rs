@@ -195,7 +195,7 @@ fn slider_with(ui: &mut Ui, value: &mut f32, range: std::ops::RangeInclusive<f32
         _ => {
             painter.rect_filled(track, 2.0, t.field_border);
             let filled = Rect::from_min_max(track.min, pos2(knob_x, track.max.y));
-            painter.rect_filled(filled, 2.0, if t.bevel { t.accent } else { t.text_dim });
+            painter.rect_filled(filled, 2.0, if t.bevel || t.is_studio() { t.accent } else { t.text_dim });
         }
     }
     let knob = pos2(knob_x, rect.center().y);
