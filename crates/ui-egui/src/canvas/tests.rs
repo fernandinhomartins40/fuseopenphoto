@@ -1434,7 +1434,7 @@ fn start_screen_buttons_stay_inside_a_narrow_canvas() {
         PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::default());
         h.state_mut().1 = true;
         h.run_steps(3);
-        for label in ["New file", "Open…"] {
+        for label in ["New document", "Open…"] {
             let nodes: Vec<_> = h.query_all_by_label(label).collect();
             assert!(!nodes.is_empty(), "`{label}` is rendered in a {width}-point-wide canvas");
             for node in nodes {
@@ -1486,7 +1486,7 @@ fn start_screen_narrow_window_renders_actions_row() {
     PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::default());
     h.state_mut().1 = true;
     h.run_steps(3);
-    assert!(h.query_by_label("New file").is_some(), "New file button must be present in narrow mode");
+    assert!(h.query_by_label("New document").is_some(), "New document button must be present in narrow mode");
     assert!(h.query_all_by_label("Open…").next().is_some(), "Open… button must be present in narrow mode");
 }
 

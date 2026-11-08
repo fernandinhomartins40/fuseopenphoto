@@ -9,6 +9,7 @@ use std::path::Path;
 
 use egui::{Color32, ColorImage, Rect, Response, Sense, Stroke, TextureHandle, TextureOptions, Ui, Vec2, pos2, vec2};
 
+use crate::studio::style::RADIUS;
 use crate::theme::Tokens;
 use crate::{PhotocraftApp, icons};
 
@@ -538,7 +539,7 @@ pub(crate) fn recent_header(ui: &mut Ui, is_grid: &mut bool, total_width: f32) {
     let (header_rect, _) = ui.allocate_exact_size(vec2(total_width, 28.0), Sense::hover());
 
     // Left label: "Recent"
-    let label_galley = ui.painter().layout_no_wrap(tl!("Recent").to_string(), crate::theme::semibold(17.0), t.text);
+    let label_galley = ui.painter().layout_no_wrap(tl!("Recent").to_string(), crate::theme::semibold(15.0), t.text);
     let label_pos = pos2(header_rect.left(), header_rect.center().y - label_galley.size().y / 2.0);
     ui.painter().galley(label_pos, label_galley, t.text);
     let label_rect = Rect::from_min_size(label_pos, vec2(100.0, 24.0));
@@ -548,8 +549,8 @@ pub(crate) fn recent_header(ui: &mut Ui, is_grid: &mut bool, total_width: f32) {
     // Container box for the toggles, aligned flush to the right edge of header_rect
     let box_size = vec2(60.0, 28.0);
     let box_rect = Rect::from_min_size(pos2(header_rect.right() - box_size.x, header_rect.top()), box_size);
-    ui.painter().rect_filled(box_rect, 4.0, t.field);
-    ui.painter().rect_stroke(box_rect, 4.0, Stroke::new(1.0, t.field_border), egui::StrokeKind::Inside);
+    ui.painter().rect_filled(box_rect, 8.0, t.card);
+    ui.painter().rect_stroke(box_rect, 8.0, Stroke::new(1.0, t.card_border), egui::StrokeKind::Inside);
 
     let grid_rect = Rect::from_min_size(box_rect.min + vec2(2.0, 2.0), vec2(28.0, 24.0));
     let list_rect = Rect::from_min_size(pos2(box_rect.min.x + 30.0, box_rect.min.y + 2.0), vec2(28.0, 24.0));
@@ -563,17 +564,10 @@ pub(crate) fn recent_header(ui: &mut Ui, is_grid: &mut bool, total_width: f32) {
     let grid_resp = grid_resp.on_hover_text(tl!("Grid view")).on_hover_cursor(egui::CursorIcon::PointingHand);
     let list_resp = list_resp.on_hover_text(tl!("List view")).on_hover_cursor(egui::CursorIcon::PointingHand);
 
-    if *is_grid {
-        ui.painter().rect_filled(grid_rect, 3.0, t.hover);
-        ui.painter().rect_stroke(grid_rect, 3.0, Stroke::new(1.0, t.accent), egui::StrokeKind::Inside);
-    }
-    if !*is_grid {
-        ui.painter().rect_filled(list_rect, 3.0, t.hover);
-        ui.painter().rect_stroke(list_rect, 3.0, Stroke::new(1.0, t.accent), egui::StrokeKind::Inside);
-    }
-
-    let grid_tint = if *is_grid { t.text } else { t.text_dim };
-    let list_tint = if !*is_grid { t.text } else { t.text_dim };
+    // The active view is an amber pill with dark ink.
+    ui.painter().rect_filled(if *is_grid { grid_rect } else { list_rect }, 6.0, t.primary_bg);
+    let grid_tint = if *is_grid { t.primary_text } else { t.text_dim };
+    let list_tint = if !*is_grid { t.primary_text } else { t.text_dim };
 
     icons::paint(ui, grid_rect, "grid-2x2", 15.0, grid_tint);
     icons::paint(ui, list_rect, "marquee-row", 15.0, list_tint);
@@ -594,14 +588,14 @@ pub(crate) fn render_grid_card(ui: &mut Ui, path: &str, name: &str, folder: &str
 
     // Card background & border
     let bg_fill = t.card;
-    ui.painter().rect_filled(card_rect, 6.0, bg_fill);
+    ui.painter().rect_filled(card_rect, RADIUS, bg_fill);
     let border_stroke = if hovered { Stroke::new(1.0, t.accent) } else { Stroke::new(1.0, t.card_border) };
-    ui.painter().rect_stroke(card_rect, 6.0, border_stroke, egui::StrokeKind::Inside);
+    ui.painter().rect_stroke(card_rect, RADIUS, border_stroke, egui::StrokeKind::Inside);
 
     // Preview area
     let preview_rect = Rect::from_min_size(card_rect.min + vec2(1.0, 1.0), vec2(GRID_CARD_WIDTH - 2.0, GRID_PREVIEW_HEIGHT));
     // Inner well for preview area with rounded top corners
-    ui.painter().rect_filled(preview_rect, egui::CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 }, t.field);
+    ui.painter().rect_filled(preview_rect, egui::CornerRadius { nw: RADIUS as u8, ne: RADIUS as u8, sw: 0, se: 0 }, t.field);
 
     if let Some(tex) = thumb {
         let tex_size = tex.size_vec2();
@@ -618,10 +612,6 @@ pub(crate) fn render_grid_card(ui: &mut Ui, path: &str, name: &str, folder: &str
         let icon_box = Rect::from_center_size(preview_rect.center(), Vec2::splat(40.0));
         icons::paint(ui, icon_box, "file", 34.0, t.text_faint);
     }
-
-    // Small photo icon badge at bottom-left of preview
-    let badge_rect = Rect::from_center_size(pos2(preview_rect.left() + 16.0, preview_rect.bottom() - 14.0), vec2(16.0, 16.0));
-    icons::paint(ui, badge_rect, "image", 13.0, t.text_dim);
 
     // Bottom info area
     let info_top = preview_rect.bottom() + 8.0;
@@ -671,11 +661,11 @@ pub(crate) fn render_inline_drop_card(ui: &mut Ui, drop_text: &str) -> bool {
     let (card_rect, resp) = ui.allocate_exact_size(vec2(GRID_CARD_WIDTH, GRID_CARD_HEIGHT), Sense::click());
     let hovered = ui.rect_contains_pointer(card_rect);
 
-    let border_color = if hovered { t.accent } else { t.separator };
+    let border_color = if hovered { t.accent } else { t.card_border };
     let bg_color = if hovered { t.hover } else { Color32::TRANSPARENT };
 
-    ui.painter().rect_filled(card_rect, 6.0, bg_color);
-    ui.painter().rect_stroke(card_rect, 6.0, Stroke::new(1.0, border_color), egui::StrokeKind::Inside);
+    ui.painter().rect_filled(card_rect, RADIUS, bg_color);
+    ui.painter().rect_stroke(card_rect, RADIUS, Stroke::new(1.0, border_color), egui::StrokeKind::Inside);
 
     // Centered plus / image icon
     let icon_box = Rect::from_center_size(pos2(card_rect.center().x, card_rect.center().y - 20.0), vec2(36.0, 36.0));
