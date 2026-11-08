@@ -4578,3 +4578,20 @@ studio	Paths	Caminhos
 	Intersect	Interseção
 	Character and Paragraph	Caractere e Parágrafo
 	More adjustments	Mais ajustes
+# Studio Codex dock
+	Sign Out	Sair
+	Restart Codex	Reiniciar o Codex
+	Conversation	Conversa
+	Activity	Atividade
+	Current document · {name}	Documento atual · {name}
+	Show History	Mostrar histórico
+	Run details	Detalhes da execução
+	No activity yet.	Nenhuma atividade ainda.
+	Adjust colors	Ajustar cores
+	Organize layers	Organizar camadas
+	Adjust the colors of the current document so they look balanced.	Ajuste as cores do documento atual para que fiquem equilibradas.
+	Organize the layers of the current document: clear names and groups.	Organize as camadas do documento atual: nomes claros e grupos.
+	What do you want to create or edit?	O que você quer criar ou editar?
+	What Codex works on	Onde o Codex trabalha
+	MCP connected	MCP conectado
+@plural	Finished in {n} step.|Finished in {n} steps.	Concluído em {n} etapa.|Concluído em {n} etapas.
