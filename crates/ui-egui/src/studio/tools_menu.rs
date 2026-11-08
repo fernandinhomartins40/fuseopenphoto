@@ -62,7 +62,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 fn dropdown(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::Context, max_h: f32) {
     let font = FontId::proportional(14.0);
     let rows: Vec<(&str, Tool)> = tools(app.studio.mode).iter().filter_map(|n| Some((*n, crate::tool_shortcuts::tool(&format!("tools.select.{n}"))?))).collect();
-    let label_w = rows.iter().map(|(_, tool)| ui.painter().layout_no_wrap(tl!(tool.label()).to_string(), font.clone(), t.text).size().x).fold(0.0f32, f32::max);
+    let label_w = rows.iter().map(|(n, _)| ui.painter().layout_no_wrap(short(n).to_string(), font.clone(), t.text).size().x).fold(0.0f32, f32::max);
     let w = (label_w + 100.0).max(220.0);
     let active = crate::tool_memory::selected(app);
     egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.card_border)).corner_radius(RADIUS).inner_margin(6.0).show(ui, |ui| {
@@ -76,12 +76,12 @@ fn dropdown(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::
                     ui.painter().rect_filled(r, RADIUS - 2.0, t.hover);
                 }
                 crate::icons::paint(ui, Rect::from_center_size(pos2(r.left() + 20.0, r.center().y), vec2(18.0, 18.0)), crate::icons::tool_icon(tool), 18.0, t.icon);
-                ui.painter().text(pos2(r.left() + 42.0, r.center().y), Align2::LEFT_CENTER, tl!(tool.label()), font.clone(), t.text);
+                ui.painter().text(pos2(r.left() + 42.0, r.center().y), Align2::LEFT_CENTER, short(name), font.clone(), t.text);
                 if let Some(sc) = crate::tool_shortcuts::shortcut(app, tool) {
                     ui.painter().text(pos2(r.right() - 12.0, r.center().y), Align2::RIGHT_CENTER, crate::shortcuts::pretty(&sc), FontId::proportional(12.5), t.text_dim);
                 }
                 resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, tool == active, tl!(tool.label())));
-                if resp.clicked() {
+                if resp.on_hover_text(tl!(tool.label())).clicked() {
                     select_tool(app, ctx, name);
                     app.studio.tools.open = false;
                 }
@@ -91,6 +91,86 @@ fn dropdown(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::
         ui.separator();
         color_chips(app, ui, t);
     });
+}
+
+/// The menu's short English name of tool `name` (id without `tools.select.`), as in the mockups
+/// ("Rectangle", "Lasso"); the full name stays the row's tooltip.
+fn short_label(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "move" => "Move",
+        "artboard" => "Artboard",
+        "rectMarquee" | "rectangle" => "Rectangle",
+        "ellipseMarquee" | "ellipseShape" => "Ellipse",
+        "singleRowMarquee" => "Single Row",
+        "singleColumnMarquee" => "Single Column",
+        "lasso" => "Lasso",
+        "polygonLasso" => "Polygonal Lasso",
+        "magneticLasso" => "Magnetic Lasso",
+        "magicWand" => "Magic Wand",
+        "crop" => "Crop",
+        "perspectiveCrop" => "Perspective Crop",
+        "eyedropper" => "Eyedropper",
+        "colorSampler" => "Color Sampler",
+        "ruler" => "Ruler",
+        "note" => "Note",
+        "count" => "Count",
+        "brush" => "Brush",
+        "pencil" => "Pencil",
+        "colorReplacement" => "Color Replacement",
+        "mixerBrush" => "Mixer Brush",
+        "eraser" => "Eraser",
+        "backgroundEraser" => "Background Eraser",
+        "magicEraser" => "Magic Eraser",
+        "gradient" => "Gradient",
+        "paintBucket" => "Paint Bucket",
+        "type" => "Horizontal Type",
+        "verticalType" => "Vertical Type",
+        "horizontalTypeMask" => "Horizontal Type Mask",
+        "verticalTypeMask" => "Vertical Type Mask",
+        "hand" => "Hand",
+        "rotateView" => "Rotate View",
+        "zoom" => "Zoom",
+        "spotHealing" => "Spot Healing",
+        "remove" => "Remove",
+        "healing" => "Healing",
+        "patch" => "Patch",
+        "contentAwareMove" => "Content-Aware Move",
+        "redEye" => "Red Eye",
+        "cloneStamp" => "Clone Stamp",
+        "patternStamp" => "Pattern Stamp",
+        "historyBrush" => "History Brush",
+        "artHistoryBrush" => "Art History Brush",
+        "blur" => "Blur",
+        "sharpen" => "Sharpen",
+        "smudge" => "Smudge",
+        "dodge" => "Dodge",
+        "burn" => "Burn",
+        "sponge" => "Sponge",
+        "quickSelection" => "Quick Selection",
+        "objectSelection" => "Object Selection",
+        "pen" => "Pen",
+        "freeformPen" => "Freeform Pen",
+        "curvaturePen" => "Curvature Pen",
+        "addAnchorPoint" => "Add Anchor Point",
+        "deleteAnchorPoint" => "Delete Anchor Point",
+        "convertPoint" => "Convert Point",
+        "pathSelection" => "Path Selection",
+        "directSelection" => "Direct Selection",
+        "triangle" => "Triangle",
+        "polygon" => "Polygon",
+        "star" => "Star",
+        "line" => "Line",
+        "customShape" => "Custom Shape",
+        "slice" => "Slice",
+        "sliceSelect" => "Slice Select",
+        "frame" => "Frame",
+        _ => return None,
+    })
+}
+
+/// [`short_label`] in the UI language (context `studio-tool`, else the plain catalog row).
+fn short(name: &str) -> &str {
+    crate::i18n::tr_ctx(crate::i18n::current(), "studio-tool", short_label(name).unwrap_or(name))
 }
 
 /// Foreground/background chips with Switch and Default Colors, as on the classic toolbar.
@@ -117,4 +197,21 @@ fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use photocraft_engine::shell_commands::TOOLS;
+
+    #[test]
+    fn every_tool_has_a_short_label_with_a_pt_br_row() {
+        let Some(pt) = crate::i18n::Lang::from_code("pt-br") else { panic!("no pt-br") };
+        for (id, _, _) in TOOLS {
+            let name = id.strip_prefix("tools.select.").unwrap_or(id);
+            let Some(label) = short_label(name) else { panic!("{name} has no short label") };
+            let translated = crate::i18n::tr_ctx(pt, "studio-tool", label) != label || crate::i18n::has(pt, label);
+            assert!(translated, "{label} has no pt-BR row");
+        }
+    }
 }
