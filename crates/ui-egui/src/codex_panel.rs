@@ -181,6 +181,10 @@ pub fn toggle(app: &mut PhotocraftApp) {
     }
 }
 
+/// The studio shell's docked Codex panel (mockup 1), drawn before the canvas claims the centre.
+/// While it is a stub, the studio shell shows the floating window from [`show`] instead.
+pub fn dock(_app: &mut PhotocraftApp, _ui: &mut egui::Ui) {}
+
 /// Draw the chat window.
 pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
     if !app.codex.open {

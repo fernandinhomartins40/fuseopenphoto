@@ -58,6 +58,7 @@ pub fn frame(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     mode_bar::show(app, ui);
     bottom::show(app, ui);
     right_rail::show(app, ui);
+    crate::codex_panel::dock(app, ui);
     right_panel::show(app, ui);
     let t = Tokens::get(ui.ctx());
     let backdrop = crate::prefs_ui::pasteboard_color(app).unwrap_or(t.canvas);
