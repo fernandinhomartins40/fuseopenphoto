@@ -187,12 +187,12 @@ fn the_set_dropdown_keeps_action_function_keys_like_use_set() {
     let ctx = h.ctx.clone();
     let id = crate::menus::invoke(h.state_mut(), &ctx, "edit.keyboardShortcuts", json!({})).unwrap()["dialog"].as_u64().unwrap();
     h.run_steps(4);
-    assert_eq!(shown_set(&h), "PhotoCraft Defaults", "an action key doesn't modify the defaults");
+    assert_eq!(shown_set(&h), format!("{} Defaults", crate::studio::style::APP_NAME), "an action key doesn't modify the defaults");
     pick_set(&mut h, "A");
     assert_eq!(field(&h, id, "activeSet"), json!("A"));
     assert_eq!(field(&h, id, "overrides"), json!({"edit.copy": "F9", "actions.play:Sepia": "F2"}), "A's keys, and the action's");
     assert_eq!(shown_set(&h), "A");
-    pick_set(&mut h, "PhotoCraft Defaults");
+    pick_set(&mut h, &format!("{} Defaults", crate::studio::style::APP_NAME));
     assert_eq!(field(&h, id, "overrides"), json!({"actions.play:Sepia": "F2"}), "kept switching to the defaults");
     pick_set(&mut h, "B");
     // What wins is what `useSet` gives: the action keeps F2, B's old action key is dropped and

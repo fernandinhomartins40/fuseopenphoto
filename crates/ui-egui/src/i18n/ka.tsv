@@ -740,9 +740,9 @@
 	Timeline	დროის ხაზი
 	Tool Presets	ხელსაწყოს პრესეტები
 	Tools	ხელსაწყოები
-	About PhotoCraft	PhotoCraft-ის შესახებ
-	PhotoCraft Website	PhotoCraft-ის ვებსაიტი
-	PhotoCraft on GitHub	PhotoCraft GitHub-ზე
+	About {app}	{app}-ის შესახებ
+	{app} Website	{app}-ის ვებსაიტი
+	{app} on GitHub	{app} GitHub-ზე
 	ArtCraft Website	ArtCraft-ის ვებსაიტი
 	Join the ArtCraft Discord…	შემოუერთდით ArtCraft-ის Discord-ს…
 	Report an Issue…	ხარვეზის შეტყობინება…
@@ -796,7 +796,7 @@
 	All Caps	მთავრული
 	All Slices	ყველა ნაჭერი
 	All User Slices	მომხმარებლის ყველა ნაჭერი
-	All shortcuts reset to PhotoCraft defaults.	ყველა მალსახმობი დაბრუნდა PhotoCraft-ის ნაგულისხმევზე.
+	All shortcuts reset to {app} defaults.	ყველა მალსახმობი დაბრუნდა {app}-ის ნაგულისხმევზე.
 	Alt	Alt
 	Always use pressure for opacity	გაუმჭვირვალობისთვის ყოველთვის დაწოლის გამოყენება
 	Always use pressure for size	ზომისთვის ყოველთვის დაწოლის გამოყენება
@@ -1276,9 +1276,9 @@
 	Perspective Warp is not active	პერსპექტიული დეფორმაცია აქტიური არ არის
 	Perspective Warp: draw planes along the image's perspective, then switch to Warp	პერსპექტიული დეფორმაცია: დახაზეთ სიბრტყეები გამოსახულების პერსპექტივის გასწვრივ, შემდეგ გადაერთეთ დეფორმაციაზე
 	Photo Filter	ფოტოფილტრი
-	PhotoCraft	PhotoCraft
-	PhotoCraft Manages Colors	ფერებს მართავს PhotoCraft
-	PhotoCraft — an open-source, native image editor written in Rust.	PhotoCraft — ღია კოდის ნატიური გამოსახულების რედაქტორი, დაწერილი Rust-ზე.
+	{app}	{app}
+	{app} Manages Colors	ფერებს მართავს {app}
+	{app} — an open-source, native image editor written in Rust.	{app} — ღია კოდის ნატიური გამოსახულების რედაქტორი, დაწერილი Rust-ზე.
 	Pin Depth:	სამაგრის სიღრმე:
 	Pixel Length:	სიგრძე პიქსელებში:
 	Pixels/Centimeter	პიქსელი/სანტიმეტრი
@@ -1354,11 +1354,11 @@
 	Import Shortcuts…	მალსახმობების იმპორტი…
 	Load a keyboard shortcut set saved as .kys	.kys ფაილად შენახული კლავიატურის მალსახმობების ნაკრების ჩატვირთვა
 	Imported {n} shortcuts from {file}. Click OK to keep them.	{file}-დან იმპორტირებულია მალსახმობი: {n}. მათ შესანარჩუნებლად დაწკაპეთ OK-ზე.
-	{n} commands are not in PhotoCraft.	PhotoCraft-ში არ არის ბრძანება: {n}.
+	{n} commands are not in {app}.	{app}-ში არ არის ბრძანება: {n}.
 	Keyboard shortcuts imported	კლავიატურის მალსახმობები იმპორტირებულია
 	Your keyboard shortcut set {set} is in use here: {n} shortcuts differ from the defaults. Edit › Keyboard Shortcuts shows them; Reset All to Defaults undoes this.	აქ გამოიყენება თქვენი კლავიატურის მალსახმობების ნაკრები {set}: ნაგულისხმევისგან განსხვავდება მალსახმობი: {n}. მათ აჩვენებს რედაქტირება › კლავიატურის მალსახმობები; ყველაფრის ნაგულისხმევზე დაბრუნება ამას გააუქმებს.
 	Import keyboard shortcuts?	მოხდეს კლავიატურის მალსახმობების იმპორტი?
-	PhotoCraft found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from PhotoCraft's. Import it?	PhotoCraft-მა ამ კომპიუტერზე იპოვა თქვენი კლავიატურის მალსახმობების ნაკრები {set} სხვა გამოსახულების რედაქტორიდან: PhotoCraft-ისგან განსხვავდება მისი მალსახმობი: {n}. მოხდეს იმპორტი?
+	{app} found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from {app}'s. Import it?	{app}-მა ამ კომპიუტერზე იპოვა თქვენი კლავიატურის მალსახმობების ნაკრები {set} სხვა გამოსახულების რედაქტორიდან: {app}-ისგან განსხვავდება მისი მალსახმობი: {n}. მოხდეს იმპორტი?
 	Edit › Keyboard Shortcuts › Reset All to Defaults undoes an import.	რედაქტირება › კლავიატურის მალსახმობები › ყველაფრის ნაგულისხმევზე დაბრუნება აუქმებს იმპორტს.
 	Don't Import	იმპორტის გარეშე
 	The keyboard shortcut set was not imported: {error}	კლავიატურის მალსახმობების ნაკრების იმპორტი ვერ მოხერხდა: {error}
@@ -1579,7 +1579,7 @@
 	Current Tool	მიმდინარე ხელსაწყო
 	Custom Shape Tool	მორგებული ფიგურის ხელსაწყო
 	Cyans	ცისფრები
-	Default PhotoCraft Size	ნაგულისხმევი ზომა
+	Default {app} Size	ნაგულისხმევი ზომა
 	Delete Workspace	სამუშაო სივრცის წაშლა
 	Diamond	ბრილიანტი
 	Dimensions:	ზომები:
@@ -1691,7 +1691,7 @@
 	Pen Tool	კალმის ხელსაწყო
 	Convert Point Tool	წერტილის გარდაქმნის ხელსაწყო
 	Photo	ფოტო
-	PhotoCraft website	PhotoCraft-ის ვებსაიტი
+	{app} website	{app}-ის ვებსაიტი
 	Picas	პიკა
 	Pillow Emboss	ბალიშისებრი რელიეფი
 	Pixel Replacement	პიქსელების ჩანაცვლება
@@ -2014,7 +2014,7 @@
 	System Info	სისტემის ინფორმაცია
 	More panels	სხვა პანელები
 	More documents	სხვა დოკუმენტები
-	These settings aren't available in PhotoCraft yet.	ეს პარამეტრები PhotoCraft-ში ჯერ ხელმისაწვდომი არ არის.
+	These settings aren't available in {app} yet.	ეს პარამეტრები {app}-ში ჯერ ხელმისაწვდომი არ არის.
 	Graphics	გრაფიკა
 	Reset GPU Backend	GPU-ის ბექენდის ჩამოყრა
 	Applies at next launch.	ძალაში შედის შემდეგი გაშვებისას.
@@ -2585,8 +2585,8 @@
 	Use Global Light	გლობალური განათების გამოყენება
 	Native file drag-and-drop is unavailable	ფაილების სისტემური გადათრევა მიუწვდომელია
 	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or copy the image in your file manager and paste it with {paste}.	ფაილების სისტემური გადათრევა Wayland-ზე ჯერ მხარდაჭერილი არ არის. გამოიყენეთ ფაილი › გახსნა, ან დააკოპირეთ სურათი ფაილების მენეჯერში და ჩასვით {paste}-ით.
-	To drop files, start PhotoCraft under XWayland: `{command}`	ფაილების ჩასაგდებად გაუშვით PhotoCraft XWayland-ში: `{command}`
-	Or set Preferences › Performance › Linux display server to X11: PhotoCraft then always starts under XWayland.	ან დააყენეთ პარამეტრები › წარმადობა › Linux-ის ეკრანის სერვერი X11-ზე: მაშინ PhotoCraft ყოველთვის XWayland-ში გაეშვება.
+	To drop files, start {app} under XWayland: `{command}`	ფაილების ჩასაგდებად გაუშვით {app} XWayland-ში: `{command}`
+	Or set Preferences › Performance › Linux display server to X11: {app} then always starts under XWayland.	ან დააყენეთ პარამეტრები › წარმადობა › Linux-ის ეკრანის სერვერი X11-ზე: მაშინ {app} ყოველთვის XWayland-ში გაეშვება.
 	Edit › Paste	რედაქტირება › ჩასმა
 	Use File › Open, or paste a copied image with {paste}.	გამოიყენეთ ფაილი › გახსნა, ან ჩასვით დაკოპირებული სურათი {paste}-ით.
 	Mixer Brush Tool	შემრევი ფუნჯის ხელსაწყო
@@ -2602,7 +2602,7 @@
 	Automatic uses GPU acceleration when available and falls back to CPU rendering on errors.	ავტომატური რეჟიმი იყენებს GPU-აჩქარებას, როცა ის ხელმისაწვდომია, ხოლო შეცდომისას CPU-რენდერზე გადადის.
 	Switched to CPU rendering	გადართულია CPU-რენდერზე
 	GPU acceleration could not continue. Your documents are unchanged.	GPU-აჩქარების გაგრძელება ვერ მოხერხდა. თქვენი დოკუმენტები უცვლელია.
-	PhotoCraft is using the CPU image compositor. The window may still use your graphics adapter.	PhotoCraft იყენებს CPU-ზე მომუშავე გამოსახულების კომპოზიტორს. ფანჯარამ შეიძლება მაინც გამოიყენოს თქვენი ვიდეოადაპტერი.
+	{app} is using the CPU image compositor. The window may still use your graphics adapter.	{app} იყენებს CPU-ზე მომუშავე გამოსახულების კომპოზიტორს. ფანჯარამ შეიძლება მაინც გამოიყენოს თქვენი ვიდეოადაპტერი.
 	Retry GPU requires a restart. Save your work first.	GPU-ის ხელახლა ცდას გადატვირთვა სჭირდება. ჯერ შეინახეთ ნამუშევარი.
 	Keep Using CPU	CPU-ის გამოყენების გაგრძელება
 	Retry GPU	GPU-ის ხელახლა ცდა
@@ -2844,7 +2844,7 @@ fontWeight	Italic	დახრილი
 	Color to Alpha…	ფერიდან ალფაში…
 	Transparency Threshold	გამჭვირვალობის ზღვარი
 	Opacity Threshold	გაუმჭვირვალობის ზღვარი
-	PhotoCraft — Screen Color Picker	PhotoCraft — ეკრანის ფერის ამრჩევი
+	{app} — Screen Color Picker	{app} — ეკრანის ფერის ამრჩევი
 
 	Rasterize svg groups deeper than	SVG ჯგუფების რასტრირება სიღრმიდან
 	0 turns this threshold off; SVG groups nested deeper than 100 levels are always rasterized.	0 ამ ზღვარს გამორთავს; 100 დონეზე ღრმად ჩადგმული SVG ჯგუფები ყოველთვის რასტრირდება.
@@ -3182,7 +3182,7 @@ layerLabel	No Color	ფერის გარეშე
 	Restart Required	საჭიროა გადატვირთვა
 	Restart	გადატვირთვა
 	Quit	გასვლა
-	Quit PhotoCraft	PhotoCraft-იდან გასვლა
+	Quit {app}	{app}-იდან გასვლა
 	Close Window	ფანჯრის დახურვა
 	New Window	ახალი ფანჯარა
 	Open Image	გამოსახულების გახსნა
@@ -3686,7 +3686,7 @@ layerLabel	No Color	ფერის გარეშე
 	Mezzotint	მეცოტინტო
 	Mosaic	მოზაიკა
 	Motion Blur	მოძრაობის გაბუნდოვნება
-	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or run PhotoCraft under XWayland with `WAYLAND_DISPLAY= photocraft`.	ფაილების ჩაშენებული გადათრევა-ჩაგდება Wayland-ზე ჯერ მხარდაჭერილი არ არის. გამოიყენეთ ფაილი › გახსნა, ან გაუშვით PhotoCraft XWayland-ში: `WAYLAND_DISPLAY= photocraft`.
+	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or run {app} under XWayland with `WAYLAND_DISPLAY= photocraft`.	ფაილების ჩაშენებული გადათრევა-ჩაგდება Wayland-ზე ჯერ მხარდაჭერილი არ არის. გამოიყენეთ ფაილი › გახსნა, ან გაუშვით {app} XWayland-ში: `WAYLAND_DISPLAY= photocraft`.
 	Neon Glow	ნეონის ნათება
 	New Guide Layout	დამხმარე ხაზების ახალი განლაგება
 	New Video Layer from File	ახალი ვიდეოშრე ფაილიდან
@@ -3928,9 +3928,9 @@ curves	Smooth	გაგლუვება
 	Saved {path}; image assets: {n} in {dir}	შენახულია {path}; გამოსახულების რესურსები: {n}, {dir}-ში
 	{message} (notes: {n}; {warning})	{message} (შენიშვნა: {n}; {warning})
 	Preferences can't be saved	პარამეტრების შენახვა შეუძლებელია
-	PhotoCraft keeps retrying; until a save succeeds, preference changes are lost when it closes.	PhotoCraft კვლავ ცდილობს; სანამ შენახვა არ მოხერხდება, პარამეტრების ცვლილებები დახურვისას დაიკარგება.
+	{app} keeps retrying; until a save succeeds, preference changes are lost when it closes.	{app} კვლავ ცდილობს; სანამ შენახვა არ მოხერხდება, პარამეტრების ცვლილებები დახურვისას დაიკარგება.
 	GPU retry scheduled	GPU-ს ხელახალი ცდა დაგეგმილია
-	Save your work and restart PhotoCraft to retry GPU acceleration. CPU rendering remains active for this session.	შეინახეთ ნამუშევარი და გადატვირთეთ PhotoCraft GPU-აჩქარების ხელახლა საცდელად. ამ სესიაში CPU-რენდერინგი აქტიური რჩება.
+	Save your work and restart {app} to retry GPU acceleration. CPU rendering remains active for this session.	შეინახეთ ნამუშევარი და გადატვირთეთ {app} GPU-აჩქარების ხელახლა საცდელად. ამ სესიაში CPU-რენდერინგი აქტიური რჩება.
 	GPU device was lost; using the CPU renderer.	GPU მოწყობილობა დაიკარგა; გამოიყენება CPU-რენდერერი.
 	GPU error; using the CPU renderer.	GPU-ს შეცდომა; გამოიყენება CPU-რენდერერი.
 	Couldn't open {name}: {error}	{name}-ის გახსნა ვერ მოხერხდა: {error}
@@ -4177,7 +4177,7 @@ shape	Appearance	იერსახე
 @plural	Loaded {n} action from {file}|Loaded {n} actions from {file}	{file}-დან ჩაიტვირთა მოქმედება: {n}
 @plural	Saved {n} action to {file}|Saved {n} actions to {file}	{file}-ში შეინახა მოქმედება: {n}
 @plural	{n} action|{n} actions	მოქმედება: {n}
-@plural	{n} step has no PhotoCraft equivalent yet|{n} steps have no PhotoCraft equivalent yet	ნაბიჯი, რომელსაც PhotoCraft-ში ჯერ შესატყვისი არ აქვს: {n}
+@plural	{n} step has no {app} equivalent yet|{n} steps have no {app} equivalent yet	ნაბიჯი, რომელსაც {app}-ში ჯერ შესატყვისი არ აქვს: {n}
 @plural	{n} step with no Photoshop equivalent left out|{n} steps with no Photoshop equivalent left out	გამოტოვებული ნაბიჯი, რომელსაც Photoshop-ში შესატყვისი არ აქვს: {n}
 liquify	Rate	სიჩქარე
 
@@ -4284,7 +4284,7 @@ layerLabel	Magenta	მეწამული
 	Clear Selected Guides	მონიშნული დამხმარე ხაზების გასუფთავება
 	Delete this set	ამ ნაკრების წაშლა
 	New Set…	ახალი ნაკრები…
-	PhotoCraft Defaults	PhotoCraft-ის ნაგულისხმევი
+	{app} Defaults	{app}-ის ნაგულისხმევი
 	Save a list of these shortcuts as a web page	ამ მალსახმობების სიის ვებგვერდად შენახვა
 	Save the changes to this set	ამ ნაკრებში ცვლილებების შენახვა
 	Save these shortcuts as a .kys file	ამ მალსახმობების .kys ფაილად შენახვა
@@ -4319,9 +4319,9 @@ layerLabel	Magenta	მეწამული
 	{name} was changed by another app after it was opened or saved here.	{name} სხვა აპლიკაციამ შეცვალა მას შემდეგ, რაც აქ გაიხსნა ან შეინახა.
 	Replace it with this document, or cancel and use File › Save As to keep both.	ჩაანაცვლეთ ის ამ დოკუმენტით, ან გააუქმეთ და ორივეს შესანარჩუნებლად გამოიყენეთ ფაილი › შენახვა როგორც.
 	Pasting from other apps is unavailable	სხვა აპლიკაციებიდან ჩასმა მიუწვდომელია
-	PhotoCraft can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.	PhotoCraft ამ სესიაში სისტემის გაცვლის ბუფერთან წვდომას ვერ ახერხებს. Wayland-ზე Flatpak-ის იზოლირებული გარემო მალავს პროტოკოლს, რომლითაც სხვა აპლიკაციების გამოსახულებები იკითხება.
-	To paste from other apps, start PhotoCraft under XWayland: `{command}`	სხვა აპლიკაციებიდან ჩასასმელად გაუშვით PhotoCraft XWayland-ში: `{command}`
-	Nothing to paste: PhotoCraft can't read the system clipboard here	ჩასასმელი არაფერია: PhotoCraft აქ სისტემის გაცვლის ბუფერს ვერ კითხულობს
+	{app} can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.	{app} ამ სესიაში სისტემის გაცვლის ბუფერთან წვდომას ვერ ახერხებს. Wayland-ზე Flatpak-ის იზოლირებული გარემო მალავს პროტოკოლს, რომლითაც სხვა აპლიკაციების გამოსახულებები იკითხება.
+	To paste from other apps, start {app} under XWayland: `{command}`	სხვა აპლიკაციებიდან ჩასასმელად გაუშვით {app} XWayland-ში: `{command}`
+	Nothing to paste: {app} can't read the system clipboard here	ჩასასმელი არაფერია: {app} აქ სისტემის გაცვლის ბუფერს ვერ კითხულობს
 	Show file name in title	ფაილის სახელის ჩვენება სათაურში
 	Memory Usage	მეხსიერების გამოყენება
 	Per-document RAM limit (MB)	RAM-ის ლიმიტი თითო დოკუმენტზე (მბ)
@@ -4637,9 +4637,9 @@ smartSvg	Choose executable…	შესრულებადი ფაილი�
 smartSvg	Choose the application used to edit this SVG:	აირჩიეთ აპლიკაცია, რომლითაც ეს SVG დარედაქტირდება:
 smartSvg	Edit SVG Smart Object	SVG ჭკვიანი ობიექტის რედაქტირება
 smartSvg	Other application	სხვა აპლიკაცია
-smartSvg	PhotoCraft (internal editor)	PhotoCraft (ჩაშენებული რედაქტორი)
+smartSvg	{app} (internal editor)	{app} (ჩაშენებული რედაქტორი)
 smartSvg	SVG editor opened. Save the SVG to update this Smart Object.	SVG-რედაქტორი გაიხსნა. ამ ჭკვიანი ობიექტის განსაახლებლად შეინახეთ SVG.
-smartSvg	Save to the opened SVG file. Each saved change becomes one undo step in PhotoCraft.	შეინახეთ გახსნილ SVG ფაილში. ყოველი შენახული ცვლილება PhotoCraft-ში ერთ დაბრუნების ნაბიჯად იქცევა.
+smartSvg	Save to the opened SVG file. Each saved change becomes one undo step in {app}.	შეინახეთ გახსნილ SVG ფაილში. ყოველი შენახული ცვლილება {app}-ში ერთ დაბრუნების ნაბიჯად იქცევა.
 smartSvg	Stop syncing this Smart Object	ამ ჭკვიანი ობიექტის სინქრონიზაციის შეწყვეტა
 smartSvg	Updates wait while another document or an editing dialog is active.	განახლება დაელოდება, სანამ სხვა დოკუმენტი ან რედაქტირების დიალოგი აქტიურია.
 smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded source; format-specific features may change.	AI/PDF/EPS შიგთავსი SVG-ის სახით დარედაქტირდება. შენახვა ჩაანაცვლებს ჩაშენებულ წყაროს; ფორმატისთვის დამახასიათებელი შესაძლებლობები შეიძლება შეიცვალოს.

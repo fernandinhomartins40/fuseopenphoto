@@ -119,7 +119,7 @@ fn render_start_content(app: &mut PhotocraftApp, ui: &mut egui::Ui, recent: &[St
 }
 
 /// Built-in New Document presets offered on Home, by name (see `new_doc_ui::CATEGORIES`).
-const HOME_PRESETS: &[&str] = &["Default PhotoCraft Size", "A4", "Letter", "Landscape, 6 x 4", "Web Most Common", "HDTV 1080p", "Android 1080p"];
+const HOME_PRESETS: &[&str] = &["Default Size", "A4", "Letter", "Landscape, 6 x 4", "Web Most Common", "HDTV 1080p", "Android 1080p"];
 const PRESET_CARD: egui::Vec2 = egui::vec2(150.0, 112.0);
 
 fn home_presets() -> impl Iterator<Item = &'static crate::new_doc_ui::Preset> {

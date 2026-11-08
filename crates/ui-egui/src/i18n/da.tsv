@@ -552,9 +552,9 @@
 	Hide All	Skjul alt
 
 # Help
-	About PhotoCraft	Om PhotoCraft
-	PhotoCraft Website	PhotoCrafts websted
-	PhotoCraft on GitHub	PhotoCraft på GitHub
+	About {app}	Om {app}
+	{app} Website	{app}s websted
+	{app} on GitHub	{app} på GitHub
 	Report an Issue…	Rapportér et problem…
 	ArtCraft Website	ArtCrafts websted
 	Join the ArtCraft Discord…	Deltag i ArtCrafts Discord…
@@ -635,11 +635,11 @@
 	Import Shortcuts…	Importér genveje…
 	Load a keyboard shortcut set saved as .kys	Indlæs et tastaturgenvejssæt, der er gemt som .kys
 	Imported {n} shortcuts from {file}. Click OK to keep them.	Importerede {n} genveje fra {file}. Klik på OK for at beholde dem.
-	{n} commands are not in PhotoCraft.	{n} kommandoer findes ikke i PhotoCraft.
+	{n} commands are not in {app}.	{n} kommandoer findes ikke i {app}.
 	Keyboard shortcuts imported	Tastaturgenveje importeret
 	Your keyboard shortcut set {set} is in use here: {n} shortcuts differ from the defaults. Edit › Keyboard Shortcuts shows them; Reset All to Defaults undoes this.	Dit tastaturgenvejssæt {set} er i brug her: {n} genveje afviger fra standarden. Redigér › Tastaturgenveje viser dem; Nulstil alle til standardværdierne fortryder dette.
 	Import keyboard shortcuts?	Importér tastaturgenveje?
-	PhotoCraft found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from PhotoCraft's. Import it?	PhotoCraft fandt dit tastaturgenvejssæt {set} fra et andet billedredigeringsprogram på denne computer: {n} af genvejene afviger fra PhotoCrafts. Vil du importere det?
+	{app} found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from {app}'s. Import it?	{app} fandt dit tastaturgenvejssæt {set} fra et andet billedredigeringsprogram på denne computer: {n} af genvejene afviger fra {app}s. Vil du importere det?
 	Edit › Keyboard Shortcuts › Reset All to Defaults undoes an import.	Redigér › Tastaturgenveje › Nulstil alle til standardværdierne fortryder en import.
 	Don't Import	Importér ikke
 	The keyboard shortcut set was not imported: {error}	Sættet med tastaturgenveje blev ikke importeret: {error}
@@ -944,7 +944,7 @@
 	Embed Color Profile	Indlejr farveprofil
 	Assign Profile…	Tildel profil…
 	Convert to Profile…	Konvertér til profil…
-	PhotoCraft Manages Colors	PhotoCraft styrer farver
+	{app} Manages Colors	{app} styrer farver
 	Printer Manages Colors	Printeren styrer farver
 	(print to the printer)	(udskriv til printeren)
 	Absolute Colorimetric	Absolut kolorimetrisk
@@ -1548,15 +1548,15 @@
 	Use File › Open, or paste a copied image with {paste}.	Brug Filer › Åbn, eller indsæt et kopieret billede med {paste}.
 	Native file drag-and-drop is unavailable	Indbygget træk-og-slip af filer er ikke tilgængeligt
 	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or copy the image in your file manager and paste it with {paste}.	Indbygget træk-og-slip af filer understøttes endnu ikke på Wayland. Brug Filer › Åbn, eller kopiér billedet i din filhåndtering, og indsæt det med {paste}.
-	To drop files, start PhotoCraft under XWayland: `{command}`	For at slippe filer skal du starte PhotoCraft under XWayland: `{command}`
-	Or set Preferences › Performance › Linux display server to X11: PhotoCraft then always starts under XWayland.	Eller sæt Præferencer › Ydeevne › Linux-visningsserver til X11: PhotoCraft starter derefter altid under XWayland.
+	To drop files, start {app} under XWayland: `{command}`	For at slippe filer skal du starte {app} under XWayland: `{command}`
+	Or set Preferences › Performance › Linux display server to X11: {app} then always starts under XWayland.	Eller sæt Præferencer › Ydeevne › Linux-visningsserver til X11: {app} starter derefter altid under XWayland.
 	Edit › Paste	Redigér › Indsæt
 	Photo	Foto
 	Print	Udskriv
 	Art & Illustration	Kunst og illustration
 	Mobile	Mobil
 	Film & Video	Film og video
-	Default PhotoCraft Size	PhotoCraft-standardstørrelse
+	Default {app} Size	{app}-standardstørrelse
 	Clipboard	Udklipsholder
 	Photo (2 × 3 in)	Foto (2 × 3 tommer)
 	Photo (4 × 6 in)	Foto (4 × 6 tommer)
@@ -1709,7 +1709,7 @@
 	Reverse	Omvendt
 	Align with layer	Justér med laget
 	Join us on Discord	Mød os på Discord
-	PhotoCraft website	PhotoCraft-websted
+	{app} website	{app}-websted
 	ArtCraft	ArtCraft
 	GitHub	GitHub
 	No character style	Ingen tegnstil
@@ -1735,9 +1735,9 @@
 	Don't Save	Gem ikke
 	No	Nej
 	Yes	Ja
-	These settings aren't available in PhotoCraft yet.	Disse indstillinger er endnu ikke tilgængelige i PhotoCraft.
+	These settings aren't available in {app} yet.	Disse indstillinger er endnu ikke tilgængelige i {app}.
 	Shortcut removed.	Genvej fjernet.
-	All shortcuts reset to PhotoCraft defaults.	Alle genveje er nulstillet til PhotoCrafts standardindstillinger.
+	All shortcuts reset to {app} defaults.	Alle genveje er nulstillet til {app}s standardindstillinger.
 	Add Shortcut	Tilføj genvej
 	Delete Shortcut	Slet genvej
 	Press keys…	Tryk på taster…
@@ -2224,8 +2224,8 @@
 	Output:	Output:
 	Paint Overlay	Malingsoverlejring
 	Pattern Size	Mønsterstørrelse
-	PhotoCraft	PhotoCraft
-	PhotoCraft — an open-source, native image editor written in Rust.	PhotoCraft — et native open source-billedredigeringsprogram skrevet i Rust.
+	{app}	{app}
+	{app} — an open-source, native image editor written in Rust.	{app} — et native open source-billedredigeringsprogram skrevet i Rust.
 	Position and Size	Placering og størrelse
 	Preserve Details	Bevar detaljer
 	Preserve Luminosity	Bevar luminans
@@ -2561,7 +2561,7 @@
 	Automatic uses GPU acceleration when available and falls back to CPU rendering on errors.	Automatisk bruger GPU-acceleration, når det er muligt, og falder tilbage til CPU-gengivelse ved fejl.
 	Switched to CPU rendering	Skiftede til CPU-gengivelse
 	GPU acceleration could not continue. Your documents are unchanged.	GPU-accelerationen kunne ikke fortsætte. Dine dokumenter er uændrede.
-	PhotoCraft is using the CPU image compositor. The window may still use your graphics adapter.	PhotoCraft bruger CPU-billedsammensætteren. Vinduet bruger muligvis stadig din grafikadapter.
+	{app} is using the CPU image compositor. The window may still use your graphics adapter.	{app} bruger CPU-billedsammensætteren. Vinduet bruger muligvis stadig din grafikadapter.
 	Retry GPU requires a restart. Save your work first.	Genstart kræves for at prøve GPU igen. Gem dit arbejde først.
 	Retry GPU tries the graphics processor again now.	Prøv GPU igen forsøger at bruge grafikprocessoren igen nu.
 	GPU acceleration resumed.	GPU-accelerationen er genoptaget.
@@ -2814,7 +2814,7 @@ fontWeight	Italic	Kursiv
 	Color to Alpha…	Farve til alfa…
 	Transparency Threshold	Grænseværdi for gennemsigtighed
 	Opacity Threshold	Grænseværdi for opacitet
-	PhotoCraft — Screen Color Picker	PhotoCraft — Skærmfarvevælger
+	{app} — Screen Color Picker	{app} — Skærmfarvevælger
 
 	Rasterize svg groups deeper than	Rasterisér svg-grupper dybere end
 	0 turns this threshold off; SVG groups nested deeper than 100 levels are always rasterized.	0 deaktiverer denne grænseværdi; SVG-grupper, der er indlejret dybere end 100 niveauer, rasteriseres altid.
@@ -3198,7 +3198,7 @@ curves	Smooth	Udjævn
 	{name} (Photoshop)	{name} (Photoshop)
 	{message} ({note})	{message} ({note})
 @plural	Loaded {n} action from {file}|Loaded {n} actions from {file}	Indlæste {n} handling fra {file}|Indlæste {n} handlinger fra {file}
-@plural	{n} step has no PhotoCraft equivalent yet|{n} steps have no PhotoCraft equivalent yet	{n} trin har ingen PhotoCraft-ækvivalent endnu|{n} trin har ingen PhotoCraft-ækvivalent endnu
+@plural	{n} step has no {app} equivalent yet|{n} steps have no {app} equivalent yet	{n} trin har ingen {app}-ækvivalent endnu|{n} trin har ingen {app}-ækvivalent endnu
 @plural	Saved {n} action to {file}|Saved {n} actions to {file}	Gemte {n} handling i {file}|Gemte {n} handlinger i {file}
 @plural	{n} step with no Photoshop equivalent left out|{n} steps with no Photoshop equivalent left out	{n} trin uden Photoshop-ækvivalent udeladt|{n} trin uden Photoshop-ækvivalent udeladt
 @plural	{n} action file loaded|{n} action files loaded	{n} handlingsfil indlæst|{n} handlingsfiler indlæst
@@ -3329,12 +3329,12 @@ curves	Smooth	Udjævn
 	Bicubic Smoother	Bikubisk glattere
 	Bicubic Sharper	Bikubisk skarpere
 	Pasting from other apps is unavailable	Indsættelse fra andre programmer er ikke tilgængelig
-	PhotoCraft can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.	PhotoCraft kan ikke få adgang til systemets udklipsholder i denne session. På Wayland skjuler en Flatpak-sandkasse den protokol, som billeder fra andre programmer læses igennem.
-	To paste from other apps, start PhotoCraft under XWayland: `{command}`	For at indsætte fra andre programmer skal du starte PhotoCraft under XWayland: `{command}`
-	Nothing to paste: PhotoCraft can't read the system clipboard here	Intet at indsætte: PhotoCraft kan ikke læse systemets udklipsholder her
+	{app} can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.	{app} kan ikke få adgang til systemets udklipsholder i denne session. På Wayland skjuler en Flatpak-sandkasse den protokol, som billeder fra andre programmer læses igennem.
+	To paste from other apps, start {app} under XWayland: `{command}`	For at indsætte fra andre programmer skal du starte {app} under XWayland: `{command}`
+	Nothing to paste: {app} can't read the system clipboard here	Intet at indsætte: {app} kan ikke læse systemets udklipsholder her
 	Delete this set	Slet dette sæt
 	New Set…	Nyt sæt…
-	PhotoCraft Defaults	PhotoCraft-standarder
+	{app} Defaults	{app}-standarder
 	Save a list of these shortcuts as a web page	Gem en liste over disse genveje som en webside
 	Save the changes to this set	Gem ændringerne i dette sæt
 	Save these shortcuts as a .kys file	Gem disse genveje som en .kys-fil
@@ -4100,7 +4100,7 @@ curves	Smooth	Udjævn
 	Multiple Flames Path Directions	Flere flammer i stiens retninger
 	Multiple Flames Various Length	Flere flammer med forskellig længde
 	My Brushes	Mine pensler
-	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or run PhotoCraft under XWayland with `WAYLAND_DISPLAY= photocraft`.	Indbygget træk-og-slip af filer understøttes endnu ikke på Wayland. Brug Filer › Åbn, eller kør PhotoCraft under XWayland med `WAYLAND_DISPLAY= photocraft`.
+	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or run {app} under XWayland with `WAYLAND_DISPLAY= photocraft`.	Indbygget træk-og-slip af filer understøttes endnu ikke på Wayland. Brug Filer › Åbn, eller kør {app} under XWayland med `WAYLAND_DISPLAY= photocraft`.
 	Nearest	Nærmeste
 	Neon Glow	Neonglød
 	Neutralize	Neutralisér
@@ -4187,7 +4187,7 @@ curves	Smooth	Udjævn
 	Pentagon	Femkant
 	Percentage	Procent
 	Permission denied	Adgang nægtet
-	PhotoCraft keeps retrying; until a save succeeds, preference changes are lost when it closes.	PhotoCraft bliver ved med at prøve igen; indtil det lykkes at gemme, går ændringer i præferencerne tabt, når programmet lukkes.
+	{app} keeps retrying; until a save succeeds, preference changes are lost when it closes.	{app} bliver ved med at prøve igen; indtil det lykkes at gemme, går ændringer i præferencerne tabt, når programmet lukkes.
 	Photomerge	Photomerge
 	Pick Color From Image	Vælg farve fra billede
 	Picture Frame	Billedramme
@@ -4244,7 +4244,7 @@ curves	Smooth	Udjævn
 	Pyramids	Pyramider
 	Quick Actions	Hurtige handlinger
 	Quit	Afslut
-	Quit PhotoCraft	Afslut PhotoCraft
+	Quit {app}	Afslut {app}
 	Quit {app}	Afslut {app}
 	R G B	R G B
 	R g b	R g b
@@ -4320,7 +4320,7 @@ curves	Smooth	Udjævn
 	Save a Copy	Gem en kopi
 	Save before closing?	Gem før lukning?
 	Save for Web (Legacy)	Gem til web (ældre)
-	Save your work and restart PhotoCraft to retry GPU acceleration. CPU rendering remains active for this session.	Gem dit arbejde, og genstart PhotoCraft for at prøve GPU-acceleration igen. CPU-gengivelse er stadig aktiv i denne session.
+	Save your work and restart {app} to retry GPU acceleration. CPU rendering remains active for this session.	Gem dit arbejde, og genstart {app} for at prøve GPU-acceleration igen. CPU-gengivelse er stadig aktiv i denne session.
 	Saved a copy as {path}	Gemte en kopi som {path}
 	Saved {path}; image assets: {n} in {dir}	Gemte {path}; billedaktiver: {n} i {dir}
 	Saving…	Gemmer…

@@ -125,7 +125,7 @@ pub fn start(codex: &Path, port: u16, token: &str, cwd: &Path, home: &Path, ctx:
     std::thread::spawn(move || {
         let mut driver =
             Driver { stdin, next_id: 0, pending: HashMap::new(), thread: None, turn: None, starting: false, queued: Vec::new(), events: ev_tx, ctx, cwd };
-        driver.request("initialize", json!({"clientInfo": {"name": "photocraft", "title": "PhotoCraft", "version": env!("CARGO_PKG_VERSION")}}));
+        driver.request("initialize", json!({"clientInfo": {"name": "photocraft", "title": photocraft_ui_egui::studio::style::APP_NAME, "version": env!("CARGO_PKG_VERSION")}}));
         for input in in_rx {
             match input {
                 Input::Ui(request) => driver.ui(request),

@@ -40,7 +40,7 @@ fn open_filter_extensions(extensions: &[&str]) -> Vec<String> {
 /// [`OPEN_EXTS`]. An explicit SVG filter also keeps vector artwork discoverable when a native
 /// picker defaults to another filter.
 const OPEN_FILTERS: &[(&str, &[&str])] = &[
-    ("PhotoCraft", &["pcraft"]),
+    (photocraft_ui_egui::studio::style::APP_NAME, &["pcraft"]),
     ("Photoshop", &["psd", "psb", "psdt"]),
     ("Affinity", &["af", "afdesign", "afphoto", "afpub"]),
     ("Krita", &["kra", "krz"]),
@@ -88,7 +88,7 @@ fn open_filters() -> Vec<(&'static str, Vec<String>)> {
 const SAVE_FILTERS: &[(&str, &[&str])] = &[
     ("PSD Document", &["psd", "psb"]),
     ("PDF", &["pdf"]),
-    ("PhotoCraft", &["pcraft"]),
+    (photocraft_ui_egui::studio::style::APP_NAME, &["pcraft"]),
     ("OpenRaster", &["ora"]),
     ("PNG", &["png"]),
     ("JPEG", &["jpg", "jpeg"]),
@@ -330,7 +330,7 @@ pub(crate) fn block_on<T>(future: impl Future<Output = T>) -> T {
     }
 }
 
-/// Per-user settings directory: `PHOTOCRAFT_CONFIG_DIR`, else `<exe dir>/PhotoCraftData` in
+/// Per-user settings directory: `PHOTOCRAFT_CONFIG_DIR`, else `<exe dir>/Data` in
 /// portable mode, else the platform convention. Everything the app persists lives under it
 /// except, on Windows and Linux, crash-recovery autosaves; see [`crate::app_dirs`].
 pub fn config_dir() -> Option<PathBuf> {

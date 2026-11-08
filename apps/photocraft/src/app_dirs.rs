@@ -4,7 +4,7 @@
 //! In order:
 //! 1. `PHOTOCRAFT_CONFIG_DIR`, when set (tests, agents, custom setups).
 //! 2. **Portable mode** (#228): a marker file ([`PORTABLE_MARKERS`]) beside the executable puts
-//!    everything in `<exe dir>/PhotoCraftData`, so a portable copy on a USB stick leaves nothing in
+//!    everything in `<exe dir>/Data`, so a portable copy on a USB stick leaves nothing in
 //!    `%APPDATA%`. The Windows portable zip ships with `portable.txt`; the MSI doesn't. If that
 //!    folder can't be written (read-only medium, Program Files), the app warns and falls back.
 //! 3. The platform convention, in a folder named [`DIR_NAME`]: macOS
@@ -28,16 +28,17 @@ pub const DIR_NAME: &str = if cfg!(any(windows, target_os = "macos")) {
 };
 
 /// Files beside the executable that switch on portable mode (either one; contents are ignored).
-pub const PORTABLE_MARKERS: [&str; 2] = ["portable.txt", "PhotoCraft.portable"];
-/// The data folder created beside the executable in portable mode.
-pub const PORTABLE_DATA_DIR: &str = "PhotoCraftData";
+pub const PORTABLE_MARKERS: [&str; 2] = ["portable.txt", "portable"];
+/// The data folder created beside the executable in portable mode (no product name in it, so a
+/// rename keeps portable settings).
+pub const PORTABLE_DATA_DIR: &str = "Data";
 
 /// How [`DataDir::dir`] was chosen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     /// `PHOTOCRAFT_CONFIG_DIR`.
     Override,
-    /// `<exe dir>/PhotoCraftData`.
+    /// `<exe dir>/Data`.
     Portable,
     /// The platform's per-user config directory.
     Platform,

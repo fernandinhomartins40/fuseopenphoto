@@ -845,7 +845,7 @@ fn display_title(d: &Dialog) -> String {
             // Dialog labels are catalogued with their "…" ("Export As…"); some commands omit it.
             let with_dots = format!("{}…", label.trim_end_matches('…'));
             let shown = if crate::i18n::has(crate::i18n::current(), label) { tl!(label) } else { tl!(&with_dots) };
-            shown.trim_end_matches('…').to_string()
+            crate::i18n::app(shown.trim_end_matches('…'))
         }
         DialogKind::About if d.fields.get("systemInfo").and_then(Value::as_bool) != Some(true) => {
             crate::i18n::fmt(tl!("About {app}"), &[("app", crate::studio::style::APP_NAME)])
