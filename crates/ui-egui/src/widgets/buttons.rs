@@ -203,6 +203,17 @@ fn button_impl_h(ui: &mut Ui, label: &str, min_width: f32, height: Option<f32>, 
     } else {
         bg
     };
+    if t.is_studio() && !primary {
+        // Studio secondary buttons are outlines: a light 1 px rim on the panel, a soft fill on hover.
+        let down = resp.is_pointer_button_down_on();
+        if resp.hovered() || down {
+            ui.painter().rect_filled(rect, t.radius_sm, if down { t.pressed } else { t.hover });
+        }
+        let rim = if resp.hovered() { t.text_dim } else { t.text_faint };
+        ui.painter().rect_stroke(rect, t.radius_sm, Stroke::new(1.0, rim), StrokeKind::Inside);
+        ui.painter().galley(rect.center() - galley.size() / 2.0, galley, fg);
+        return resp;
+    }
     surface(ui, rect, fill, !resp.is_pointer_button_down_on());
     if !t.bevel && !primary {
         ui.painter().rect_stroke(rect, t.radius_sm, Stroke::new(1.0, t.field_border), StrokeKind::Inside);
@@ -253,15 +264,17 @@ pub fn check_box_fill(on: bool, pressed: bool, t: &Tokens) -> Color32 {
 /// Paint a check box in `rect`: [`check_box_fill`] with a white tick when `on`, else an
 /// outline that brightens while `hovered` or `pressed`.
 pub fn check_box(p: &egui::Painter, rect: Rect, on: bool, hovered: bool, pressed: bool, t: &Tokens) {
-    p.rect_filled(rect, 2.0, check_box_fill(on, pressed, t));
+    // Studio: a softer 4 px box with a dark tick on the amber fill.
+    let (radius, tick_color) = if t.is_studio() { (4.0, t.primary_text) } else { (2.0, Color32::WHITE) };
+    p.rect_filled(rect, radius, check_box_fill(on, pressed, t));
     if on {
         let a = rect.left_center() + vec2(3.0, 0.5);
         let b = rect.center_bottom() + vec2(-1.0, -3.5);
         let c = rect.right_top() + vec2(-3.0, 3.5);
-        let tick = Stroke::new(rect.width() * 0.125, Color32::WHITE);
+        let tick = Stroke::new(rect.width() * 0.125, tick_color);
         p.line_segment([a, b], tick);
         p.line_segment([b, c], tick);
     } else {
-        p.rect_stroke(rect, 2.0, Stroke::new(1.5, if hovered || pressed { t.text_dim } else { t.text_faint }), StrokeKind::Inside);
+        p.rect_stroke(rect, radius, Stroke::new(1.5, if hovered || pressed { t.text_dim } else { t.text_faint }), StrokeKind::Inside);
     }
 }

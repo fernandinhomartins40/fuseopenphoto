@@ -111,12 +111,13 @@ pub fn pill_tab(ui: &mut Ui, label: &str, selected: bool) -> Response {
     if selected {
         surface(ui, rect, t.hover, true);
         if !t.bevel {
-            ui.painter().rect_stroke(rect, t.radius_sm, Stroke::new(1.0, t.field_border), StrokeKind::Inside);
+            // Studio marks the selected tab with an amber outline and amber text.
+            ui.painter().rect_stroke(rect, t.radius_sm, Stroke::new(1.0, if t.is_studio() { t.accent_border } else { t.field_border }), StrokeKind::Inside);
         }
     } else if resp.hovered() {
         ui.painter().rect_filled(rect, t.radius_sm, t.hover.gamma_multiply(0.6));
     }
-    let color = if selected { t.text } else { t.text_dim };
+    let color = if selected { if t.is_studio() { t.accent_text } else { t.text } } else { t.text_dim };
     ui.painter().galley_with_override_text_color(rect.center() - galley.size() / 2.0, galley, color);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, translated));
     resp
