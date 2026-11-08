@@ -774,6 +774,14 @@ fn invoke_window_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str)
             app.jobs.focus = None;
             Ok(json!({"document": next}))
         })()),
+        "window.toggle.classicLayout" => {
+            crate::studio::toggle_classic(app);
+            Some(Ok(Value::Null))
+        }
+        "window.toggle.codex" => {
+            crate::codex_panel::toggle(app);
+            Some(Ok(Value::Null))
+        }
         _ if id.starts_with("window.toggle.") => Some(toggle_panel(app, id)),
         _ => None,
     }

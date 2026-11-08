@@ -19,6 +19,12 @@ use serde_json::{Value, json};
 /// Start serving a listener already bound during startup, before a window is opened.
 pub fn start(listener: TcpListener, token: String, ctx: egui::Context) -> Receiver<ControlRequest> {
     let (tx, rx) = channel::<ControlRequest>();
+    serve_listener(listener, token, ctx, tx);
+    rx
+}
+
+/// Serve `listener` into an existing request channel (Window › Codex opens its server late).
+pub fn serve_listener(listener: TcpListener, token: String, ctx: egui::Context, tx: Sender<ControlRequest>) {
     let port = listener.local_addr().map_or(0, |a| a.port());
     eprintln!("photocraft: control server listening on {}", listening_addr(&listener, port));
     std::thread::spawn(move || {
@@ -39,7 +45,6 @@ pub fn start(listener: TcpListener, token: String, ctx: egui::Context) -> Receiv
             });
         }
     });
-    rx
 }
 
 /// The address `listener` is bound to: with `--control 0` the OS picks the port, and a client

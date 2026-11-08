@@ -26,6 +26,8 @@ macro_rules! tl {
 }
 mod brush_mode_menu;
 pub mod canvas;
+pub mod codex_panel;
+pub mod studio;
 pub mod control;
 pub mod dialogs;
 pub mod dock;
@@ -452,6 +454,10 @@ pub struct PhotocraftApp {
     /// The first digit of a two-digit opacity typed on the number keys (`opacity_keys`, #352).
     pub(crate) opacity_keys: opacity_keys::Pending,
     control_rx: Option<Receiver<ControlRequest>>,
+    /// Window › Codex chat (`codex_panel`).
+    pub codex: codex_panel::CodexPanel,
+    /// The studio shell (`studio`): mode, regions' state, Classic Layout.
+    pub studio: studio::StudioState,
     /// `ui.screenshot` requests: bounded admission, a weak-slot callback per issuance, monotonic
     /// deadlines and a capture-time geometry epoch (see `screenshot.rs`).
     captures: screenshot::Captures,

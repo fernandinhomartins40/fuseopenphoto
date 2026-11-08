@@ -246,6 +246,8 @@ photocraft-cli batch --help
 photocraft-cli mcp
 ```
 
+**Window › Codex** chats with OpenAI Codex inside the app: sign in with ChatGPT (no API key), ask for edits or new images, and generated images land in the document as layers. See [`docs/codex.md`](docs/codex.md).
+
 The desktop app also offers an authenticated, loopback-only control channel (`photocraft --control`) for inspecting UI state, driving tools with pointer events, and taking offscreen screenshots. Every image in this README was rendered that way. See [`docs/control-protocol.md`](docs/control-protocol.md).
 
 ## Under the hood

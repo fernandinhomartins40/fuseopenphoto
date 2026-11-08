@@ -142,57 +142,7 @@ fn render_start_rail(app: &mut PhotocraftApp, ui: &mut egui::Ui, rail_w: f32) {
 
     ui.add_space(4.0);
 
-    // 4. "Learn" Nav Item
-    let (learn_rect, learn_resp) = ui.allocate_exact_size(egui::vec2(rail_w, 32.0), Sense::click());
-    let learn_resp = learn_resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-    learn_resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Learn")));
-    if learn_resp.hovered() {
-        ui.painter().rect_filled(learn_rect, 4.0, t.hover);
-    }
-    let learn_color = if learn_resp.hovered() { t.text } else { t.text_dim };
-    let sparkle_box = Rect::from_center_size(egui::pos2(learn_rect.left() + 20.0, learn_rect.center().y), egui::vec2(16.0, 16.0));
-    crate::icons::paint(ui, sparkle_box, "sparkles", 16.0, learn_color);
-    ui.painter().text(
-        egui::pos2(learn_rect.left() + 34.0, learn_rect.center().y),
-        egui::Align2::LEFT_CENTER,
-        tl!("Learn"),
-        crate::theme::semibold(13.5),
-        learn_color,
-    );
-    if learn_resp.clicked() {
-        crate::links::open(app, ui.ctx(), crate::links::TUTORIALS);
-    }
-
-    // 5. Bottom pinned community links
-    let bottom_h = 100.0;
-    let avail_h = ui.available_height();
-    let spacer = (avail_h - bottom_h - 20.0).max(24.0);
-    ui.add_space(spacer);
-
-    let (b_sep_rect, _) = ui.allocate_exact_size(egui::vec2(sep_w, 1.0), Sense::hover());
-    ui.painter().line_segment([b_sep_rect.min, egui::pos2(b_sep_rect.max.x, b_sep_rect.min.y)], egui::Stroke::new(1.0, t.separator));
-
-    ui.add_space(8.0);
-
-    render_rail_link(app, ui, rail_w, tl!("Website"), "link", crate::links::APP_PAGE);
-    render_rail_link(app, ui, rail_w, tl!("Discord"), "message-square", crate::links::DISCORD);
-    render_rail_link(app, ui, rail_w, tl!("GitHub"), "link-2", crate::links::GITHUB);
-}
-
-fn render_rail_link(app: &mut PhotocraftApp, ui: &mut egui::Ui, rail_w: f32, label: &str, icon_name: &str, url: &str) {
-    let t = crate::theme::Tokens::get(ui.ctx());
-    let (rect, resp) = ui.allocate_exact_size(egui::vec2(rail_w, 28.0), Sense::click());
-    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(url);
-    if resp.hovered() {
-        ui.painter().rect_filled(rect, 4.0, t.hover);
-    }
-    let color = if resp.hovered() { t.text } else { t.text_dim };
-    let icon_box = Rect::from_center_size(egui::pos2(rect.left() + 20.0, rect.center().y), egui::vec2(14.0, 14.0));
-    crate::icons::paint(ui, icon_box, icon_name, 14.0, color);
-    ui.painter().text(egui::pos2(rect.left() + 34.0, rect.center().y), egui::Align2::LEFT_CENTER, label, crate::theme::medium(12.0), color);
-    if resp.clicked() {
-        crate::links::open(app, ui.ctx(), url);
-    }
+    // This build links to no online project or community (no Learn or community links).
 }
 
 fn render_start_content(app: &mut PhotocraftApp, ui: &mut egui::Ui, recent: &[String], content_w: f32) {

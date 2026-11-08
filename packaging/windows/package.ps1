@@ -23,7 +23,11 @@
 #>
 param(
   [ValidateSet('x64', 'x86', 'arm64')] [string] $Arch = 'x64',
-  [switch] $SkipBuild
+  [switch] $SkipBuild,
+  # A folder holding the OpenAI Codex CLI for Window > Codex (codex.exe and its codex-*.exe
+  # helpers, from https://github.com/openai/codex/releases). Without it, Window > Codex uses a
+  # Codex found on PATH.
+  [string] $CodexDir = $env:PHOTOCRAFT_CODEX_DIR
 )
 $ErrorActionPreference = 'Stop'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -92,6 +96,17 @@ Copy-Item (Join-Path $Bin 'photocraft.exe'), (Join-Path $Bin 'photocraft-cli.exe
 
 & (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'photocraft.exe') (Join-Path $Stage 'photocraft-cli.exe')
 
+# Window > Codex: installed next to photocraft.exe, where the app looks first (apps/photocraft/src/codex.rs).
+$HasCodex = 0
+if ($CodexDir) {
+  if (-not (Test-Path (Join-Path $CodexDir 'codex.exe'))) { throw "-CodexDir has no codex.exe: $CodexDir" }
+  $CodexStage = Join-Path $Stage 'codex'
+  New-Item -ItemType Directory -Force -Path $CodexStage | Out-Null
+  Get-ChildItem -Path $CodexDir -Filter 'codex*.exe' -File | Copy-Item -Destination $CodexStage
+  $HasCodex = 1
+  Write-Output "bundling Codex: $((Get-ChildItem $CodexStage).Name -join ', ')"
+}
+
 # ---- font notices for the MSI ------------------------------------------------------------------
 # The portable ZIP already carries these notices; stage the complete files before MSI creation too.
 $Docs = Join-Path $Stage 'font-licences'
@@ -153,7 +168,7 @@ Invoke-Native 'wix build' {
     -culture en-US -loc (Join-Path $PSScriptRoot 'photocraft.en-us.wxl') `
     -d "Version=$MsiVersion" -d "DisplayVersion=$Version" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\photocraft.ico')" `
     -d "BannerBmp=$Banner" -d "DialogBmp=$Dialog" `
-    -d "DocsDir=$Docs" -d "HasCraftFontLicences=$HasCraftFontLicences" `
+    -d "DocsDir=$Docs" -d "HasCraftFontLicences=$HasCraftFontLicences" -d "HasCodex=$HasCodex" `
     -o $Msi
 }
 Invoke-Native 'MSI shortcut icon validation (ICE50)' {
@@ -171,6 +186,7 @@ $Portable = Join-Path $TargetDir "windows-package\photocraft-$Version-windows-$A
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
+if ($HasCodex) { Copy-Item (Join-Path $Stage 'codex\*.exe') $Portable }
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE', 'NOTICE', 'ATTRIBUTION.md') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }

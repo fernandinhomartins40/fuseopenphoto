@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <?ifndef HasCodex ?>
+  <?define HasCodex=0 ?>
+  <?endif?>
   <?ifndef HasCraftFontLicences ?>
   <?define HasCraftFontLicences=0 ?>
   <?endif?>
@@ -135,6 +138,10 @@
       <Component Id="PhotocraftCli">
         <File Id="PhotocraftCliExe" Source="$(var.BinDir)\photocraft-cli.exe" KeyPath="yes" />
       </Component>
+      <?if $(var.HasCodex) = 1 ?>
+      <!-- Window > Codex: the OpenAI Codex CLI (Apache-2.0) and its helpers, staged by package.ps1 -CodexDir. -->
+      <Files Include="$(var.BinDir)\codex\*.exe" />
+      <?endif?>
     </ComponentGroup>
   </Fragment>
 </Wix>

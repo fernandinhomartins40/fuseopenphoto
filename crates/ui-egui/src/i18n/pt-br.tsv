@@ -4541,3 +4541,19 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	Auto-size Canvas	Ajustar tamanho da tela automaticamente
 	Keep Relative Position During Layer Reordering	Manter a posição relativa ao reordenar camadas
 	Shrinkwrap Canvas on Save	Reduzir a tela ao conteúdo ao salvar
+	Codex stopped.	O Codex parou.
+	could not open the image	não foi possível abrir a imagem
+	Image {name} added to the document	Imagem {name} adicionada ao documento
+	Could not add image {name}: {error}	Não foi possível adicionar a imagem {name}: {error}
+	Codex needs Preferences › Integrations › Allow Agent Control.	O Codex precisa de Preferências › Integrações › Permitir controle por agentes.
+	Codex is not available in this version of PhotoCraft.	O Codex não está disponível nesta versão do PhotoCraft.
+	not running	parado
+	starting…	iniciando…
+	not signed in	sem login
+	New Chat	Nova conversa
+	Start Codex	Iniciar Codex
+	Sign in with ChatGPT	Entrar com o ChatGPT
+	Ask Codex to edit the open document or to generate an image.	Peça ao Codex para editar o documento aberto ou gerar uma imagem.
+	Message Codex (Enter to send)	Mensagem para o Codex (Enter envia)
+	Send	Enviar
+	Classic Layout	Layout clássico

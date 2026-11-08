@@ -560,6 +560,8 @@ pub struct Services {
     /// `photocraft_engine::preset_store`). Attached to the session once it arrives; without
     /// one, brush presets are session-only unless the shell attached a store before startup.
     pub preset_store: Option<std::sync::mpsc::Receiver<photocraft_engine::preset_store::Opened>>,
+    /// Starts the Window › Codex backend (desktop: `codex app-server`); `None` where Codex can't run.
+    pub codex: Option<crate::codex_panel::CodexStartFn>,
     /// Reads the displays and their ICC profiles in the background (desktop macOS; see
     /// `monitor_status`). Without one, the canvas uses the profile chosen in Color Settings, or sRGB.
     pub read_displays: Option<monitor_status::ReadDisplaysFn>,

@@ -36,6 +36,8 @@ mod appearance;
 mod apple_events;
 mod caps_lock;
 mod caption_style;
+#[cfg(not(target_arch = "wasm32"))]
+mod codex;
 mod control_server;
 mod crash_guard;
 mod cursor;
@@ -72,7 +74,6 @@ mod startup_report;
 // Tablet support (macOS AppKit monitor, Linux X11/Wayland, Windows barrel button).
 mod tablet;
 mod ui_state;
-mod updates;
 mod window_frame;
 
 use photocraft_engine::Session;
@@ -325,6 +326,47 @@ fn control_setup(
     Some((listener, token, workspace))
 }
 
+/// Window › Codex: starts `codex app-server` on demand, bridged to this window's control channel.
+/// Reuses the `--control` server when there is one; otherwise opens a loopback server on a free
+/// port with a fresh token the first time Codex starts, feeding `lazy` (the app's control channel).
+#[cfg(not(target_arch = "wasm32"))]
+fn codex_service(
+    mut server: Option<(u16, String)>,
+    lazy: Option<std::sync::mpsc::Sender<photocraft_ui_egui::ControlRequest>>,
+    dir: std::path::PathBuf,
+    ctx: egui::Context,
+) -> photocraft_ui_egui::codex_panel::CodexStartFn {
+    Box::new(move || {
+        let codex = codex::find_codex().ok_or(codex::NOT_FOUND)?;
+        let (port, token) = match &server {
+            Some(server) => server.clone(),
+            None => {
+                let tx = lazy.clone().ok_or("no control channel")?;
+                let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).map_err(|e| format!("could not open the control channel: {e}"))?;
+                let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+                let token = photocraft_automation::security::generate_token().map_err(|e| e.to_string())?;
+                control_server::serve_listener(listener, token.clone(), ctx.clone(), tx);
+                server = Some((port, token.clone()));
+                (port, token)
+            }
+        };
+        // Outside `dir`, the control channel's file root: the sign-in must not be readable through it.
+        let home = dir.with_file_name("codex-home");
+        std::fs::create_dir_all(&home).map_err(|e| format!("could not create {}: {e}", home.display()))?;
+        codex::start(&codex, port, &token, &dir, &home, ctx.clone())
+    })
+}
+
+/// The folder Codex works in, which is also the control channel's file root when `--control`
+/// didn't set one (so Codex can open and save files there).
+#[cfg(not(target_arch = "wasm32"))]
+fn codex_dir() -> Option<(std::path::PathBuf, photocraft_automation::workspace::AuthorizedWorkspace)> {
+    let dir = services::config_dir()?.join("codex");
+    std::fs::create_dir_all(&dir).ok()?;
+    let workspace = photocraft_automation::workspace::AuthorizedWorkspace::new(Some(&dir), Some(&dir)).ok()?;
+    Some((dir, workspace))
+}
+
 /// Record this start's backend in the GPU startup marker, if the marker is locked.
 fn write_start_marker(sentinel: &gpu_startup::SharedSentinel, plan: &gpu_startup::Plan) {
     if let Some(s) = sentinel.lock().unwrap_or_else(std::sync::PoisonError::into_inner).as_mut() {
@@ -499,7 +541,11 @@ fn main() -> eframe::Result {
         options,
         Box::new(move |cc| {
             created_in_callback.store(true, std::sync::atomic::Ordering::Relaxed);
-            let automation = control.as_ref().map(|(_, _, workspace)| workspace.clone());
+            let codex_dir = codex_dir();
+            let automation = match control.as_ref() {
+                Some((_, _, workspace)) => Some(workspace.clone()),
+                None => codex_dir.as_ref().map(|(_, workspace)| workspace.clone()),
+            };
             let mut services = services::native(automation);
             services.preset_store = presets;
             #[cfg(target_os = "linux")]
@@ -618,9 +664,18 @@ fn main() -> eframe::Result {
                     log::warn!("couldn't remember GPU backend {}: {e}", b.name());
                 }
             });
+            let control_addr = control.as_ref().and_then(|(listener, token, _)| listener.local_addr().ok().map(|a| (a.port(), token.clone())));
+            let mut lazy_control = None;
             if let Some((listener, token, _)) = control {
                 let rx = control_server::start(listener, token, cc.egui_ctx.clone());
                 app = app.with_control(rx);
+            } else {
+                let (tx, rx) = std::sync::mpsc::channel();
+                app = app.with_control(rx);
+                lazy_control = Some(tx);
+            }
+            if let Some((dir, _)) = codex_dir {
+                app.services.codex = Some(codex_service(control_addr, lazy_control, dir, cc.egui_ctx.clone()));
             }
             #[cfg(target_os = "macos")]
             {
