@@ -2,10 +2,9 @@
 //! the top bar; picking a mode selects its default tool, and picking a tool anywhere else
 //! (shortcut, menu, palette) moves the bar to a mode that lists it.
 //!
-//! Under it, the classic tool options bar is the tool options row, drawn in the house look (see
-//! [`options_row`]), so every tool option (brush size, feather, …) stays reachable.
+//! The active tool's options float over the canvas (`options_pill`), not in a row under the bar.
 
-use egui::{CornerRadius, FontId, Rect, Sense, Stroke, pos2, vec2};
+use egui::{FontId, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
 
 use super::Mode;
@@ -197,50 +196,6 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 }
             }
         });
-    // shortcut: the classic options bar as a second row, until context bars hold every option.
-    options_row(app, ui);
-}
-
-/// Where `theme::apply` publishes the tokens (`Tokens::get` reads them from there).
-fn theme_id() -> egui::Id {
-    egui::Id::unique("photocraft-theme")
-}
-
-/// The tokens the options row draws with: fields and dropdowns as charcoal pills on the dark bar.
-fn row_tokens(t: Tokens) -> Tokens {
-    Tokens { field: t.card, radius_sm: t.radius_sm.max(8.0), ..t }
-}
-
-/// The classic tool options bar (every option of every tool) in the studio look: card-coloured
-/// rounded fields and dropdowns, roomier spacing and a bottom separator. The look is scoped to this
-/// call (tokens and `ui` style are restored after), so the classic shell keeps its own.
-fn options_row(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
-    let ctx = ui.ctx().clone();
-    let t = Tokens::get(&ctx);
-    let row = row_tokens(t);
-    let style = ui.style().clone();
-    {
-        let s = ui.style_mut();
-        s.spacing.item_spacing.x = 10.0;
-        s.spacing.button_padding = vec2(10.0, 4.0);
-        let w = &mut s.visuals.widgets;
-        for (v, fill) in [(&mut w.inactive, t.card), (&mut w.hovered, t.hover), (&mut w.active, t.pressed), (&mut w.open, t.hover)] {
-            v.bg_fill = fill;
-            v.weak_bg_fill = fill;
-            v.corner_radius = CornerRadius::same(row.radius_sm as u8);
-        }
-        w.hovered.bg_stroke = Stroke::new(1.0, t.accent_border);
-        w.open.bg_stroke = Stroke::new(1.0, t.accent);
-    }
-    ctx.data_mut(|d| d.insert_temp(theme_id(), row));
-    crate::panels::options_bar(app, ui);
-    // Restore, unless something in the bar applied another theme meanwhile.
-    if Tokens::get(&ctx) == row {
-        ctx.data_mut(|d| d.insert_temp(theme_id(), t));
-    }
-    ui.set_style(style);
-    let y = ui.available_rect_before_wrap().top();
-    ui.painter().hline(ui.max_rect().x_range(), y - 0.5, Stroke::new(1.0, t.separator));
 }
 
 #[cfg(test)]
@@ -262,19 +217,6 @@ mod tests {
                 assert!(crate::tool_shortcuts::tool(&id).is_some(), "{name} has no Tool");
             }
         }
-    }
-
-    #[test]
-    fn options_row_tokens_reach_tokens_get_and_are_restored() {
-        let ctx = egui::Context::default();
-        crate::theme::apply(&ctx, crate::theme::ThemeKind::Studio);
-        let t = Tokens::get(&ctx);
-        let row = row_tokens(t);
-        assert_ne!(row, t);
-        ctx.data_mut(|d| d.insert_temp(theme_id(), row));
-        assert_eq!(Tokens::get(&ctx), row, "theme_id() must match theme::apply's key");
-        ctx.data_mut(|d| d.insert_temp(theme_id(), t));
-        assert_eq!(Tokens::get(&ctx), t);
     }
 
     #[test]

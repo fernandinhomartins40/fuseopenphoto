@@ -14,11 +14,24 @@ use crate::theme::Tokens;
 #[derive(Default)]
 pub struct State {
     pub open: bool,
+    /// The button's top-left offset from the canvas' top-left, once dragged (else the default).
+    pub offset: Option<egui::Vec2>,
 }
+
+/// Where the button sits until dragged.
+const DEFAULT_OFFSET: egui::Vec2 = vec2(14.0, 14.0);
+/// More rows than this lay out in two columns.
+const ONE_COLUMN_MAX: usize = 8;
 
 fn c32(c: [f32; 4]) -> Color32 {
     let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     Color32::from_rgb(b(c[0]), b(c[1]), b(c[2]))
+}
+
+/// `offset` kept so a `size` button stays inside `canvas`.
+fn clamp_offset(offset: egui::Vec2, size: egui::Vec2, canvas: Rect) -> egui::Vec2 {
+    let max = (canvas.size() - size).max(vec2(0.0, 0.0));
+    vec2(offset.x.clamp(0.0, max.x), offset.y.clamp(0.0, max.y))
 }
 
 pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
@@ -26,11 +39,20 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let canvas = ui.max_rect();
     let open = app.studio.tools.open;
-    let area = egui::Area::new(egui::Id::unique("studio_tools_menu")).order(egui::Order::Foreground).fixed_pos(canvas.min + vec2(14.0, 14.0)).show(&ctx, |ui| {
-        // The button: brush icon, "Tools", chevron; amber while open.
-        let font = FontId::proportional(15.0);
-        let galley = ui.painter().layout_no_wrap(tl!("Tools").to_string(), font, t.text);
-        let (r, resp) = ui.allocate_exact_size(vec2(galley.size().x + 82.0, 40.0), Sense::click());
+    let font = FontId::proportional(15.0);
+    let galley = ui.painter().layout_no_wrap(tl!("Tools").to_string(), font, t.text);
+    let size = vec2(galley.size().x + 90.0, 40.0);
+    let offset = clamp_offset(app.studio.tools.offset.unwrap_or(DEFAULT_OFFSET), size, canvas);
+    let area = egui::Area::new(egui::Id::unique("studio_tools_menu")).order(egui::Order::Foreground).fixed_pos(canvas.min + offset).show(&ctx, |ui| {
+        // Drag anywhere on the button to move it; a click (no drag) opens the menu.
+        let (r, resp) = ui.allocate_exact_size(size, Sense::click_and_drag());
+        if resp.dragged() {
+            app.studio.tools.offset = Some(clamp_offset(offset + resp.drag_delta(), size, canvas));
+        }
+        if resp.hovered() || resp.dragged() {
+            ctx.set_cursor_icon(if resp.dragged() { egui::CursorIcon::Grabbing } else { egui::CursorIcon::Grab });
+        }
+        // Closed: a card with the brush on an amber chip; open: all amber.
         let ink = if open { t.primary_text } else { t.text };
         let fill = if open {
             t.primary_bg
@@ -40,8 +62,12 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             t.card
         };
         ui.painter().rect(r, RADIUS, fill, Stroke::new(1.0, if open { t.primary_bg } else { t.card_border }), StrokeKind::Inside);
-        crate::icons::paint(ui, Rect::from_center_size(pos2(r.left() + 24.0, r.center().y), vec2(18.0, 18.0)), "brush", 18.0, ink);
-        ui.painter().galley_with_override_text_color(pos2(r.left() + 44.0, r.center().y - galley.size().y / 2.0), galley, ink);
+        let chip = Rect::from_center_size(pos2(r.left() + 24.0, r.center().y), vec2(30.0, 30.0));
+        if !open {
+            ui.painter().rect_filled(chip, RADIUS - 4.0, t.primary_bg);
+        }
+        crate::icons::paint(ui, chip.shrink(6.0), "brush", 18.0, t.primary_text);
+        ui.painter().galley_with_override_text_color(pos2(chip.right() + 12.0, r.center().y - galley.size().y / 2.0), galley, ink);
         crate::icons::paint(ui, Rect::from_center_size(pos2(r.right() - 20.0, r.center().y), vec2(14.0, 14.0)), "chevron-down", 14.0, ink);
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Tools")));
         if resp.clicked() {
@@ -49,7 +75,8 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         }
         if open {
             ui.add_space(8.0);
-            dropdown(app, ui, &t, &ctx, (canvas.height() - 120.0).max(120.0));
+            let below = canvas.bottom() - r.bottom() - 40.0;
+            dropdown(app, ui, &t, &ctx, below.max(120.0));
         }
     });
     // A press outside the menu or Escape closes it.
@@ -63,34 +90,49 @@ fn dropdown(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::
     let font = FontId::proportional(14.0);
     let rows: Vec<(&str, Tool)> = tools(app.studio.mode).iter().filter_map(|n| Some((*n, crate::tool_shortcuts::tool(&format!("tools.select.{n}"))?))).collect();
     let label_w = rows.iter().map(|(n, _)| ui.painter().layout_no_wrap(short(n).to_string(), font.clone(), t.text).size().x).fold(0.0f32, f32::max);
-    let w = (label_w + 100.0).max(220.0);
-    let active = crate::tool_memory::selected(app);
+    let w = (label_w + 110.0).max(200.0);
+    let per_column = if rows.len() > ONE_COLUMN_MAX { rows.len().div_ceil(2) } else { rows.len().max(1) };
     egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.card_border)).corner_radius(RADIUS).inner_margin(6.0).show(ui, |ui| {
-        ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+        ui.spacing_mut().item_spacing = vec2(6.0, 2.0);
         egui::ScrollArea::vertical().id_salt("studio_tools_rows").max_height(max_h).show(ui, |ui| {
-            for (name, tool) in rows {
-                let (r, resp) = ui.allocate_exact_size(vec2(w, 36.0), Sense::click());
-                if tool == active {
-                    ui.painter().rect_stroke(r.shrink(1.0), RADIUS - 2.0, Stroke::new(1.5, t.accent), StrokeKind::Inside);
-                } else if resp.hovered() {
-                    ui.painter().rect_filled(r, RADIUS - 2.0, t.hover);
+            ui.horizontal_top(|ui| {
+                for column in rows.chunks(per_column) {
+                    ui.vertical(|ui| {
+                        for &(name, tool) in column {
+                            tool_row(app, ui, t, ctx, name, tool, w);
+                        }
+                    });
                 }
-                crate::icons::paint(ui, Rect::from_center_size(pos2(r.left() + 20.0, r.center().y), vec2(18.0, 18.0)), crate::icons::tool_icon(tool), 18.0, t.icon);
-                ui.painter().text(pos2(r.left() + 42.0, r.center().y), Align2::LEFT_CENTER, short(name), font.clone(), t.text);
-                if let Some(sc) = crate::tool_shortcuts::shortcut(app, tool) {
-                    ui.painter().text(pos2(r.right() - 12.0, r.center().y), Align2::RIGHT_CENTER, crate::shortcuts::pretty(&sc), FontId::proportional(12.5), t.text_dim);
-                }
-                resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, tool == active, tl!(tool.label())));
-                if resp.on_hover_text(tl!(tool.label())).clicked() {
-                    select_tool(app, ctx, name);
-                    app.studio.tools.open = false;
-                }
-            }
+            });
         });
         ui.add_space(4.0);
         ui.separator();
         color_chips(app, ui, t);
     });
+}
+
+/// One menu row: icon, short name, shortcut chip; the active tool has the amber outline.
+fn tool_row(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::Context, name: &str, tool: Tool, w: f32) {
+    let active = crate::tool_memory::selected(app);
+    let (r, resp) = ui.allocate_exact_size(vec2(w, 36.0), Sense::click());
+    if tool == active {
+        ui.painter().rect_stroke(r.shrink(1.0), RADIUS - 2.0, Stroke::new(1.5, t.accent), StrokeKind::Inside);
+    } else if resp.hovered() {
+        ui.painter().rect_filled(r, RADIUS - 2.0, t.hover);
+    }
+    crate::icons::paint(ui, Rect::from_center_size(pos2(r.left() + 20.0, r.center().y), vec2(18.0, 18.0)), crate::icons::tool_icon(tool), 18.0, t.icon);
+    ui.painter().text(pos2(r.left() + 42.0, r.center().y), Align2::LEFT_CENTER, short(name), FontId::proportional(14.0), t.text);
+    if let Some(sc) = crate::tool_shortcuts::shortcut(app, tool) {
+        let g = ui.painter().layout_no_wrap(crate::shortcuts::pretty(&sc), FontId::proportional(12.0), t.text_dim);
+        let chip = Rect::from_center_size(pos2(r.right() - 10.0 - (g.size().x + 10.0).max(20.0) / 2.0, r.center().y), vec2((g.size().x + 10.0).max(20.0), 20.0));
+        ui.painter().rect_filled(chip, 5.0, t.chrome);
+        ui.painter().galley(chip.center() - g.size() / 2.0, g, t.text_dim);
+    }
+    resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, tool == active, tl!(tool.label())));
+    if resp.on_hover_text(tl!(tool.label())).clicked() {
+        select_tool(app, ctx, name);
+        app.studio.tools.open = false;
+    }
 }
 
 /// The menu's short English name of tool `name` (id without `tools.select.`), as in the mockups
@@ -203,7 +245,6 @@ fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens) {
 mod tests {
     use super::*;
     use photocraft_engine::shell_commands::TOOLS;
-    use egui::vec2;
     use egui_kittest::{Harness, kittest::Queryable};
     use serde_json::json;
 
@@ -223,6 +264,35 @@ mod tests {
             h.get_all_by_label(l).next().unwrap_or_else(|| panic!("no control labelled {l:?}")).click();
             h.run_steps(2);
         }
+        // Drag the Tools button: it moves (and stays shut); a click then opens it and picks a tool.
+        let before = h.get_by_label("Tools").rect();
+        let from = before.center();
+        h.drag_at(from);
+        h.run_steps(1);
+        for k in 1..=10 {
+            h.hover_at(from + vec2(30.0, 20.0) * k as f32);
+            h.run_steps(1);
+        }
+        h.drop_at(from + vec2(300.0, 200.0));
+        h.run_steps(2);
+        let after = h.get_by_label("Tools").rect();
+        assert!((after.min - before.min).length() > 100.0, "the button did not move: {before:?} -> {after:?}");
+        assert!(!h.state().studio.tools.open, "a drag must not open the menu");
+        h.get_by_label("Tools").click();
+        h.run_steps(2);
+        assert!(h.state().studio.tools.open);
+        h.get_by_label("Hand Tool").click();
+        h.run_steps(2);
+        assert_eq!(h.state().ui.tool, crate::state::Tool::Hand);
+        assert!(!h.state().studio.tools.open);
+    }
+
+    #[test]
+    fn button_offset_stays_inside_the_canvas() {
+        let canvas = Rect::from_min_size(pos2(100.0, 50.0), vec2(800.0, 600.0));
+        let size = vec2(150.0, 40.0);
+        assert_eq!(clamp_offset(vec2(-50.0, 5000.0), size, canvas), vec2(0.0, 560.0));
+        assert_eq!(clamp_offset(vec2(10.0, 10.0), vec2(2000.0, 40.0), canvas), vec2(0.0, 10.0));
     }
 
 

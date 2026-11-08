@@ -1,5 +1,6 @@
 //! Floating context bars over the canvas: type (font, style, size, colour, alignment), selection
-//! (Adicionar, Subtrair, Inverter, Refinar, Desmarcar), and adjustments (Níveis, Curvas, …).
+//! (Adicionar, Subtrair, Inverter, Refinar, Desmarcar), adjustments (Níveis, Curvas, …) and the
+//! active tool's options (`options_pill`).
 //!
 //! The bars only draw: they run the same commands and set the same tool state as the classic
 //! options bar (`type_tool::options_bar`, `panels::selection_mode_buttons`) and the Adjustments
@@ -60,20 +61,34 @@ fn is_selection_tool(tool: Tool) -> bool {
 }
 
 pub fn show(app: &mut PhotocraftApp, ui: &mut Ui) {
+    crate::vector_ui::track_arrow_default_selection(app, ui.ctx());
     let Some(has_selection) = app.session.active().map(|st| st.doc.selection.is_some()) else { return };
     let canvas = crate::rulers::content_rect(app, app.last_canvas_rect);
     let b = bars(app.studio.mode, app.ui.tool, tt::target(app).is_some(), has_selection);
+    // Bars at the top centre stack downwards in this order.
+    let mut top = canvas.top() + GAP;
     if b.adjustments {
-        floating(ui, "studio-adjustment-tabs", pos2(canvas.center().x, canvas.top() + GAP), Align2::CENTER_TOP, canvas, |ui| {
+        let r = floating(ui, "studio-adjustment-tabs", pos2(canvas.center().x, top), Align2::CENTER_TOP, canvas, |ui| {
             adjustment_tabs(app, ui);
         });
+        top = r.bottom() + GAP / 2.0;
     }
     if b.type_bar {
-        let (pos, pivot) = match type_anchor(app) {
+        let anchor = type_anchor(app);
+        let (pos, pivot) = match anchor {
             Some(p) => (p, Align2::CENTER_BOTTOM),
-            None => (pos2(canvas.center().x, canvas.top() + GAP), Align2::CENTER_TOP),
+            None => (pos2(canvas.center().x, top), Align2::CENTER_TOP),
         };
-        floating(ui, "studio-type-bar", pos, pivot, canvas, |ui| type_bar(app, ui));
+        let r = floating(ui, "studio-type-bar", pos, pivot, canvas, |ui| type_bar(app, ui));
+        if anchor.is_none() {
+            top = r.bottom() + GAP / 2.0;
+        }
+    }
+    if super::options_pill::shows_for(app.ui.tool, app.ui.transform.is_some()) {
+        let max_w = (canvas.width() - 2.0 * GAP - 16.0).max(80.0);
+        floating(ui, "studio-tool-options", pos2(canvas.center().x, top), Align2::CENTER_TOP, canvas, |ui| {
+            super::options_pill::contents(app, ui, max_w);
+        });
     }
     if b.selection {
         floating(ui, "studio-selection-bar", pos2(canvas.center().x, canvas.bottom() - GAP), Align2::CENTER_BOTTOM, canvas, |ui| {
@@ -82,23 +97,30 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut Ui) {
     }
 }
 
-/// A rounded dark card floating over the canvas, its `pivot` corner at `pos`, kept inside `canvas`.
-fn floating(ui: &Ui, id: &str, pos: Pos2, pivot: Align2, canvas: Rect, add: impl FnOnce(&mut Ui)) {
+/// A rounded dark card floating over the canvas, its `pivot` corner at `pos`, kept inside `canvas`;
+/// returns its rect.
+fn floating(ui: &Ui, id: &str, pos: Pos2, pivot: Align2, canvas: Rect, add: impl FnOnce(&mut Ui)) -> Rect {
     let t = Tokens::get(ui.ctx());
-    egui::Area::new(egui::Id::unique(id)).pivot(pivot).fixed_pos(pos).constrain_to(canvas).show(ui.ctx(), |ui| {
-        egui::Frame::new()
-            .fill(t.card)
-            .stroke(Stroke::new(1.0, t.card_border))
-            .corner_radius(style::RADIUS)
-            .shadow(egui::Shadow { offset: [0, 6], blur: 20, spread: 0, color: t.shadow })
-            .inner_margin(egui::Margin::symmetric(8, 5))
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    add(ui);
+    egui::Area::new(egui::Id::unique(id))
+        .pivot(pivot)
+        .fixed_pos(pos)
+        .constrain_to(canvas)
+        .show(ui.ctx(), |ui| {
+            egui::Frame::new()
+                .fill(t.card)
+                .stroke(Stroke::new(1.0, t.card_border))
+                .corner_radius(style::RADIUS)
+                .shadow(egui::Shadow { offset: [0, 6], blur: 20, spread: 0, color: t.shadow })
+                .inner_margin(egui::Margin::symmetric(8, 5))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        add(ui);
+                    });
                 });
-            });
-    });
+        })
+        .response
+        .rect
 }
 
 /// An icon (+ label) button; `active` draws the amber outline.
