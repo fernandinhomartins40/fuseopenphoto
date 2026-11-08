@@ -8,5 +8,11 @@ pub const MODE_BAR_H: f32 = 54.0;
 /// Corner radius of cards and pills.
 pub const RADIUS: f32 = 10.0;
 
-/// The product name shown in the top bar (the rename is this one line).
-pub const APP_NAME: &str = "PhotoCraft";
+// Product identity. A rename changes these lines (plus the installer's `photocraft.wxs` defines,
+// `install-policy.json` and the Windows version resources in `apps/*/build.rs`).
+/// The product name: top bar, window titles, About, menus.
+pub const APP_NAME: &str = "Fuse Open Photo";
+/// Reverse-DNS app id: the Wayland/X11 window class and the Linux settings folder name.
+pub const APP_ID: &str = "com.fuse.openphoto";
+/// The company behind the product, shown in About.
+pub const COMPANY: &str = "Fuse";

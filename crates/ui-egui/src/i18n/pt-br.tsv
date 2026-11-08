@@ -4563,3 +4563,8 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	Saved {n} s ago	Salvo há {n} s
 	Saved {n} min ago	Salvo há {n} min
 	Saved {n} h ago	Salvo há {n} h
+	Open-source licenses	Licenças de código aberto
+	{app} is built on open-source software. Its licenses and copyright notices are below; the full third-party list is in ATTRIBUTION.md, installed with the app.	O {app} é feito com software de código aberto. As licenças e os avisos de direitos autorais estão abaixo; a lista completa de terceiros está no ATTRIBUTION.md, instalado com o aplicativo.
+	{app} — a native image editor by {company}.	{app} — um editor de imagens nativo da {company}.
+	Screen Color Picker	Seletor de cor da tela
+	{app} could not start	Não foi possível iniciar o {app}

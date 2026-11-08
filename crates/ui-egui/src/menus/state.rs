@@ -64,7 +64,6 @@ pub fn is_enabled(app: &PhotocraftApp, id: &str) -> bool {
         "file.open" | "file.exit" | "file.clearRecent" | "file.removeRecent" | "help.about" | "help.systemInfo" | "edit.search" => true,
         i if i.starts_with("file.openRecent.") => true,
         i if i.starts_with(DOCUMENT_ITEM) => true,
-        i if crate::links::url_for(i).is_some() => true,
         i if i.starts_with("window.theme.") => true,
         // Interface brightness works with or without a document, as in Photoshop.
         "view.darkenInterface" | "view.lightenInterface" => true,
@@ -233,5 +232,6 @@ pub(super) fn translated_menu_label(lang: crate::i18n::Lang, item: &MenuItem) ->
     {
         return crate::i18n::tr_id(lang, &item.id, "Quick Export as PNG").replace("PNG", fmt);
     }
-    crate::i18n::tr_id(lang, &item.id, &item.label).to_string()
+    // `{app}` (About {app}) is the product name, kept out of the engine's command table.
+    crate::i18n::fmt(crate::i18n::tr_id(lang, &item.id, &item.label), &[("app", crate::studio::style::APP_NAME)])
 }
