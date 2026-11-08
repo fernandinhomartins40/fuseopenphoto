@@ -15,7 +15,7 @@ fn app_with_doc() -> PhotocraftApp {
     bg.fill_rect(GRect::new(0, 15, 20, 30), &[0.0, 0.0, 0.0, 1.0]);
     let mut s = photocraft_engine::Session::new();
     s.add_document(doc, None);
-    PhotocraftApp::new(s, crate::Services::default())
+    PhotocraftApp::new_classic(s, crate::Services::default())
 }
 
 fn coverage(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
@@ -433,7 +433,7 @@ fn reduced_preview_matches_the_original_eyedropper_sample() {
     surface.fill_rect(GRect::new(101, 0, 102, 4), &[0.0, 0.0, 1.0, 1.0]);
     let mut session = photocraft_engine::Session::new();
     session.add_document(doc, None);
-    let mut app = PhotocraftApp::new(session, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(session, crate::Services::default());
     let id = open(&mut app);
     let mut fields = app.ui.dialog_mut(id).unwrap().fields.clone();
     pick(&app, &mut fields, [101.0, 1.0], egui::Modifiers::NONE);

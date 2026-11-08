@@ -11,7 +11,7 @@ fn harness(session: photocraft_engine::Session, ppp: f32) -> Harness<'static, Ph
     let mut h =
         Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(ppp).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            PhotocraftApp::new(session, crate::Services::default())
+            PhotocraftApp::new_classic(session, crate::Services::default())
         });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -159,7 +159,7 @@ fn mask_double_click_launches_select_and_mask_with_preference() {
 
 #[test]
 fn edit_type_command_rejects_missing_or_non_type_layers_without_changes() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let ctx = egui::Context::default();
     for has_document in [false, true] {
         if has_document {

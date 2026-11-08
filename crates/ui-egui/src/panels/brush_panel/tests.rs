@@ -6,7 +6,7 @@ use photocraft_engine::paint::{Control, GrayTile, MaskMode, Pattern, PatternStyl
 use super::*;
 
 fn app() -> PhotocraftApp {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+    PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default())
 }
 
 fn last_journal(app: &PhotocraftApp) -> Option<(String, Value)> {
@@ -1357,7 +1357,7 @@ fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, Photoc
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::default());
+    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
     h.run_steps(4);
     h
 }

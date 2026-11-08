@@ -16,7 +16,7 @@ fn harness() -> Harness<'static, PhotocraftApp> {
     s.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1280.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     h.run_steps(6);
     h
@@ -339,7 +339,7 @@ fn clicking_shape_with_path_selection_selects_its_layer() {
 /// confirms the path's outline pixels are painted in the accent colour, proving the path is drawn.
 #[test]
 fn path_overlay_drawn_for_non_vector_tools() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     // Place a work path whose top edge runs exactly along y=10 in document space.
@@ -459,7 +459,7 @@ fn loading_a_path_after_hiding_extras_restores_outline() {
 fn a_hidden_work_path_stays_hidden_when_another_tile_is_clicked() {
     // Path outlines (accent lines) in the right tile in the frame a click into the left tile makes.
     let right_outlines_on_switch = |hide: bool| {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         for _ in 0..2 {
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         }
