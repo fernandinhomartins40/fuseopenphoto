@@ -118,3 +118,28 @@ fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens) {
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use egui::vec2;
+    use egui_kittest::{Harness, kittest::Queryable};
+    use serde_json::json;
+
+    /// Clicking every studio control through the whole app frame must not deadlock: the layer
+    /// strip once read egui's data inside a `data_mut` and froze the app on any click.
+    #[test]
+    fn clicking_every_studio_control_does_not_freeze() {
+        let mut h = Harness::builder().with_size(vec2(1600.0, 900.0)).with_step_dt(1.0 / 60.0).build_eframe(|cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", json!({"width": 1200, "height": 800})).unwrap();
+            app.run("layer.new.layer", json!({})).unwrap();
+            app
+        });
+        h.run_steps(5);
+        for l in ["Tools", "Tools", "Select", "Retouch", "Color and Light", "Text", "Compose", "History", "Navigator", "Info", "Panels", "History", "Menu", "Menu", "Export", "Layer 1"] {
+            h.get_all_by_label(l).next().unwrap_or_else(|| panic!("no control labelled {l:?}")).click();
+            h.run_steps(2);
+        }
+    }
+}

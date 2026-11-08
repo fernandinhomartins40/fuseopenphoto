@@ -170,6 +170,38 @@ fn build_jobs_share_no_shader() {
     assert!(shared.is_empty(), "compose.wgsl has a vertex entry point every job would share: {shared:?}");
 }
 
+/// FXC (Direct3D 12 without DXC, most Windows PCs) rejects a function whose returns are all inside
+/// a `switch` ("not all control paths return a value"), so the GPU compositor failed to build and
+/// every document fell back to the CPU. Every value-returning function must end in a `return`.
+#[test]
+fn every_returning_function_ends_in_return() {
+    let mut rest = SHADER;
+    while let Some(at) = rest.find("\nfn ") {
+        rest = &rest[at + 4..];
+        let (Some(open), Some(sig_end)) = (rest.find('{'), rest.find('\n')) else { break };
+        let returns_value = rest[..open.min(sig_end)].contains("->");
+        let mut depth = 0usize;
+        let mut close = open;
+        for (i, ch) in rest[open..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        close = open + i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let last = rest[open + 1..close].lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with("//")).last().unwrap_or("");
+        let name = &rest[..rest.find('(').unwrap_or(0)];
+        assert!(!returns_value || last.starts_with("return"), "fn {name} must end in a return for FXC, ends in `{last}`");
+        rest = &rest[close..];
+    }
+}
+
 #[test]
 fn shader_validates() {
     let module = wgpu::naga::front::wgsl::parse_str(SHADER).unwrap_or_else(|e| panic!("{}", e.emit_to_string(SHADER)));
