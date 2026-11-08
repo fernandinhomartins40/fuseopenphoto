@@ -2,11 +2,9 @@
 //! save status and the Export button; also the window's drag area and caption buttons.
 
 use egui::{CornerRadius, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
-use serde_json::json;
 
 use super::style;
 use crate::PhotocraftApp;
-use crate::menus::{MenuItem, TOP_MENUS};
 use crate::theme::{self, Tokens};
 
 /// The bar's view state.
@@ -16,8 +14,8 @@ pub struct State {
     seen: Option<(u64, u64)>,
     /// When (egui time, seconds) the active document was last saved in this session.
     saved_at: Option<f64>,
-    /// The menu tree while ☰ is open: (state hash, items), rebuilt when the state changes.
-    menu: Option<(u64, Vec<MenuItem>)>,
+    /// The menu tree while ☰ is open, rebuilt when the state changes.
+    menu: Option<crate::menus::ItemCache>,
 }
 
 const EXPORT: &str = "file.export.exportAs";
@@ -43,7 +41,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         // Left: ☰, app name, document name, undo / redo.
         let mut left = ui.new_child(egui::UiBuilder::new().max_rect(row(left_edge, right_edge)).layout(egui::Layout::left_to_right(egui::Align::Center)));
         left.spacing_mut().item_spacing.x = 6.0;
-        menu_button(app, &mut left, &mut clicked);
+        menu_button(app, &mut left);
         left.add_space(6.0);
         left.label(egui::RichText::new(style::APP_NAME).font(theme::semibold(18.0)).color(t.text));
         left.add_space(8.0);
@@ -108,26 +106,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         crate::titlebar::caption_buttons(app, ui, bar.response.rect);
     }
     if let Some(id) = clicked {
-        run(app, &ctx, id);
-    }
-}
-
-/// Runs a command picked on the bar or in the ☰ menu as the menu bar does: ⌥ + Merge runs the
-/// Stamp variant, and ⌥ + an Image › Adjustments item opens it at its last settings.
-fn run(app: &mut PhotocraftApp, ctx: &egui::Context, id: String) {
-    let alt = ctx.input(|i| i.modifiers.alt);
-    let r = if alt && crate::adjust_dialog::has_dialog(&id) {
-        let opened = crate::adjust_dialog::open_last(app, &id).map(|_| serde_json::Value::Null).ok_or_else(|| "no document".to_string());
-        if opened.is_ok() {
-            crate::palette::note_recent(ctx, &id);
-        }
-        opened
-    } else {
-        crate::menus::invoke(app, ctx, &crate::menus::alt_click(id, alt), json!({}))
-    };
-    if let Err(e) = r {
-        app.ui.status = e;
-        app.ui.status_error = true;
+        crate::menus::run_clicked(app, &ctx, id);
     }
 }
 
@@ -137,8 +116,9 @@ fn name_width(ui: &egui::Ui, name: &str) -> f32 {
     w.clamp(20.0, 240.0)
 }
 
-/// ☰: the whole menu tree (File … Help) with submenus, checkmarks, enabled state and shortcuts.
-fn menu_button(app: &mut PhotocraftApp, ui: &mut egui::Ui, clicked: &mut Option<String>) {
+/// ☰: the whole menu tree (File … Help as submenus), drawn and driven by the menu bar's code
+/// (`menus::tree_menu`): keyboard, press-drag-release, scrolling, Help › Search.
+fn menu_button(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let (rect, resp) = ui.allocate_exact_size(vec2(34.0, 34.0), Sense::click());
     let open = egui::Popup::is_id_open(ui.ctx(), egui::Popup::default_response_id(&resp));
     let tint = crate::icons::button_chrome(ui, rect, open, resp.hovered());
@@ -148,86 +128,8 @@ fn menu_button(app: &mut PhotocraftApp, ui: &mut egui::Ui, clicked: &mut Option<
     }
     let resp = resp.on_hover_text(tl!("Menu"));
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Menu")));
-    let mut kept = app.studio.top.menu.take();
-    let app_ref: &PhotocraftApp = app;
-    egui::Popup::menu(&resp).show(|ui| {
-        // Built only while open (every item's state scales with the document), and reused while
-        // what it depends on is unchanged.
-        let hash = crate::native_menu::state_hash(app_ref, None);
-        let fresh = match kept.take() {
-            Some((h, items)) if h == hash && !crate::native_menu::had_input(ui.ctx()) => items,
-            _ => crate::menus::menu_items(app_ref),
-        };
-        let lang = crate::i18n::current();
-        ui.set_min_width(200.0);
-        crate::widgets::style_spectrum_popup_menu(ui);
-        for top in TOP_MENUS {
-            let mine: Vec<&MenuItem> = fresh.iter().filter(|i| i.path.first().map(String::as_str) == Some(top)).collect();
-            let enabled = mine.iter().any(|c| c.enabled && c.label != "---");
-            ui.add_enabled_ui(enabled, |ui| ui.menu_button(crate::i18n::tr(lang, top), |ui| level(ui, &mine, 1, clicked)));
-        }
-        kept = Some((hash, fresh));
-    });
-    app.studio.top.menu = kept;
-}
-
-/// One menu level: the leaves at `depth` and a submenu for each deeper group, in menu order.
-fn level(ui: &mut egui::Ui, items: &[&MenuItem], depth: usize, clicked: &mut Option<String>) {
-    let lang = crate::i18n::current();
-    // A menu taller than the window scrolls instead of running off it.
-    let room = (ui.ctx().content_rect().height() - 60.0).max(120.0);
-    egui::ScrollArea::vertical().max_height(room).show(ui, |ui| {
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        ui.spacing_mut().item_spacing.y = 0.0;
-        crate::widgets::style_spectrum_popup_menu(ui);
-        let mut subs: Vec<&str> = Vec::new();
-        let mut last_sep = true;
-        for (i, it) in items.iter().enumerate() {
-            if it.path.len() == depth {
-                if it.label == "---" {
-                    if !last_sep && i + 1 < items.len() {
-                        ui.add(egui::Separator::default().spacing(9.0));
-                        last_sep = true;
-                    }
-                    continue;
-                }
-                let text = crate::menu_keys::menu_row_text(ui, it.checked == Some(true), &item_label(lang, it), None);
-                let mut b = egui::Button::new(text);
-                if let Some(sc) = &it.shortcut {
-                    b = b.shortcut_text(crate::shortcuts::pretty(sc));
-                }
-                if ui.add_enabled(it.enabled, b).clicked() {
-                    *clicked = Some(it.id.clone());
-                    ui.close();
-                }
-                last_sep = false;
-            } else if let Some(name) = it.path.get(depth).map(String::as_str) {
-                if subs.contains(&name) {
-                    continue;
-                }
-                subs.push(name);
-                let child: Vec<&MenuItem> = items.iter().copied().filter(|c| c.path.len() > depth && c.path.get(depth).map(String::as_str) == Some(name)).collect();
-                let enabled = child.iter().any(|c| c.enabled && c.label != "---");
-                let title = crate::menu_keys::menu_row_text(ui, false, crate::i18n::tr(lang, name), None);
-                ui.add_enabled_ui(enabled, |ui| ui.menu_button(title, |ui| level(ui, &child, depth + 1, clicked)));
-                last_sep = false;
-            }
-        }
-    });
-}
-
-/// A row's label in the UI language, as the menu bar shows it.
-fn item_label(lang: crate::i18n::Lang, it: &MenuItem) -> String {
-    // A document's name (Window › open documents) is shown as it is.
-    if it.id.starts_with("window.document.") {
-        return it.label.clone();
-    }
-    if it.id == "file.export.quickExportAsPng"
-        && let Some(fmt) = it.label.strip_prefix("Quick Export as ")
-    {
-        return crate::i18n::tr_id(lang, &it.id, "Quick Export as PNG").replace("PNG", fmt);
-    }
-    crate::i18n::tr_id(lang, &it.id, &it.label).to_string()
+    let kept = app.studio.top.menu.take();
+    app.studio.top.menu = crate::menus::tree_menu(app, ui, &resp, kept);
 }
 
 /// The search field's centre x: centred on the bar when it fits, else slid into the
@@ -384,5 +286,111 @@ mod tests {
         assert_eq!(search_x(500.0, 400.0, 900.0), Some(590.0));
         assert_eq!(search_x(500.0, 400.0, 500.0), None);
         assert_eq!(search_x(f32::NAN, 0.0, 900.0), None);
+    }
+
+    /// ☰ driven by the menu bar's code (`menus::tree_menu`).
+    mod tree {
+        use crate::PhotocraftApp;
+        use crate::menu_keys::Keys;
+        use crate::menu_nav::{Nav, Row, is_open};
+        use egui::{Key, Modifiers, PointerButton};
+        use egui_kittest::{Harness, kittest::Queryable};
+
+        fn bar() -> Harness<'static, PhotocraftApp> {
+            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", serde_json::json!({"width": 64, "height": 48})).unwrap();
+            app.sync_views();
+            let mut h = Harness::builder().with_size(egui::vec2(1280.0, 720.0)).build_ui_state(|ui, app| super::super::show(app, ui), app);
+            PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
+            h.run_steps(3);
+            h
+        }
+
+        fn key(h: &mut Harness<'static, PhotocraftApp>, k: Key) {
+            h.key_press(k);
+            h.run_steps(3);
+        }
+
+        fn rows(h: &Harness<'static, PhotocraftApp>, level: usize) -> Vec<Row> {
+            Nav::current(&h.ctx).rows.get(level).cloned().unwrap_or_default()
+        }
+
+        #[test]
+        fn alt_and_f10_open_the_tree_and_the_keys_drive_it() {
+            let mut h = bar();
+            assert!(!is_open(&h.ctx));
+            h.key_down(Key::AltLeft);
+            h.run_steps(2);
+            h.key_up(Key::AltLeft);
+            h.run_steps(4);
+            assert!(is_open(&h.ctx), "a tap on Alt opens ☰");
+            let top = rows(&h, 0);
+            assert_eq!(top.len(), crate::menus::TOP_MENUS.len(), "its first level is the top menus");
+            assert!(top.iter().all(|r| r.command.is_none()), "as submenus");
+            assert_eq!(Nav::current(&h.ctx).highlighted(0), Some(0), "File is lit, as on Windows");
+            assert!(Keys::current(&h.ctx).underline, "with the mnemonics shown");
+            key(&mut h, Key::ArrowDown);
+            assert_eq!(Nav::current(&h.ctx).highlighted(0), Some(1), "↓ moves to Edit");
+            key(&mut h, Key::ArrowRight);
+            h.run_steps(2);
+            assert!(rows(&h, 1).iter().any(|r| r.command.as_deref() == Some("edit.undo")), "→ opens Edit");
+            key(&mut h, Key::Escape);
+            assert!(!is_open(&h.ctx), "Esc closes it");
+            key(&mut h, Key::F10);
+            h.run_steps(2);
+            assert!(is_open(&h.ctx), "F10 opens ☰ too");
+            // A letter opens the submenu with that mnemonic: V for View.
+            key(&mut h, Key::V);
+            h.run_steps(2);
+            assert!(rows(&h, 1).iter().any(|r| r.command.as_deref() == Some("view.rulers")), "V opens View");
+            key(&mut h, Key::Escape);
+            assert!(!is_open(&h.ctx));
+        }
+
+        #[test]
+        fn help_has_its_search_field() {
+            let mut h = bar();
+            key(&mut h, Key::F10);
+            h.run_steps(2);
+            key(&mut h, Key::H);
+            h.run_steps(2);
+            assert!(rows(&h, 1).iter().any(|r| r.command.as_deref().is_some_and(|c| c.starts_with("help."))), "H opens Help");
+            // Its search field has the keyboard: typing finds commands anywhere in the tree.
+            h.event(egui::Event::Text("rulers".into()));
+            h.run_steps(3);
+            assert!(rows(&h, 1).iter().any(|r| r.command.as_deref() == Some("view.rulers")), "Help › Search finds View › Rulers");
+            assert!(h.query_by_label_contains("\u{2630}").is_none(), "the tree's root is not part of a result's path");
+            assert!(is_open(&h.ctx), "typing keeps it open");
+        }
+
+        #[test]
+        fn press_drag_release_runs_an_item() {
+            let mut h = bar();
+            let rulers = h.state().ui.extras.rulers;
+            let mut at = h.get_by_label("Menu").rect().center();
+            h.event(egui::Event::PointerMoved(at));
+            h.run_steps(1);
+            h.event(egui::Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
+            h.run_steps(2);
+            assert!(is_open(&h.ctx), "☰ opens on the press");
+            let mut drag_to = |h: &mut Harness<'static, PhotocraftApp>, to: egui::Pos2| {
+                for k in 1..=8 {
+                    h.event(egui::Event::PointerMoved(at + (to - at) * (k as f32 / 8.0)));
+                    h.run_steps(1);
+                }
+                h.run_steps(2);
+                at = to;
+            };
+            let view = h.get_by_label("View").rect();
+            drag_to(&mut h, egui::pos2(view.left() + 30.0, view.center().y));
+            drag_to(&mut h, egui::pos2(view.right() - 6.0, view.center().y));
+            let item = h.get_by_label_contains("Rulers").rect();
+            drag_to(&mut h, egui::pos2(item.left() + 30.0, view.center().y));
+            drag_to(&mut h, item.center());
+            h.event(egui::Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
+            h.run_steps(3);
+            assert_eq!(h.state().ui.extras.rulers, !rulers, "releasing on Rulers ran it");
+            assert!(!is_open(&h.ctx), "and closed ☰");
+        }
     }
 }

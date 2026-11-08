@@ -293,6 +293,25 @@ impl Keys {
         }
     }
 
+    /// Open the menu of title `i` (an index into `tops`) from the keyboard.
+    fn open_top(&mut self, ctx: &egui::Context, tops: &[Id], i: usize) {
+        if let Some(&id) = tops.get(i) {
+            egui::Popup::open_id(ctx, id);
+            self.focus = None;
+            self.underline = true;
+            self.first_row = true;
+            ctx.request_repaint();
+        }
+    }
+
+    /// A bar of one title (the studio shell's ☰): the keyboard put on it (Alt, F10) opens its
+    /// menu straight away, there being no other title to move to.
+    pub(crate) fn open_focused(&mut self, ctx: &egui::Context, tops: &[Id]) {
+        if let Some(i) = self.focus {
+            self.open_top(ctx, tops, i);
+        }
+    }
+
     /// Handle this frame's keys, after the menus were drawn. `tops` are the titles' popup ids
     /// and `mnemonics` their letters, both in screen order; `nav` is the open menu's state. A
     /// command a mnemonic ran lands in `clicked`.
@@ -358,15 +377,7 @@ impl Keys {
         }
         let open = nav.top.is_some();
         let n = tops.len();
-        let open_top = |i: usize, keys: &mut Keys| {
-            if let Some(&id) = tops.get(i) {
-                egui::Popup::open_id(ctx, id);
-                keys.focus = None;
-                keys.underline = true;
-                keys.first_row = true;
-                ctx.request_repaint();
-            }
-        };
+        let open_top = |i: usize, keys: &mut Keys| keys.open_top(ctx, tops, i);
         let consume = |m: Modifiers, k: Key| ctx.input_mut(|i| i.consume_key(m, k));
         // Alt+letter opens that menu, open or not (an open one switches), as on Windows.
         let alt_letter = events.iter().find_map(|e| match e {
