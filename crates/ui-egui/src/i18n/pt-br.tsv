@@ -4563,3 +4563,20 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	Saved {n} s ago	Salvo há {n} s
 	Saved {n} min ago	Salvo há {n} min
 	Saved {n} h ago	Salvo há {n} h
+# Studio Codex dock
+	Sign Out	Sair
+	Restart Codex	Reiniciar o Codex
+	Conversation	Conversa
+	Activity	Atividade
+	Current document · {name}	Documento atual · {name}
+	Show History	Mostrar histórico
+	Run details	Detalhes da execução
+	No activity yet.	Nenhuma atividade ainda.
+	Adjust colors	Ajustar cores
+	Organize layers	Organizar camadas
+	Adjust the colors of the current document so they look balanced.	Ajuste as cores do documento atual para que fiquem equilibradas.
+	Organize the layers of the current document: clear names and groups.	Organize as camadas do documento atual: nomes claros e grupos.
+	What do you want to create or edit?	O que você quer criar ou editar?
+	What Codex works on	Onde o Codex trabalha
+	MCP connected	MCP conectado
+@plural	Finished in {n} step.|Finished in {n} steps.	Concluído em {n} etapa.|Concluído em {n} etapas.

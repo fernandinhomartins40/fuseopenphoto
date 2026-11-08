@@ -192,6 +192,7 @@ impl Driver {
     fn ui(&mut self, request: CodexRequest) {
         match request {
             CodexRequest::SignIn => self.request("account/login/start", json!({"type": "chatgpt"})),
+            CodexRequest::SignOut => self.request("account/logout", json!({})),
             CodexRequest::Send(message) => match self.thread.clone() {
                 Some(thread) => self.turn_start(&thread, &message),
                 None => {
@@ -243,6 +244,7 @@ impl Driver {
                 let who = account.map(|a| text(a, "email").or_else(|| text(a, "type")).unwrap_or_else(|| "signed in".into()));
                 self.emit(CodexEvent::Account(who));
             }
+            "account/logout" => self.request("account/read", json!({})),
             "account/login/start" => {
                 if let Some(url) = text(result, "authUrl") {
                     self.emit(CodexEvent::Activity("Sign in to ChatGPT in your browser…".into()));
