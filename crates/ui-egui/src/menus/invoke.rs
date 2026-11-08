@@ -151,6 +151,14 @@ fn invoke_early_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str,
 }
 
 fn invoke_shell_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+    // The studio shell has no dock: Window › <dock panel> shows it in the right panel instead.
+    if !app.studio.classic
+        && let Some(key) = id.strip_prefix("window.panel.")
+        && let Some(panel) = crate::studio::right_panel::DOCK_PANELS.iter().find(|p| p.0 == key)
+    {
+        app.studio.rail.pick = Some(panel.0);
+        return Some(Ok(Value::Null));
+    }
     if id == "window.panel.brushSettings" {
         app.ui.brush_tab = 0;
     }
