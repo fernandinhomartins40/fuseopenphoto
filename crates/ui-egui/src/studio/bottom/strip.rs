@@ -226,7 +226,9 @@ fn cards(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     }
     if ctx.input(|i| i.pointer.any_released()) {
         // The side column reads the drag first (drops on its buttons), in this same frame.
-        ctx.data_mut(|d| d.insert_temp(drag_key().with("released"), ctx.data(|d| d.get_temp::<u64>(drag_key()))));
+        // Read before writing: `ctx.data` inside `ctx.data_mut` deadlocks (the app froze on any click).
+        let released = ctx.data(|d| d.get_temp::<u64>(drag_key()));
+        ctx.data_mut(|d| d.insert_temp(drag_key().with("released"), released));
         ctx.data_mut(|d| d.remove::<u64>(drag_key()));
     } else {
         ctx.data_mut(|d| d.remove::<Option<u64>>(drag_key().with("released")));
