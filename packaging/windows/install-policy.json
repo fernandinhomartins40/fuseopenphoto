@@ -1,7 +1,5 @@
 {
   "id": "photocraft",
-  "name": "Fuse Open Photo",
-  "company": "Fuse",
   "upgradeCode": "833166CE-AE62-44C1-8F7F-9F9B10E03C8F",
   "sources": [
     "photocraft.wxs"

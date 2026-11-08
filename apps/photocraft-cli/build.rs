@@ -7,6 +7,7 @@
 
 fn main() -> std::io::Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=../../brand.env");
     println!("cargo:rerun-if-changed=../../assets/app-icon/photocraft.ico");
     println!("cargo:rerun-if-env-changed=PHOTOCRAFT_REQUIRE_WINRES");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
@@ -20,15 +21,19 @@ fn main() -> std::io::Result<()> {
         println!("cargo:rustc-link-arg-bins=/DELAYLOAD:windows.data.pdf.dll");
         println!("cargo:rustc-link-arg-bins=delayimp.lib");
     }
+    // The product name and company come from brand.env, the one place a rename happens.
+    let brand = std::fs::read_to_string("../../brand.env")?;
+    let get = |k: &str| brand.lines().find_map(|l| l.strip_prefix(k)?.strip_prefix('=')).unwrap_or("").trim().to_owned();
+    let (name, company) = (get("BRAND_NAME"), get("BRAND_COMPANY"));
     let mut res = winresource::WindowsResource::new();
     // FileVersion / ProductVersion strings and the numeric FILEVERSION / PRODUCTVERSION are left
     // to `WindowsResource::new`, which reads the Cargo package version. A pre-release such as
     // `1.2.3-rc.1` stays in the strings; the numeric fields are `1.2.3.0`.
     res.set_icon("../../assets/app-icon/photocraft.ico")
-        .set("ProductName", "Fuse Open Photo")
-        .set("FileDescription", "Fuse Open Photo command-line interface")
-        .set("CompanyName", "Fuse")
-        .set("LegalCopyright", "Copyright (c) the PhotoCraft authors. MIT OR Apache-2.0.")
+        .set("ProductName", &name)
+        .set("FileDescription", &format!("{name} command-line interface"))
+        .set("CompanyName", &company)
+        .set("LegalCopyright", &format!("Copyright (c) {company} and contributors. MIT OR Apache-2.0."))
         .set("OriginalFilename", "photocraft-cli.exe")
         .set("InternalName", "photocraft-cli");
     if let Err(err) = res.compile() {

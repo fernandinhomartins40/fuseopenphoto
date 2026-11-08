@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
-  <!-- Product identity: rename the installed product here (and in install-policy.json; the app's
-       own name lives in crates/ui-egui/src/studio/style.rs). -->
-  <?define ProductName="Fuse Open Photo" ?>
-  <?define Company="Fuse" ?>
+  <!-- Product identity: ProductName and Company come from brand.env at the repository root,
+       passed by package.ps1 as -d ProductName=... -d Company=... -->
+  <?ifndef ProductName ?>
+  <?error ProductName is not defined: build with package.ps1, which reads brand.env ?>
+  <?endif?>
+  <?ifndef Company ?>
+  <?error Company is not defined: build with package.ps1, which reads brand.env ?>
+  <?endif?>
   <?ifndef HasCodex ?>
   <?define HasCodex=0 ?>
   <?endif?>

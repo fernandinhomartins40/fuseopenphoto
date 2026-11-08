@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-  Build, sign and package the app for Windows (product name: photocraft.wxs).
+  Build, sign and package the app for Windows (product name and file prefix: brand.env).
 
 .DESCRIPTION
-  Produces, in $env:DIST (default: dist/release):
-    photocraft-<version>-windows-<arch>.msi            installer (WiX v5, per-user by default, per-machine optional)
-    photocraft-<version>-windows-<arch>-portable.zip   photocraft.exe + photocraft-cli.exe + portable.txt
-    photocraft-<version>-windows-<arch>-symbols.zip    photocraft.pdb + photocraft_cli.pdb (optional, for profilers)
+  Produces, in $env:DIST (default: dist/release), <file> being BRAND_FILE from brand.env:
+    <file>-<version>-windows-<arch>.msi            installer (WiX v5, per-user by default, per-machine optional)
+    <file>-<version>-windows-<arch>-portable.zip   photocraft.exe + photocraft-cli.exe + portable.txt
+    <file>-<version>-windows-<arch>-symbols.zip    photocraft.pdb + photocraft_cli.pdb (optional, for profilers)
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
@@ -59,7 +59,10 @@ New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 if (-not $env:PHOTOCRAFT_BUILD_SHA) { $env:PHOTOCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
 if (-not $env:PHOTOCRAFT_BUILD_DATE) { $env:PHOTOCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
 
-Write-Output "PhotoCraft $Version for Windows $Arch ($Target)"
+# Product name, company and the output file prefix come from brand.env.
+. (Join-Path $PSScriptRoot 'brand.ps1')
+$FilePrefix = $Brand['FILE']
+Write-Output "$($Brand['NAME']) $Version for Windows $Arch ($Target)"
 
 if (-not $SkipBuild) {
   # Static CRT: no VC++ redistributable needed. Scoped to the target so host build scripts and
@@ -161,13 +164,13 @@ $Banner = Join-Path $Stage 'installer-banner.bmp'
 $Dialog = Join-Path $Stage 'installer-dialog.bmp'
 New-InstallerArt (Join-Path $Root 'assets\app-icon\hicolor\256x256\apps\ai.storyteller.photocraft.png') $Banner $Dialog
 
-$Msi = Join-Path $Dist "photocraft-$Version-windows-$Arch.msi"
+$Msi = Join-Path $Dist "$FilePrefix-$Version-windows-$Arch.msi"
 & (Join-Path $PSScriptRoot 'check-icons.ps1')
 Invoke-Native 'wix build' {
   wix build (Join-Path $PSScriptRoot 'photocraft.wxs') -arch $Arch `
     -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext `
     -culture en-US -loc (Join-Path $PSScriptRoot 'photocraft.en-us.wxl') `
-    -d "Version=$MsiVersion" -d "DisplayVersion=$Version" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\photocraft.ico')" `
+    -d "ProductName=$($Brand['NAME'])" -d "Company=$($Brand['COMPANY'])" -d "Version=$MsiVersion" -d "DisplayVersion=$Version" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\photocraft.ico')" `
     -d "BannerBmp=$Banner" -d "DialogBmp=$Dialog" `
     -d "DocsDir=$Docs" -d "HasCraftFontLicences=$HasCraftFontLicences" -d "HasCodex=$HasCodex" `
     -o $Msi
@@ -183,7 +186,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Ms
 & (Join-Path $PSScriptRoot 'sign.ps1') $Msi
 
 # ---- portable zip ------------------------------------------------------------------------------
-$Portable = Join-Path $TargetDir "windows-package\photocraft-$Version-windows-$Arch-portable"
+$Portable = Join-Path $TargetDir "windows-package\$FilePrefix-$Version-windows-$Arch-portable"
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
@@ -203,7 +206,7 @@ if ($env:CRAFT_FONTS_DIR) {
 # portable.txt beside photocraft.exe switches on portable mode: settings, presets and recovery
 # files go to PhotoCraftData\ next to the exe instead of %APPDATA% (#228; see app_dirs.rs).
 Copy-Item (Join-Path $PSScriptRoot 'portable.txt') $Portable
-$Zip = Join-Path $Dist "photocraft-$Version-windows-$Arch-portable.zip"
+$Zip = Join-Path $Dist "$FilePrefix-$Version-windows-$Arch-portable.zip"
 Remove-Item -Force $Zip -ErrorAction SilentlyContinue
 # The archive holds the files themselves. `-Path <folder>` puts the folder *in* the archive, so
 # photocraft.exe came out one level down and portable mode needs portable.txt beside the exe
@@ -224,7 +227,7 @@ Remove-Item -Recurse -Force $Check -ErrorAction SilentlyContinue
 # Analyzer, Superluminal, Visual Studio) show PhotoCraft's function names for the released
 # binaries (#688). Signing doesn't change the PDB signature an exe records, so they match the
 # signed exes; a rebuild of the same commit writes a PDB that doesn't.
-$Symbols = Join-Path $TargetDir "windows-package\photocraft-$Version-windows-$Arch-symbols"
+$Symbols = Join-Path $TargetDir "windows-package\$FilePrefix-$Version-windows-$Arch-symbols"
 Remove-Item -Recurse -Force $Symbols -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Symbols | Out-Null
 foreach ($pdb in 'photocraft.pdb', 'photocraft_cli.pdb') {
@@ -233,7 +236,7 @@ foreach ($pdb in 'photocraft.pdb', 'photocraft_cli.pdb') {
   Copy-Item $p $Symbols
 }
 Copy-Item (Join-Path $PSScriptRoot 'symbols.txt') $Symbols
-$SymbolsZip = Join-Path $Dist "photocraft-$Version-windows-$Arch-symbols.zip"
+$SymbolsZip = Join-Path $Dist "$FilePrefix-$Version-windows-$Arch-symbols.zip"
 Remove-Item -Force $SymbolsZip -ErrorAction SilentlyContinue
 Compress-Archive -Path $Symbols -DestinationPath $SymbolsZip
 

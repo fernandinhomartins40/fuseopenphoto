@@ -65,8 +65,9 @@ if (-not $haveCert -and -not $haveAzure) {
 }
 
 $script:SignTool = Find-SignTool
-# The signature's description is the product name, kept in one place (install-policy.json).
-$productName = (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'install-policy.json') | ConvertFrom-Json).name
+# The signature's description is the product name, kept in one place (brand.env).
+. (Join-Path $PSScriptRoot 'brand.ps1')
+$productName = $Brand['NAME']
 $common = @('sign', '/v', '/fd', 'SHA256', '/td', 'SHA256', '/d', $productName)
 $tmp = Join-Path ([IO.Path]::GetTempPath()) "photocraft-sign-$PID"
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null

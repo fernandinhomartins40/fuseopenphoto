@@ -9,6 +9,10 @@ param([Parameter(Mandatory = $true)] [string] $MsiPath)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $policy = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'install-policy.json') | ConvertFrom-Json
+# The product name and company come from brand.env, as they do for the MSI itself.
+. (Join-Path $PSScriptRoot 'brand.ps1')
+$policy | Add-Member -NotePropertyName name -NotePropertyValue $Brand['NAME'] -Force
+$policy | Add-Member -NotePropertyName company -NotePropertyValue $Brand['COMPANY'] -Force
 function Read-Rows($Database, [string] $Sql, [int] $Columns) {
   $view = $Database.OpenView($Sql)
   try {
