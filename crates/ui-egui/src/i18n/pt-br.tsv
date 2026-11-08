@@ -4595,3 +4595,9 @@ studio	Paths	Caminhos
 	What Codex works on	Onde o Codex trabalha
 	MCP connected	MCP conectado
 @plural	Finished in {n} step.|Finished in {n} steps.	Concluído em {n} etapa.|Concluído em {n} etapas.
+	Disconnected	Desconectado
+	Connecting…	Conectando…
+	Connected	Conectado
+	Opening the browser…	Abrindo o navegador…
+	Sign in with your ChatGPT account to use Codex.	Entre com sua conta do ChatGPT para usar o Codex.
+	Codex CLI not found: install it (npm install -g @openai/codex) or set PHOTOCRAFT_CODEX	Codex CLI não encontrado: instale-o (npm install -g @openai/codex) ou defina PHOTOCRAFT_CODEX

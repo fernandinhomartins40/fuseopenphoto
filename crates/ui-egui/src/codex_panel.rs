@@ -130,13 +130,20 @@ pub struct CodexPanel {
     turn_start: usize,
     tab: Tab,
     scope: Scope,
+    /// Sign-in was asked for and the browser is open; cleared by the next account report or error.
+    signing_in: bool,
+    /// This PhotoCraft's MCP server got at least one tool call in this run.
+    mcp: bool,
 }
 
 impl CodexPanel {
     /// Apply one backend event; returns an image to place.
     fn apply(&mut self, event: CodexEvent) -> Option<PathBuf> {
         match event {
-            CodexEvent::Account(account) => self.account = Some(account),
+            CodexEvent::Account(account) => {
+                self.account = Some(account);
+                self.signing_in = false;
+            }
             CodexEvent::AssistantDelta { item, delta } => match self.entries.last_mut() {
                 Some(Entry::Assistant { item: last, text }) if *last == item => text.push_str(&delta),
                 _ => self.entries.push(Entry::Assistant { item, text: delta }),
@@ -150,7 +157,10 @@ impl CodexPanel {
                     self.entries.push(Entry::Assistant { item, text });
                 }
             }
-            CodexEvent::Activity(line) => self.step(line),
+            CodexEvent::Activity(line) => {
+                self.mcp |= line.starts_with(MCP_STEP);
+                self.step(line);
+            }
             CodexEvent::Image(path) => return Some(path),
             CodexEvent::TurnStarted => {
                 if !self.busy {
@@ -159,15 +169,37 @@ impl CodexPanel {
                 self.busy = true;
             }
             CodexEvent::TurnFinished => self.finish_turn(),
-            CodexEvent::Error(e) => self.entries.push(Entry::Error(e)),
+            CodexEvent::Error(e) => {
+                self.entries.push(Entry::Error(e));
+                self.signing_in = false;
+            }
             CodexEvent::Exited(why) => {
                 self.entries.push(Entry::Error(why));
-                self.link = None;
-                self.busy = false;
-                self.account = None;
+                self.reset();
             }
         }
         None
+    }
+
+    /// The link is gone (or being replaced): forget what it reported.
+    fn reset(&mut self) {
+        self.link = None;
+        self.busy = false;
+        self.account = None;
+        self.signing_in = false;
+        self.mcp = false;
+    }
+
+    /// The footer's status and its English text.
+    fn status(&self) -> (Status, &'static str) {
+        match (&self.account, self.link.is_some()) {
+            (_, false) => (Status::Off, "Disconnected"),
+            (None, true) => (Status::Waiting, "Connecting…"),
+            (Some(None), true) if self.signing_in => (Status::Waiting, "Opening the browser…"),
+            (Some(None), true) => (Status::Waiting, "not signed in"),
+            (Some(Some(_)), true) if self.mcp => (Status::Live, "MCP connected"),
+            (Some(Some(_)), true) => (Status::Live, "Connected"),
+        }
     }
 
     /// Add a step to the current checklist, or start one.
@@ -196,6 +228,16 @@ impl CodexPanel {
             self.apply(CodexEvent::Exited(tl!("Codex stopped.").into()));
         }
     }
+}
+
+/// How the backend labels a call to this PhotoCraft's MCP server (`server › tool`).
+const MCP_STEP: &str = "photocraft › ";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Status {
+    Off,
+    Waiting,
+    Live,
 }
 
 /// A step's raw line as a checklist label: `server › tool_name` reads "Tool name".
@@ -254,7 +296,8 @@ fn ensure_started(app: &mut PhotocraftApp) {
     };
     match start() {
         Ok(link) => app.codex.link = Some(link),
-        Err(e) => app.codex.entries.push(Entry::Error(e)),
+        // The backend's fixed messages (Codex not installed, …) have catalogue entries.
+        Err(e) => app.codex.entries.push(Entry::Error(crate::i18n::t(&e).to_string())),
     }
 }
 
@@ -293,6 +336,9 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
                 p.request(CodexRequest::Send(prompt));
             }
             Act::Request(request) => {
+                if request == CodexRequest::SignIn {
+                    app.codex.signing_in = true;
+                }
                 if request == CodexRequest::NewChat {
                     app.codex.entries.clear();
                     app.codex.busy = false;
@@ -303,9 +349,7 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
             Act::Start => ensure_started(app),
             Act::Restart => {
                 // Dropping the link stops the old Codex process.
-                app.codex.link = None;
-                app.codex.busy = false;
-                app.codex.account = None;
+                app.codex.reset();
                 ensure_started(app);
             }
             Act::Close => app.codex.open = false,
@@ -466,7 +510,9 @@ fn card() -> Frame {
 }
 
 fn conversation(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
-    if p.entries.is_empty() {
+    if p.link.is_some() && p.account == Some(None) {
+        sign_in_card(ui, t, p.signing_in, acts);
+    } else if p.entries.is_empty() {
         ui.add_space(8.0);
         ui.label(RichText::new(tl!("Ask Codex to edit the open document or to generate an image.")).color(t.text_faint));
     }
@@ -501,6 +547,23 @@ fn conversation(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
             }),
         }
     }
+}
+
+/// Signed out: what Codex needs and the amber button that opens ChatGPT's sign-in in the browser.
+fn sign_in_card(ui: &mut Ui, t: &Tokens, signing_in: bool, acts: &mut Vec<Act>) {
+    card().fill(t.field).stroke(Stroke::new(1.0, t.accent_border)).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.add(egui::Label::new(RichText::new(tl!("Sign in with your ChatGPT account to use Codex.")).color(t.text)).wrap());
+        ui.add_space(8.0);
+        if signing_in {
+            ui.horizontal(|ui| {
+                ui.add(egui::Spinner::new().size(16.0).color(t.accent));
+                ui.label(RichText::new(tl!("Opening the browser…")).color(t.text_dim));
+            });
+        } else if crate::widgets::primary_button(ui, tl!("Sign in with ChatGPT"), 0.0).clicked() {
+            acts.push(Act::Request(CodexRequest::SignIn));
+        }
+    });
 }
 
 /// The user's message: a rounded bubble with a person icon, on the reading end.
@@ -668,15 +731,16 @@ fn scope_menu(ui: &mut Ui, t: &Tokens, scope: &mut Scope) {
     });
 }
 
-/// "● Codex CLI · MCP connected", or what is missing and the button that fixes it.
+/// "● Codex CLI · Connected", or what is missing and the button that fixes it.
 fn footer(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
     let running = p.link.is_some();
-    let (dot, state) = match (&p.account, running) {
-        (_, false) => (t.text_faint, tl!("not running")),
-        (None, true) => (t.warning, tl!("starting…")),
-        (Some(None), true) => (t.warning, tl!("not signed in")),
-        (Some(Some(_)), true) => (green(t), tl!("MCP connected")),
+    let (status, text) = p.status();
+    let dot = match status {
+        Status::Off => t.text_faint,
+        Status::Waiting => t.warning,
+        Status::Live => green(t),
     };
+    let state = crate::i18n::t(text);
     ui.horizontal(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(10.0, 16.0), Sense::hover());
         ui.painter().circle_filled(r.center(), 4.0, dot);
@@ -686,7 +750,7 @@ fn footer(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
                 if crate::widgets::secondary_button(ui, tl!("Start Codex"), 0.0).clicked() {
                     acts.push(Act::Start);
                 }
-            } else if p.account == Some(None) && crate::widgets::primary_button(ui, tl!("Sign in with ChatGPT"), 0.0).clicked() {
+            } else if p.account == Some(None) && !p.signing_in && crate::widgets::primary_button(ui, tl!("Sign in with ChatGPT"), 0.0).clicked() {
                 acts.push(Act::Request(CodexRequest::SignIn));
             }
         });
@@ -867,6 +931,33 @@ mod tests {
         p.apply(CodexEvent::Error("boom".into()));
         p.apply(CodexEvent::TurnFinished);
         assert!(!p.entries.iter().any(|e| matches!(e, Entry::Done(_))));
+    }
+
+    #[test]
+    fn status_follows_the_link_sign_in_and_first_mcp_call() {
+        let (tx, _rx) = std::sync::mpsc::channel();
+        let (_etx, erx) = std::sync::mpsc::channel();
+        let mut p = CodexPanel::default();
+        assert_eq!(p.status(), (Status::Off, "Disconnected"));
+        p.link = Some(CodexLink { tx, rx: erx });
+        assert_eq!(p.status(), (Status::Waiting, "Connecting…"));
+        p.apply(CodexEvent::Account(None));
+        assert_eq!(p.status().1, "not signed in");
+        p.signing_in = true;
+        assert_eq!(p.status().1, "Opening the browser…");
+        p.apply(CodexEvent::Error("sign-in failed".into()));
+        assert!(!p.signing_in, "an error ends the wait");
+        p.signing_in = true;
+        p.apply(CodexEvent::Account(Some("me@example.com".into())));
+        assert_eq!(p.status(), (Status::Live, "Connected"));
+        assert!(!p.signing_in);
+        p.apply(CodexEvent::Activity("Generating image…".into()));
+        assert_eq!(p.status().1, "Connected", "only a call to PhotoCraft's own server proves MCP");
+        p.apply(CodexEvent::Activity("photocraft › doc_inspect".into()));
+        assert_eq!(p.status(), (Status::Live, "MCP connected"));
+        p.apply(CodexEvent::Exited("gone".into()));
+        assert_eq!(p.status(), (Status::Off, "Disconnected"));
+        assert!(!p.mcp);
     }
 
     #[test]

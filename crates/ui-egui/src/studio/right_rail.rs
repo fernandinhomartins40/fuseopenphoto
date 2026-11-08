@@ -1,5 +1,5 @@
-//! Right icon rail: Histórico, Navegador, Info, Painéis (every other panel). A tile picks what the
-//! right panel shows; clicking the lit tile again gives the panel back to the current context.
+//! Right icon rail: Codex (opens the docked chat), then Histórico, Navegador, Info, Painéis (every
+//! other panel). Those tiles pick what the right panel shows; clicking the lit tile again gives the panel back to the current context.
 
 use egui::{Align2, CornerRadius, FontId, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2};
 
@@ -19,6 +19,9 @@ pub const PANELS: &str = "panels";
 /// (icon, English label, pick) top to bottom.
 const TILES: [(&str, &str, &str); 4] = [("clock", "History", "history"), ("scan", "Navigator", "navigator"), ("info", "Info", "info"), ("layers", "Panels", PANELS)];
 
+/// The Codex tile's command: it opens and closes the docked Codex chat.
+const CODEX: &str = "window.toggle.codex";
+
 const RAIL_W: f32 = 80.0;
 const TILE_W: f32 = 64.0;
 const TILE_H: f32 = 70.0;
@@ -32,6 +35,9 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         .frame(egui::Frame::NONE.fill(backdrop).inner_margin(egui::Margin { left: 8, right: 8, top: 12, bottom: 12 }))
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 8.0;
+            if tile(ui, &t, "wand-sparkles", tl!("Codex"), app.codex.open).clicked() {
+                crate::menus::run_clicked(app, &ui.ctx().clone(), CODEX.to_string());
+            }
             for (icon, label, key) in TILES {
                 // "Info" stays short on the narrow tile (the plain row reads "Informações").
                 let name = crate::i18n::tr_ctx(crate::i18n::current(), "studio-rail", label);
@@ -78,6 +84,37 @@ mod tests {
         assert_eq!(toggle(None, "history"), Some("history"));
         assert_eq!(toggle(Some("history"), "history"), None);
         assert_eq!(toggle(Some("history"), PANELS), Some(PANELS));
+    }
+
+    /// The rail's Codex tile and the top bar's wand both open and close the Codex dock.
+    #[test]
+    fn the_codex_buttons_toggle_the_dock() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 900.0)).build_eframe(|cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", serde_json::json!({"width": 64, "height": 48})).unwrap();
+            app
+        });
+        h.run_steps(5);
+        // Top bar's wand first (highest on screen), then the rail's tile.
+        let click = |h: &mut egui_kittest::Harness<'_, crate::PhotocraftApp>, top: bool| {
+            let mut all: Vec<_> = h.query_all_by_role_and_label(egui::accesskit::Role::Button, "Codex").collect();
+            all.sort_by(|a, b| a.rect().min.y.total_cmp(&b.rect().min.y));
+            assert!(all.len() >= 2, "a top-bar wand and a rail tile named Codex");
+            let node = if top { all.first() } else { all.last() };
+            node.unwrap().click();
+            h.run_steps(3);
+        };
+        for top in [true, false] {
+            assert!(!h.state().codex.open);
+            click(&mut h, top);
+            assert!(h.state().codex.open, "opens the dock (top bar: {top})");
+            assert!(h.query_by_label("Conversation").is_some(), "the dock is drawn");
+            click(&mut h, top);
+            assert!(!h.state().codex.open, "closes it again (top bar: {top})");
+            assert!(h.query_by_label("Conversation").is_none());
+        }
     }
 
     #[test]

@@ -137,7 +137,7 @@ mod tests {
             app
         });
         h.run_steps(5);
-        for l in ["Tools", "Tools", "Select", "Retouch", "Color and Light", "Text", "Compose", "History", "Navigator", "Info", "Panels", "History", "Menu", "Menu", "Export", "Layer 1"] {
+        for l in ["Tools", "Tools", "Select", "Retouch", "Color and Light", "Text", "Compose", "History", "Navigator", "Info", "Panels", "History", "Menu", "Menu", "Export", "Layer 1", "Codex", "Codex"] {
             h.get_all_by_label(l).next().unwrap_or_else(|| panic!("no control labelled {l:?}")).click();
             h.run_steps(2);
         }

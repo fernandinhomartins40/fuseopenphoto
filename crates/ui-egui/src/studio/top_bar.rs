@@ -1,5 +1,5 @@
 //! Top bar: ☰ (the whole menu tree), app name, document title, undo/redo, command search (⌘K),
-//! save status and the Export button; also the window's drag area and caption buttons.
+//! save status, the Codex wand and the Export button; also the window's drag area and caption buttons.
 
 use egui::{CornerRadius, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 
@@ -19,6 +19,8 @@ pub struct State {
 }
 
 const EXPORT: &str = "file.export.exportAs";
+/// The wand left of Export: opens and closes the docked Codex chat.
+const CODEX: &str = "window.toggle.codex";
 /// Room kept between the groups and the search field, and the field's widest size.
 const GAP: f32 = 16.0;
 const SEARCH_W: f32 = 380.0;
@@ -69,6 +71,9 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         right.spacing_mut().item_spacing.x = 14.0;
         if export_button(&mut right, crate::menus::is_enabled(app, EXPORT)).clicked() {
             clicked = Some(EXPORT.to_string());
+        }
+        if crate::icons::button(&mut right, "wand-sparkles", 34.0, app.codex.open, "Codex").clicked() {
+            clicked = Some(CODEX.to_string());
         }
         save_status(app, &mut right);
         let right_start = right.min_rect().left().min(right_edge);
