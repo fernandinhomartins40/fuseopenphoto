@@ -161,44 +161,83 @@ fn type_anchor(app: &mut PhotocraftApp) -> Option<Pos2> {
     (r.is_finite() && xf.rect.intersects(r)).then(|| pos2(r.center().x, r.top() - GAP))
 }
 
-fn type_bar(app: &mut PhotocraftApp, ui: &mut Ui) {
-    use photocraft_doc::text::TextAlign;
-    let t = Tokens::get(ui.ctx());
-    ui.spacing_mut().item_spacing.x = 6.0;
-    // Like the classic bar: the selected characters' (or caret's) style, else the tool defaults.
-    let shown = tt::styles_at(app).map(|(c, p)| (c.font_family.clone(), tt::selected_style(&c), c.size_pt * shown_scale(app), c.color, p.align));
-    let o = &app.ui.tool_options;
-    let (mut fam, mut style, size) = match &shown {
-        Some((f, s, z, ..)) => (f.clone(), if s.is_empty() { "Regular".into() } else { s.clone() }, *z),
-        None => (o.type_font.clone(), o.type_style.clone(), o.type_size),
-    };
-    let (r, _) = ui.allocate_exact_size(vec2(22.0, ROW_H), Sense::hover());
-    crate::icons::paint(ui, r, "type", 16.0, t.icon);
-    if tt::fonts_ready(ui, 150.0 + 6.0 + 104.0) {
-        if let Some(picked) = font_picker(app, ui, &mut fam, 150.0) {
-            app.ui.tool_options.type_font = fam.clone();
-            let st = tt::styles(&fam);
-            let picked = picked.filter(|s| st.contains(s));
-            style = match &picked {
-                Some(s) => s.clone(),
-                None if st.contains(&style) => style,
-                None => st.first().cloned().unwrap_or_else(|| "Regular".into()),
-            };
-            app.ui.tool_options.type_style = style.clone();
-            // Only a style picked under the family's ">" is set: each layer keeps its face (#3556).
-            match picked {
-                Some(s) => apply_style(app, ui.ctx(), json!({"font": fam, "fontStyle": s})),
-                None => apply_style(app, ui.ctx(), json!({"font": fam})),
+/// The style the type bar shows: the selected characters' (or caret's), else the tool defaults.
+struct Shown {
+    family: String,
+    style: String,
+    size: f32,
+    rgb: Option<[f32; 3]>,
+    align: Option<photocraft_doc::text::TextAlign>,
+}
+
+fn shown(app: &PhotocraftApp) -> Shown {
+    match tt::styles_at(app) {
+        Some((c, p)) => {
+            let s = tt::selected_style(&c);
+            Shown {
+                family: c.font_family.clone(),
+                style: if s.is_empty() { "Regular".into() } else { s },
+                size: c.size_pt * shown_scale(app),
+                rgb: Some(c.color.to_rgb()),
+                align: Some(p.align),
             }
         }
-        let opts: Vec<(String, String)> = tt::styles(&fam).into_iter().map(|s| (s.clone(), tt::style_label(&s))).collect();
-        let opts_ref: Vec<(String, &str)> = opts.iter().map(|(a, b)| (a.clone(), b.as_str())).collect();
-        if crate::widgets::dropdown(ui, "studio-type-style", tl!("Style"), &mut style, &opts_ref, 104.0) {
-            app.ui.tool_options.type_style = style.clone();
-            apply_style(app, ui.ctx(), json!({"fontStyle": style}));
+        None => {
+            let o = &app.ui.tool_options;
+            Shown { family: o.type_font.clone(), style: o.type_style.clone(), size: o.type_size, rgb: None, align: None }
         }
     }
-    // Size: typed or scrubbed in the field, or a preset from the menu beside it.
+}
+
+fn type_bar(app: &mut PhotocraftApp, ui: &mut Ui) {
+    let t = Tokens::get(ui.ctx());
+    ui.spacing_mut().item_spacing.x = 6.0;
+    let s = shown(app);
+    let (r, _) = ui.allocate_exact_size(vec2(22.0, ROW_H), Sense::hover());
+    crate::icons::paint(ui, r, "type", 16.0, t.icon);
+    font_controls(app, ui, s.family, s.style);
+    size_control(app, ui, s.size);
+    color_swatch(app, ui, s.rgb);
+    crate::widgets::vline(ui, 22.0);
+    ui.spacing_mut().item_spacing.x = 2.0;
+    align_buttons(app, ui, s.align);
+    crate::widgets::vline(ui, 22.0);
+    if pill(ui, "ellipsis", None, false, tl!("Character and Paragraph")).clicked() {
+        invoke(app, &ui.ctx().clone(), "window.panel.character");
+    }
+}
+
+/// Font family and style menus, applied as the classic bar applies them.
+fn font_controls(app: &mut PhotocraftApp, ui: &mut Ui, mut fam: String, mut style: String) {
+    if !tt::fonts_ready(ui, 150.0 + 6.0 + 104.0) {
+        return;
+    }
+    if let Some(picked) = font_picker(app, ui, &mut fam, 150.0) {
+        app.ui.tool_options.type_font = fam.clone();
+        let st = tt::styles(&fam);
+        let picked = picked.filter(|s| st.contains(s));
+        style = match &picked {
+            Some(s) => s.clone(),
+            None if st.contains(&style) => style,
+            None => st.first().cloned().unwrap_or_else(|| "Regular".into()),
+        };
+        app.ui.tool_options.type_style = style.clone();
+        // Only a style picked under the family's ">" is set: each layer keeps its face (#3556).
+        match picked {
+            Some(s) => apply_style(app, ui.ctx(), json!({"font": fam, "fontStyle": s})),
+            None => apply_style(app, ui.ctx(), json!({"font": fam})),
+        }
+    }
+    let opts: Vec<(String, String)> = tt::styles(&fam).into_iter().map(|s| (s.clone(), tt::style_label(&s))).collect();
+    let opts_ref: Vec<(String, &str)> = opts.iter().map(|(a, b)| (a.clone(), b.as_str())).collect();
+    if crate::widgets::dropdown(ui, "studio-type-style", tl!("Style"), &mut style, &opts_ref, 104.0) {
+        app.ui.tool_options.type_style = style.clone();
+        apply_style(app, ui.ctx(), json!({"fontStyle": style}));
+    }
+}
+
+/// Size: typed or scrubbed in the field, or a preset from the menu beside it.
+fn size_control(app: &mut PhotocraftApp, ui: &mut Ui, size: f32) {
     let (unit, label) = tt::type_unit(app);
     let mut display = size * unit;
     let mut new_size = None;
@@ -220,25 +259,29 @@ fn type_bar(app: &mut PhotocraftApp, ui: &mut Ui) {
         app.ui.tool_options.type_size = size;
         apply_style(app, ui.ctx(), json!({"size": size, "metricsAsShown": true}));
     }
-    // Text colour swatch: the shared Color Picker, as the classic bar opens it.
-    let c = shown
-        .as_ref()
-        .map(|s| {
-            let v = s.3.to_rgb();
-            [v[0], v[1], v[2], 1.0]
-        })
-        .unwrap_or(app.session.tools.foreground);
+}
+
+/// Text colour swatch: the shared Color Picker, as the classic bar opens it.
+fn color_swatch(app: &mut PhotocraftApp, ui: &mut Ui, rgb: Option<[f32; 3]>) {
+    let t = Tokens::get(ui.ctx());
+    let [r, g, b] = rgb.unwrap_or_else(|| {
+        let [r, g, b, _] = app.session.tools.foreground;
+        [r, g, b]
+    });
     let (rect, resp) = ui.allocate_exact_size(vec2(26.0, 22.0), Sense::click());
     let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-    ui.painter().rect_filled(rect, t.radius_sm, egui::Color32::from_rgb(q(c[0]), q(c[1]), q(c[2])));
+    ui.painter().rect_filled(rect, t.radius_sm, egui::Color32::from_rgb(q(r), q(g), q(b)));
     ui.painter().rect_stroke(rect, t.radius_sm, Stroke::new(1.0, t.field_border), egui::StrokeKind::Outside);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Set the text color")));
     if resp.on_hover_text(tl!("Set the text color")).clicked() {
-        tt::open_color_picker(app, [c[0], c[1], c[2]]);
+        tt::open_color_picker(app, [r, g, b]);
     }
-    crate::widgets::vline(ui, 22.0);
-    ui.spacing_mut().item_spacing.x = 2.0;
-    let shown_align = match shown.as_ref().map(|s| s.4) {
+}
+
+/// Left / centre / right; a justified paragraph lights none.
+fn align_buttons(app: &mut PhotocraftApp, ui: &mut Ui, align: Option<photocraft_doc::text::TextAlign>) {
+    use photocraft_doc::text::TextAlign;
+    let shown_align = match align {
         Some(TextAlign::Left) => "left",
         Some(TextAlign::Center) => "center",
         Some(TextAlign::Right) => "right",
@@ -253,10 +296,6 @@ fn type_bar(app: &mut PhotocraftApp, ui: &mut Ui) {
             app.ui.tool_options.type_align = align.into();
             apply_style(app, ui.ctx(), json!({"align": align}));
         }
-    }
-    crate::widgets::vline(ui, 22.0);
-    if pill(ui, "ellipsis", None, false, tl!("Character and Paragraph")).clicked() {
-        invoke(app, &ui.ctx().clone(), "window.panel.character");
     }
 }
 
