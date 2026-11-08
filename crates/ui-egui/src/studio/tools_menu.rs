@@ -270,10 +270,10 @@ mod tests {
         h.drag_at(from);
         h.run_steps(1);
         for k in 1..=10 {
-            h.hover_at(from + vec2(30.0, 20.0) * k as f32);
+            h.hover_at(from + vec2(30.0, 6.0) * k as f32);
             h.run_steps(1);
         }
-        h.drop_at(from + vec2(300.0, 200.0));
+        h.drop_at(from + vec2(300.0, 60.0));
         h.run_steps(2);
         let after = h.get_by_label("Tools").rect();
         assert!((after.min - before.min).length() > 100.0, "the button did not move: {before:?} -> {after:?}");
@@ -281,9 +281,9 @@ mod tests {
         h.get_by_label("Tools").click();
         h.run_steps(2);
         assert!(h.state().studio.tools.open);
-        h.get_by_label("Hand Tool").click();
+        h.get_by_label("Crop Tool").click();
         h.run_steps(2);
-        assert_eq!(h.state().ui.tool, crate::state::Tool::Hand);
+        assert_eq!(h.state().ui.tool, crate::state::Tool::Crop);
         assert!(!h.state().studio.tools.open);
     }
 
