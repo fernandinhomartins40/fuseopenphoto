@@ -28,7 +28,7 @@ fn an_unsupported_adjustment_row_carries_a_warning_marker() {
     .unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     h.run_steps(8);
     let marked = row(&h, mystery_id);

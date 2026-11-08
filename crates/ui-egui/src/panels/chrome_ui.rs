@@ -352,7 +352,7 @@ mod tests {
         for theme in [crate::theme::ThemeKind::Pro, crate::theme::ThemeKind::Studio] {
             let mut h = Harness::builder().with_size(vec2(1200.0, 700.0)).with_max_steps(64).build_eframe(move |cc| {
                 PhotocraftApp::setup_context(&cc.egui_ctx, theme);
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
                 app.ui.theme = theme;
                 app
             });
@@ -384,7 +384,7 @@ mod tests {
         use egui_kittest::{Harness, kittest::Queryable};
         let mut h = Harness::builder().with_size(vec2(1200.0, 700.0)).with_max_steps(64).build_eframe(|cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::ThemeKind::Pro);
-            PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+            PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default())
         });
         h.state_mut().run("file.new", json!({"width": 800, "height": 600})).unwrap();
         h.state_mut().sync_views();
@@ -407,7 +407,7 @@ mod tests {
         use egui_kittest::{Harness, kittest::Queryable};
         let mut h = Harness::builder().with_size(vec2(1200.0, 700.0)).with_max_steps(64).build_eframe(|cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::ThemeKind::Pro);
-            PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+            PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default())
         });
         h.state_mut().run("file.new", json!({"width": 800, "height": 600})).unwrap();
         h.state_mut().sync_views();
@@ -436,7 +436,7 @@ mod tests {
                 let builder = Harness::builder().with_size(vec2(width, 600.0)).with_max_steps(64);
                 let mut h = builder.build_eframe(move |cc| {
                     PhotocraftApp::setup_context(&cc.egui_ctx, theme);
-                    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
                     app.run("prefs.set", json!({"path": "interface.theme", "value": theme.id()})).unwrap();
                     app.ui.theme = theme;
                     app
@@ -531,7 +531,7 @@ mod tests {
         use photocraft_engine::Session;
         use serde_json::json;
 
-        let mut app = PhotocraftApp::new(Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 8, "height": 8, "name": "Keep"})).unwrap();
         let n = app.session.documents().len();
         app.ui.chrome.home = Some(n);
@@ -574,7 +574,7 @@ mod tests {
     fn status_message_shows_with_no_document_open() {
         // #1567: File › Automate › Batch with no recorded action and no document answered nothing.
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.session.actions.list.clear();
         let e = crate::menus::invoke(&mut app, &egui::Context::default(), "file.automate.batch", json!({})).unwrap_err();
         app.ui.status = e.clone();

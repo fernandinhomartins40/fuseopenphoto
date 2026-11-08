@@ -217,7 +217,7 @@ fn print_drag_rejects_nonfinite_input_and_bounds_offsets() {
 }
 
 fn app() -> (PhotocraftApp, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.printer_source =
         Some(Arc::new(|| vec![craft_print::Printer { name: "Test printer".into(), default: true, two_sided: None, description: String::new() }]));
     app.run("file.new", json!({"width": 120, "height": 80, "name": "web"})).unwrap();
@@ -431,7 +431,7 @@ fn web_size_dialog(app: PhotocraftApp) -> (egui_kittest::Harness<'static, Photoc
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
     let id = open_web(h.state_mut());
     h.state_mut().ui.dialog_mut(id).unwrap().fields.insert("format".into(), json!("png24"));
     h.run_steps(5);
@@ -616,7 +616,7 @@ fn save_for_web_keeps_its_width_while_the_matte_is_invalid() {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
     h.run_steps(5);
     let dialog = |h: &egui_kittest::Harness<'_, PhotocraftApp>| h.ctx.data(|m| m.get_temp::<Vec<egui::Rect>>(egui::Id::unique("pc-dialog-rects"))).unwrap()[0];
     let before = dialog(&h);
@@ -894,7 +894,7 @@ fn web_preview_keeps_its_size_and_zoom_while_the_pointer_moves() {
     for ppp in [1.0, 1.25, 1.5, 1.75, 2.25] {
         for screen in [egui::vec2(1600.0, 1100.0), egui::vec2(1097.0, 617.0), egui::vec2(1280.0, 720.0)] {
             for view in ["2up", "4up", "original"] {
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
                 app.run("file.new", json!({"width": 1980, "height": 1200})).unwrap();
                 let id = open_web(&mut app);
                 app.ui.dialog_mut(id).unwrap().fields.insert("__view".into(), json!(view));
@@ -906,7 +906,7 @@ fn web_preview_keeps_its_size_and_zoom_while_the_pointer_moves() {
                     },
                     app,
                 );
-                PhotocraftApp::setup_context(&h.ctx, Default::default());
+                PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
                 h.run_steps(8);
                 let layout = |h: &egui_kittest::Harness<'_, PhotocraftApp>| {
                     let f = &h.state().ui.dialogs[0].fields;
@@ -1044,7 +1044,7 @@ fn save_as_pdf_browse_fills_the_output_from_a_save_dialog() {
     let (show, asked) = crate::file_dialog::fake(vec![Some(FileDialogAnswer::SaveTo(out.clone()))]);
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services { file_dialog: Some(show), ..Default::default() });
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services { file_dialog: Some(show), ..Default::default() });
         app.session.printer_source =
             Some(Arc::new(|| vec![craft_print::Printer { name: "Test printer".into(), default: true, two_sided: None, description: String::new() }]));
         app

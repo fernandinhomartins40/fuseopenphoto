@@ -100,25 +100,15 @@ mod tests {
     }
 
     #[test]
-    fn help_menu_lists_links_then_separator_then_system_info_and_about() {
+    fn help_menu_hides_the_upstream_links_and_keeps_system_info_and_about() {
         let app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
         let help: Vec<String> = crate::menus::menu_items(&app).into_iter().filter(|i| i.path == ["Help"]).map(|i| i.id).collect();
-        assert_eq!(
-            help,
-            [
-                "help.discord",
-                "help.website",
-                "help.artcraftWebsite",
-                "help.github",
-                "help.reportIssue",
-                "help.checkForUpdates",
-                "---",
-                "help.systemInfo",
-                "help.about"
-            ]
-        );
+        // This build links nowhere upstream: the link commands stay out of the Help menu, and
+        // without an update service Check for Updates is unavailable.
+        assert_eq!(help, ["help.checkForUpdates", "---", "help.systemInfo", "help.about"]);
+        assert!(!crate::menus::is_enabled(&app, "help.checkForUpdates"));
         for (id, _) in COMMANDS {
-            assert!(crate::menus::is_live(id) && crate::menus::is_enabled(&app, id), "{id}");
+            assert!(!help.iter().any(|h| h == id), "{id} is not in the Help menu");
         }
     }
 

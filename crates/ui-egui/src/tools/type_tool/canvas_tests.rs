@@ -79,7 +79,7 @@ fn numeric_type_fields_have_localized_accessible_names() {
 /// before opening a document. Properties still belongs to the selected layer.
 #[test]
 fn type_panels_show_default_controls_without_a_type_target() {
-    for app in [PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default()), new_app()] {
+    for app in [PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default()), new_app()] {
         let mut h = Harness::builder().with_size(vec2(760.0, 800.0)).build_ui_state(
             |ui, app: &mut PhotocraftApp| {
                 if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
@@ -209,7 +209,7 @@ mod panel_defaults {
 
     #[test]
     fn extended_defaults_merge_serialize_and_reset_without_replacing_legacy_options() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         super::super::apply(
             &mut app,
@@ -240,7 +240,7 @@ mod panel_defaults {
         assert_eq!(restored, app.ui.tool_options);
         crate::tool_memory::persist(&mut app, &ctx);
         let remembered = app.session.prefs().tool_options.clone();
-        let mut restarted = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut restarted = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         restarted.session.prefs.edit(|p| p.tool_options = remembered);
         crate::tool_memory::restore(&mut restarted);
         assert_eq!(restarted.ui.tool_options, restored, "the real preference restore path retains panel defaults");
@@ -365,7 +365,7 @@ fn make_harness_with(builder: egui_kittest::HarnessBuilder<PhotocraftApp>, ppp: 
 }
 
 fn new_app() -> PhotocraftApp {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 1600, "height": 900})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -1569,7 +1569,7 @@ fn temporary_type_transform_control_roundtrip_and_input_safety() {
 fn temporary_type_transform_preserves_depth_and_color_model() {
     use crate::canvas::{ToolEvent, tool_event};
     for (depth, mode) in [(8, "rgb"), (16, "rgb"), (32, "rgb"), (16, "gray"), (8, "cmyk"), (16, "lab")] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 1200, "height": 900, "depth": depth, "mode": mode})).unwrap();
         let id = LayerId(app.run("type.create", json!({"text": "PhotoCraft é世界", "size": 32, "x": 300, "y": 350})).unwrap()["layer"].as_u64().unwrap());
         super::edit_active(&mut app).unwrap();
@@ -1772,7 +1772,7 @@ fn temporary_type_transform_imported_psd_retains_editability_and_styles() {
 #[ignore = "release benchmark for issue #1091: 24 MP, eight text layers, 60 preview updates"]
 fn temporary_type_transform_large_document_preview() {
     use crate::canvas::{ToolEvent, tool_event};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 6000, "height": 4000})).unwrap();
     for i in 0..8 {
         app.run("type.create", json!({"text": "PhotoCraft transform preview", "size": 60, "x": 300, "y": 300 + i * 200})).unwrap();
@@ -1810,7 +1810,7 @@ fn temporary_type_transform_large_document_preview() {
         times[29], times[56], times[59]
     );
     // Compare the same matrices with the existing live-command path on the same document.
-    let mut commands = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut commands = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     commands.session.add_document(source, None);
     let mut command_times = Vec::new();
     for transform in transforms {

@@ -20,7 +20,7 @@ fn panel(open_document: bool) -> Harness<'static, PhotocraftApp> {
     }
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     h.run_steps(6);
     h

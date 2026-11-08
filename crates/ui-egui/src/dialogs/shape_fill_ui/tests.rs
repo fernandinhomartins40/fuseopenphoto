@@ -35,7 +35,7 @@ fn shape_thumbnail_double_click_picks_the_fill_colour() {
     s.execute("layer.new.layer", json!({"name": "Other"})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -75,7 +75,7 @@ fn shape_thumbnail_double_click_picks_the_fill_colour() {
 /// gracefully (never panics) when its target goes stale or its fields are garbage.
 #[test]
 fn stroke_picker_previews_commits_and_rejects_stale_or_bad_targets() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     let id = LayerId(
         app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699", "stroke": {"width": 4, "color": [1.0, 0.0, 0.0, 0.5]}})).unwrap()["layer"]
@@ -123,7 +123,7 @@ fn stroke_picker_previews_commits_and_rejects_stale_or_bad_targets() {
 #[test]
 fn stroke_picker_previews_a_stroke_that_is_off_as_ok_turns_it_on() {
     for stroke in [json!(null), json!({"width": 0, "color": "#ff0000"})] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699", "stroke": stroke})).unwrap()["layer"].as_u64().unwrap());
         let dialog = open_paint(&mut app, Paint::Stroke, Some(id), false, [0.0, 0.0, 0.0, 1.0]).unwrap();
@@ -142,7 +142,7 @@ fn stroke_picker_previews_a_stroke_that_is_off_as_ok_turns_it_on() {
 /// paint on, and edits no document.
 #[test]
 fn tool_only_picker_sets_the_next_shapes_colour() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.ui.tool_options.shape_fill = false;
     let history = app.session.active().unwrap().history.past_len();
@@ -158,7 +158,7 @@ fn tool_only_picker_sets_the_next_shapes_colour() {
 /// With no document open, the options bar's Color Picker still sets the next shape's colour.
 #[test]
 fn tool_only_picker_works_without_a_document() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     assert!(app.session.active().is_none());
     for which in [Paint::Fill, Paint::Stroke] {
         let dialog = open_paint(&mut app, which, None, true, [0.1, 0.2, 0.3, 1.0]).unwrap();
@@ -180,7 +180,7 @@ fn tool_only_picker_works_without_a_document() {
 #[test]
 fn locked_shape_refuses_the_options_bar_picker_without_changing_the_next_shapes_colour() {
     for lock in ["all", "pixels"] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699"})).unwrap()["layer"].as_u64().unwrap());
         app.run("layer.lockLayers", json!({lock: true})).unwrap();
@@ -204,7 +204,7 @@ fn a_refused_shape_edit_leaves_the_next_shapes_colour_alone() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     for which in [Paint::Fill, Paint::Stroke] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699"})).unwrap()["layer"].as_u64().unwrap());
         let (tools, options) = (app.session.tools.clone(), app.ui.tool_options.clone());

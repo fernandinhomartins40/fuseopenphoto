@@ -9,7 +9,7 @@ fn data_set_files_must_be_valid_utf8() {
 
 #[test]
 fn showing_grid_restores_hidden_extras() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     let ctx = egui::Context::default();
     app.ui.extras.grid = false;
     app.ui.view.extras = false;
@@ -31,7 +31,7 @@ fn showing_grid_restores_hidden_extras() {
 #[test]
 fn sync_with_system_menu_keeps_saved_slots_and_its_checkmark_across_palettes() {
     use photocraft_engine::prefs::{AppearanceMode, DarkTheme, LightTheme};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     let ctx = egui::Context::default();
     app.services.system_theme = Some(Box::new(|_| Some(egui::Theme::Light)));
     app.run("prefs.set", json!({"values": {"interface.darkTheme": "studio", "interface.lightTheme": "classic"}})).unwrap();
@@ -91,7 +91,7 @@ fn live_lookup_finds_engine_and_shell_commands() {
 
 #[test]
 fn select_menu_contains_every_selection_context_action_and_more() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("select.rect", json!({"x": 2, "y": 2, "width": 8, "height": 8})).unwrap();
     let items = menu_items(&app);
@@ -116,7 +116,7 @@ fn select_menu_contains_every_selection_context_action_and_more() {
 /// Other submenu (not a second "Other") right after Offset, enabled on a pixel layer.
 #[test]
 fn color_to_alpha_sits_in_filter_other_after_offset() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     let items = menu_items(&app);
     let at = |id: &str| items.iter().position(|i| i.id == id).unwrap_or_else(|| panic!("{id} missing"));
@@ -137,7 +137,7 @@ fn menu_bar_labels_have_horizontal_padding_and_open_menus() {
 
     for theme in crate::theme::ThemeKind::ALL {
         for width in [640.0, 1440.0] {
-            let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             let mut harness = Harness::builder().with_size(egui::vec2(width, 200.0)).build_ui_state(
                 |ui, app| {
                     menu_bar(app, ui);
@@ -198,7 +198,7 @@ fn overlapped_menu_title_does_not_receive_hover_switching() {
 fn hovering_a_title_at_the_screen_edge_switches_the_open_menu() {
     use egui_kittest::{Harness, kittest::Queryable};
 
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut harness = Harness::builder().with_size(egui::vec2(1200.0, 700.0)).build_ui_state(
         |ui, app| {
             egui::Frame::NONE.inner_margin(egui::Margin { top: 4, ..Default::default() }).show(ui, |ui| {
@@ -224,7 +224,7 @@ fn hovering_a_title_at_the_screen_edge_switches_the_open_menu() {
 fn hovering_another_title_switches_the_open_menu() {
     use egui_kittest::{Harness, kittest::Queryable};
 
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut harness = Harness::builder().with_size(egui::vec2(1200.0, 700.0)).build_ui_state(
         |ui, app| {
             menu_bar(app, ui);
@@ -253,7 +253,7 @@ fn hovering_another_title_switches_the_open_menu() {
 fn an_open_menu_reuses_its_items_until_the_state_changes() {
     use egui_kittest::{Harness, kittest::Queryable};
 
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut harness = Harness::builder().with_size(egui::vec2(1200.0, 700.0)).build_ui_state(
         |ui, app| {
             menu_bar(app, ui);
@@ -284,7 +284,7 @@ fn an_open_menu_reuses_its_items_until_the_state_changes() {
 
 #[test]
 fn help_search_finds_commands_by_any_word() {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let items = menu_items(&app);
     let ids = |q: &str| search_items(&items, q, crate::i18n::Lang::EN).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
     let di = ids("DI");
@@ -303,7 +303,7 @@ fn help_search_finds_commands_by_any_word() {
 /// In another UI language both the translated and the English names match.
 #[test]
 fn help_search_matches_the_ui_language_and_english() {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let items = menu_items(&app);
     let Some(fr) = crate::i18n::Lang::from_code("fr") else { return };
     let ids = |q: &str| search_items(&items, q, fr).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
@@ -316,7 +316,7 @@ fn help_search_matches_the_ui_language_and_english() {
 #[test]
 fn azerbaijani_help_search_uses_the_language_of_each_alias() {
     let az = crate::i18n::Lang::from_code("az").unwrap();
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let items = menu_items(&app);
     let hits = |query: &str| search_items(&items, query, az).iter().map(|item| item.id.clone()).collect::<Vec<_>>();
     assert!(!hits("ŞƏKİL").is_empty(), "uppercase dotted I matches Şəkil paths");
@@ -337,7 +337,7 @@ fn help_search_takes_typing_and_clicks_without_closing_the_menu() {
         let mut h =
             Harness::builder().with_size(egui::vec2(1200.0 / scale, 800.0 / scale)).with_pixels_per_point(scale).with_max_steps(64).build_eframe(move |cc| {
                 PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::ThemeKind::ALL[0]);
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
                 app.custom_titlebar = custom;
                 if doc {
                     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
@@ -388,7 +388,7 @@ fn help_search_letters_are_not_mnemonics() {
     use egui_kittest::{Harness, kittest::Queryable};
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::ThemeKind::ALL[0]);
-        PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+        PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default())
     });
     h.run_steps(4);
     let help = h.get_by_label("Help").rect().center();
@@ -423,7 +423,7 @@ fn dropdown_items_have_room() {
     use egui_kittest::{Harness, kittest::Queryable};
 
     for theme in crate::theme::ThemeKind::ALL {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         let mut harness = Harness::builder().with_size(egui::vec2(1200.0, 900.0)).build_ui_state(
             |ui, app| {
                 menu_bar(app, ui);
@@ -450,7 +450,7 @@ fn dropdown_items_have_room() {
 fn menu_level_height_is_bounded_by_viewport() {
     use egui_kittest::Harness;
 
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut harness = Harness::builder().with_size(egui::vec2(900.0, 240.0)).build_ui_state(
         |ui, app| {
             menu_bar(app, ui);
@@ -478,7 +478,7 @@ fn menu_level_height_is_bounded_by_viewport() {
 fn tall_menu_scrolls_with_mouse_wheel_on_short_display() {
     use egui_kittest::{Harness, kittest::Queryable};
 
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut harness = Harness::builder().with_size(egui::vec2(900.0, 220.0)).build_ui_state(
         |ui, app| {
             menu_bar(app, ui);
@@ -508,7 +508,7 @@ fn tall_menu_scrolls_with_mouse_wheel_on_short_display() {
 
 #[test]
 fn window_panel_and_workspace_ids_drive_the_shell() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let ctx = egui::Context::default();
     assert!(!app.ui.panels.history);
     invoke(&mut app, &ctx, "window.panel.history", Value::Null).unwrap();
@@ -529,7 +529,7 @@ fn window_panel_and_workspace_ids_drive_the_shell() {
 
 #[test]
 fn proof_setup_presets_and_checkmarks() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let ctx = egui::Context::default();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     app.sync_views();

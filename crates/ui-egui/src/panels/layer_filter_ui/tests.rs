@@ -99,7 +99,7 @@ fn harness_in(theme: ThemeKind) -> Harness<'static, PhotocraftApp> {
     let session = session();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, theme);
-        let mut app = PhotocraftApp::new(session, crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(session, crate::Services::default());
         app.run("prefs.set", json!({"path": "interface.theme", "value": theme.id()})).unwrap();
         app.ui.theme = theme;
         app
@@ -241,7 +241,7 @@ fn the_artboard_filter_follows_the_selection_in_the_panel() {
     let session = boards_session();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        PhotocraftApp::new_classic(session, crate::Services::default())
     });
     h.run_steps(8);
     let all = ["Loose", "Front", "Trees", "Oak", "Back", "Grass", "Background"];
@@ -371,7 +371,7 @@ fn the_smart_object_toggles_filter_the_panel() {
     let session = smart_session(&file);
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        PhotocraftApp::new_classic(session, crate::Services::default())
     });
     h.run_steps(8);
     let all = ["Linked art", "Embedded art", "Plain", "Background"];

@@ -27,7 +27,7 @@ fn bad_stored_values_are_sanitised() {
 }
 
 fn app_with_layers() -> (PhotocraftApp, photocraft_doc::LayerId, photocraft_doc::LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     let pixel = app.session.active().unwrap().active_layer.unwrap();
@@ -135,7 +135,7 @@ fn dragging_the_splitter_resizes_and_survives_a_ui_state_round_trip() {
     let prefs = h.state().session.prefs_to_json();
     let mut s2 = photocraft_engine::Session::new();
     s2.load_prefs_json(&prefs).unwrap();
-    let mut app3 = PhotocraftApp::new(s2, crate::Services::default());
+    let mut app3 = PhotocraftApp::new_classic(s2, crate::Services::default());
     restore(&mut app3);
     assert!(app3.ui.docking.is_some());
     assert_eq!(app3.ui.docking.as_ref().map(|w| &w.layout), h.state().ui.docking.as_ref().map(|w| &w.layout));
@@ -145,7 +145,7 @@ fn dragging_the_splitter_resizes_and_survives_a_ui_state_round_trip() {
     let mut s3 = photocraft_engine::Session::new();
     s3.load_prefs_json(&prefs).unwrap();
     s3.prefs.edit(|p| p.workspace.remember_workspace_changes = false);
-    let mut app4 = PhotocraftApp::new(s3, crate::Services::default());
+    let mut app4 = PhotocraftApp::new_classic(s3, crate::Services::default());
     restore(&mut app4);
     assert!(app4.ui.docking.is_none());
     assert_eq!(app4.ui.dock, DockLayout::default());
@@ -487,7 +487,7 @@ fn theme_switch_keeps_the_selected_color_group_panel() {
 fn app_harness_rows(size: egui::Vec2, theme: ThemeKind, n: usize) -> Harness<'static, PhotocraftApp> {
     let mut h = Harness::builder().with_size(size).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, theme);
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.ui.theme = theme;
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         for i in 0..n {
@@ -680,7 +680,7 @@ fn navigator_preview_fills_its_group_and_keeps_aspect() {
         for tall in [150.0, 260.0, 420.0] {
             let mut h = Harness::builder().with_size(vec2(1200.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
                 PhotocraftApp::setup_context(&cc.egui_ctx, theme);
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
                 app.ui.theme = theme;
                 app.ui.panels.navigator = true;
                 app.ui.dock.heights.insert(Group::Navigator, tall);
@@ -796,7 +796,7 @@ fn dragging_a_tab_reorders_the_group_and_the_order_persists() {
 
 #[test]
 fn brush_settings_window_is_closed_on_restart_but_can_be_reopened() {
-    let mut first = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut first = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     first.ui.panels.brush_settings = true;
     first.ui.panels.history = true;
     let saved = snapshot(&first);
@@ -808,7 +808,7 @@ fn brush_settings_window_is_closed_on_restart_but_can_be_reopened() {
 
     let mut session = photocraft_engine::Session::new();
     session.load_prefs_json(&persisted).unwrap();
-    let mut next = PhotocraftApp::new(session, crate::Services::default());
+    let mut next = PhotocraftApp::new_classic(session, crate::Services::default());
     restore(&mut next);
     assert!(!next.ui.panels.brush_settings, "a floating Brush Settings window should not reopen on startup");
     assert!(next.ui.panels.history, "remembered dock panel visibility is preserved");
@@ -817,7 +817,7 @@ fn brush_settings_window_is_closed_on_restart_but_can_be_reopened() {
     crate::menus::invoke(&mut next, &ctx, "window.toggle.brushSettings", json!({})).unwrap();
     assert!(next.ui.panels.brush_settings, "Window > Brush Settings can still open it");
 
-    let mut workspace = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut workspace = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     apply(&mut workspace, &saved);
     assert!(workspace.ui.panels.brush_settings, "switching workspaces still restores their saved layout");
 }
@@ -830,7 +830,7 @@ fn brush_settings_window_is_closed_on_restart_but_can_be_reopened() {
 /// transition.
 #[test]
 fn an_unreadable_docking_layout_is_dropped_and_the_rest_applies() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut saved = snapshot(&app);
     saved["docking"] = json!({"root": "not-a-dock-node"});
     saved["timelineOpen"] = json!(true);
@@ -843,7 +843,7 @@ fn an_unreadable_docking_layout_is_dropped_and_the_rest_applies() {
 /// so a workspace layout neither saves nor restores them.
 #[test]
 fn workspace_layouts_leave_the_layers_panel_options_alone() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.ui.layers_panel_options.show_filters = false;
     crate::layers_panel_ui::persist_options(&mut app);
     let stored = app.session.prefs().dialogs.get("ui.layersPanelOptions").cloned();

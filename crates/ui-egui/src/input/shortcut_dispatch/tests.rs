@@ -25,7 +25,7 @@ fn svg_editor_prompt_owns_later_shortcuts_in_same_frame() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), services);
     app.session.execute("file.new", json!({"width": 32, "height": 32})).unwrap();
     photocraft_engine::file_cmds::place_bytes(
         &mut app.session,
@@ -90,7 +90,7 @@ fn services() -> crate::Services {
 fn harness() -> Harness<'static, PhotocraftApp> {
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(realistic(), services())
+        PhotocraftApp::new_classic(realistic(), services())
     });
     h.run_steps(8);
     h
@@ -360,7 +360,7 @@ fn a_disabled_shortcut_says_why() {
 
 #[test]
 fn a_disabled_shortcut_uses_the_command_id_translation() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     let cs = crate::i18n::Lang::from_code("cs").unwrap();
     crate::i18n::with_language(cs, || {
         super::dispatch(&mut app, &egui::Context::default(), "select.all");
@@ -498,7 +498,7 @@ fn saving_harness() -> (Harness<'static, PhotocraftApp>, Saved) {
         let mut session = realistic();
         session.active_mut().unwrap().path = Some("/tmp/layout.psd".into());
         session.execute("layer.new.layer", json!({"name": "added"})).unwrap();
-        PhotocraftApp::new(session, services)
+        PhotocraftApp::new_classic(session, services)
     });
     h.run_steps(8);
     put_focus(&mut h, Place::Canvas);

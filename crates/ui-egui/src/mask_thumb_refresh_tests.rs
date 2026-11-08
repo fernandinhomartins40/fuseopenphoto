@@ -29,7 +29,7 @@ fn inverting_a_tileless_mask_refreshes_its_thumbnail() {
     s.execute("layer.layerMask.revealAll", json!({"layer": id})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"dockTabs": {"layers": 0}}));
