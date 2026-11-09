@@ -530,7 +530,8 @@ mod tests {
             }
             assert!(card.width() > 100.0, "{name}: no card");
             for node in h.query_all(egui_kittest::kittest::by().include_labels()) {
-                let r = node.rect();
+                let Some(b) = node.accesskit_node().bounding_box() else { continue };
+                let r = Rect::from_min_max(pos2(b.x0 as f32, b.y0 as f32), pos2(b.x1 as f32, b.y1 as f32));
                 if !r.intersects(card) || r.contains_rect(card) || r.width() < 1.0 {
                     continue;
                 }
