@@ -1,4 +1,4 @@
-use super::bar::released_on;
+use super::bar::{TREE_ROOT, released_on};
 use super::items::MenuItem;
 use super::state::translated_menu_label;
 
@@ -33,6 +33,11 @@ fn search_rank_in(lang: crate::i18n::Lang, query: &str, label: &str, path: &[Str
 /// labels and their `lang` translations match, so a search works in the UI language and in
 /// English; untranslated strings are simply their English text.
 pub fn search_items<'a>(items: &'a [MenuItem], query: &str, lang: crate::i18n::Lang) -> Vec<&'a MenuItem> {
+    search_in(items, query, lang)
+}
+
+/// [`search_items`] over any list of items.
+fn search_in<'a>(items: impl IntoIterator<Item = &'a MenuItem>, query: &str, lang: crate::i18n::Lang) -> Vec<&'a MenuItem> {
     let q = query.trim();
     if q.is_empty() {
         return Vec::new();
@@ -44,7 +49,7 @@ pub fn search_items<'a>(items: &'a [MenuItem], query: &str, lang: crate::i18n::L
         english.into_iter().chain(local).min()
     };
     let mut hits: Vec<(u8, usize, &MenuItem)> =
-        items.iter().enumerate().filter(|(_, it)| it.label != "---").filter_map(|(i, it)| rank(it).map(|r| (r, i, it))).collect();
+        items.into_iter().enumerate().filter(|(_, it)| it.label != "---").filter_map(|(i, it)| rank(it).map(|r| (r, i, it))).collect();
     hits.sort_by_key(|(r, i, _)| (*r, *i));
     let mut seen = std::collections::HashSet::new();
     hits.into_iter().filter(|(_, _, it)| seen.insert(it.id.as_str())).take(HELP_SEARCH_MAX).map(|(_, _, it)| it).collect()
@@ -59,7 +64,15 @@ pub(super) fn shown(ctx: &egui::Context) -> bool {
 /// Help › Search : a field at the top of the Help menu that finds any menu command
 /// by name. Results show their menu path; click, ↓ then ↩, or ↩ in the field runs one.
 /// `opening`: this frame's release ends the click on the Help title that opened the menu.
-pub(super) fn help_search(ui: &mut egui::Ui, items: &[MenuItem], opening: bool, clicked: &mut Option<String>, nav: &mut crate::menu_nav::Nav) {
+/// `level`: the Help menu's level in `nav` (1 under the studio shell's ☰).
+pub(super) fn help_search<'a>(
+    ui: &mut egui::Ui,
+    items: impl IntoIterator<Item = &'a MenuItem>,
+    opening: bool,
+    level: usize,
+    clicked: &mut Option<String>,
+    nav: &mut crate::menu_nav::Nav,
+) {
     let ctx = ui.ctx().clone();
     let lang = crate::i18n::current();
     let text_id = egui::Id::unique("help-menu-search");
@@ -75,7 +88,7 @@ pub(super) fn help_search(ui: &mut egui::Ui, items: &[MenuItem], opening: bool, 
     if (reopened || opening) && !crate::zoom_field::editing(&ctx) {
         field.request_focus();
     }
-    let results = search_items(items, &query, lang);
+    let results = search_in(items, &query, lang);
     if field.lost_focus()
         && ui.input(|i| i.key_pressed(egui::Key::Enter))
         && let Some(it) = results.iter().find(|it| it.enabled)
@@ -89,13 +102,13 @@ pub(super) fn help_search(ui: &mut egui::Ui, items: &[MenuItem], opening: bool, 
             ui.weak(crate::i18n::tr(lang, "No matching commands"));
         }
         for it in results {
-            let mut trail: Vec<String> = it.path.iter().map(|p| crate::i18n::tr(lang, p).to_string()).collect();
+            let mut trail: Vec<String> = it.path.iter().filter(|p| *p != TREE_ROOT).map(|p| crate::i18n::tr(lang, p).to_string()).collect();
             trail.push(translated_menu_label(lang, it));
             let mut b = egui::Button::new(trail.join(" › "));
             if let Some(sc) = &it.shortcut {
                 b = b.shortcut_text(crate::shortcuts::pretty(sc));
             }
-            let hit = nav.row(ui, 0, it.enabled, Some(&it.id), None, |ui, _| {
+            let hit = nav.row(ui, level, it.enabled, Some(&it.id), None, |ui, _| {
                 let r = ui.add_enabled(it.enabled, b);
                 let hit = r.clicked() || released_on(ui, &r);
                 (r, hit)

@@ -4621,3 +4621,9 @@ studio-tool	Polygon	Polígono
 studio-tool	Custom Shape	Forma personalizada
 studio-tool	Slice	Fatia
 studio-tool	Slice Select	Seleção de fatia
+	Disconnected	Desconectado
+	Connecting…	Conectando…
+	Connected	Conectado
+	Opening the browser…	Abrindo o navegador…
+	Sign in with your ChatGPT account to use Codex.	Entre com sua conta do ChatGPT para usar o Codex.
+	Codex CLI not found: install it (npm install -g @openai/codex) or set PHOTOCRAFT_CODEX	Codex CLI não encontrado: instale-o (npm install -g @openai/codex) ou defina PHOTOCRAFT_CODEX
