@@ -209,8 +209,10 @@ pub(crate) fn tree_menu(app: &mut PhotocraftApp, ui: &egui::Ui, title: &egui::Re
     built
 }
 
-/// `items` hung from [`TREE_ROOT`].
+/// `items` of the top menus hung from [`TREE_ROOT`]; items in no menu (the menu bar never shows
+/// them either) are left out, or they would be rows of the tree's first level.
 fn rooted(mut items: Vec<MenuItem>) -> Vec<MenuItem> {
+    items.retain(|it| it.path.first().is_some_and(|top| TOP_MENUS.contains(&top.as_str())));
     for it in &mut items {
         it.path.insert(0, TREE_ROOT.to_string());
     }

@@ -310,7 +310,15 @@ mod tests {
             let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
             app.run("file.new", serde_json::json!({"width": 64, "height": 48})).unwrap();
             app.sync_views();
-            let mut h = Harness::builder().with_size(egui::vec2(1280.0, 720.0)).build_ui_state(|ui, app| super::super::show(app, ui), app);
+            // The bar's text needs the theme's fonts, which the harness's first frame doesn't have yet.
+            let mut h = Harness::builder().with_size(egui::vec2(1280.0, 720.0)).build_ui_state(
+                |ui, app| {
+                    if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("semibold".into()))) {
+                        super::super::show(app, ui);
+                    }
+                },
+                app,
+            );
             PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
             h.run_steps(3);
             h

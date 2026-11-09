@@ -715,12 +715,15 @@ fn composer(ui: &mut Ui, t: &Tokens, p: &mut CodexPanel, acts: &mut Vec<Act>) {
 }
 
 fn scope_menu(ui: &mut Ui, t: &Tokens, scope: &mut Scope) {
-    let button = egui::Button::image_and_text(crate::icons::image("file", 15.0, t.icon), RichText::new(format!("{}  ▾", scope.label())).color(t.text))
+    let button = egui::Button::image_and_text(crate::icons::image("file", 15.0, t.icon), RichText::new(format!("{}      ", scope.label())).color(t.text))
         .fill(t.field)
         .stroke(Stroke::new(1.0, t.field_border))
         .corner_radius(8.0)
         .min_size(vec2(0.0, 30.0));
     let resp = ui.add(button).on_hover_text(tl!("What Codex works on"));
+    // An icon, not a "▾" glyph: the UI fonts may not have one.
+    let r = resp.rect;
+    crate::icons::paint(ui, Rect::from_center_size(pos2(r.right() - 14.0, r.center().y), vec2(12.0, 12.0)), "chevron-down", 11.0, t.text_dim);
     egui::Popup::menu(&resp).show(|ui| {
         crate::widgets::style_spectrum_popup_menu(ui);
         for s in Scope::ALL {
@@ -958,6 +961,35 @@ mod tests {
         p.apply(CodexEvent::Exited("gone".into()));
         assert_eq!(p.status(), (Status::Off, "Disconnected"));
         assert!(!p.mcp);
+    }
+
+    /// The dock signs in through a fake backend: signed out it shows the amber button, which
+    /// sends the request and waits ("Opening the browser…") until the account is reported.
+    #[test]
+    fn the_dock_signs_in_through_the_link() {
+        use egui_kittest::kittest::Queryable;
+        let (tx, requests) = std::sync::mpsc::channel();
+        let (events, rx) = std::sync::mpsc::channel();
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 900.0)).build_eframe(move |cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.codex.link = Some(CodexLink { tx, rx });
+            app.codex.open = true;
+            app
+        });
+        h.run_steps(3);
+        assert!(h.query_by_label_contains("Connecting…").is_some(), "no account report yet");
+        events.send(CodexEvent::Account(None)).unwrap();
+        h.run_steps(3);
+        h.get_all_by_label("Sign in with ChatGPT").next().expect("the sign-in button").click();
+        h.run_steps(3);
+        assert_eq!(requests.try_recv().ok(), Some(CodexRequest::SignIn));
+        assert!(h.query_all_by_label_contains("Opening the browser…").next().is_some());
+        assert!(h.query_by_label("Sign in with ChatGPT").is_none(), "one request at a time");
+        events.send(CodexEvent::Account(Some("me@example.com".into()))).unwrap();
+        h.run_steps(3);
+        assert!(h.query_by_label_contains("Connected").is_some());
+        assert!(h.query_by_label("Sign in with ChatGPT").is_none());
     }
 
     #[test]
