@@ -485,7 +485,7 @@ fn czech_status_notices_and_navigator_draw_translated_text() {
             crate::notices::post(
                 h.state_mut(),
                 "Preferences can't be saved",
-                vec!["PhotoCraft keeps retrying; until a save succeeds, preference changes are lost when it closes.".into()],
+                vec!["{app} keeps retrying; until a save succeeds, preference changes are lost when it closes.".into()],
                 true,
                 None,
             );

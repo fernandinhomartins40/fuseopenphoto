@@ -543,7 +543,7 @@ pub(super) fn print_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map
                 "colorHandling",
                 &[
                     ("printerManages", tl!("Printer Manages Colors")),
-                    ("photocraftManages", &crate::i18n::app(tl!("{app} Manages Colors"))),
+                    ("photocraftManages", crate::i18n::app(tl!("{app} Manages Colors")).as_str()),
                     ("noColorManagement", tl!("No Color Management")),
                 ],
                 240.0,
