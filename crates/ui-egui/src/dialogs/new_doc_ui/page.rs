@@ -3,7 +3,7 @@
 //! window. Formats on the left, their presets, a preview of the page, the settings on the right,
 //! Back / Create at the bottom. Window › Classic Layout keeps the dialog ([`super::body`]).
 
-use egui::{Align, Align2, Color32, CornerRadius, Layout, Rect, Response, RichText, Sense, Stroke, StrokeKind, Ui, UiBuilder, WidgetInfo, pos2, vec2};
+use egui::{Align, Color32, CornerRadius, Layout, Rect, Response, RichText, Sense, Stroke, StrokeKind, Ui, UiBuilder, WidgetInfo, pos2, vec2};
 use serde_json::{Map, Value, json};
 
 use super::{get_f, get_s};
@@ -12,7 +12,7 @@ use crate::theme::{self, Tokens};
 use crate::{icons, widgets};
 
 /// The bottom bar's height.
-const BOTTOM_H: f32 = 76.0;
+const BOTTOM_H: f32 = 56.0;
 /// The format column: category key (as in [`super::CATEGORIES`], then "Saved") and its icon
 /// (empty: the bookmark drawn by [`bookmark`]).
 const FORMATS: [(&str, &str); 8] = [
@@ -27,6 +27,8 @@ const FORMATS: [(&str, &str); 8] = [
 ];
 /// Translation context of the page's short labels ("Print" is "Impressão" here, not "Imprimir").
 const CTX: &str = "newDocument";
+/// A preset card's row for its page outline.
+const PAGE_ROW: f32 = 44.0;
 const PREFERENCES: &str = "edit.preferences.general";
 
 fn label(s: &str) -> &str {
@@ -44,9 +46,13 @@ pub(crate) fn show(app: &mut PhotocraftApp, ctx: &egui::Context, f: &mut Map<Str
         // The whole window is the page's: nothing underneath takes the pointer.
         ui.allocate_rect(screen, Sense::hover());
         ui.style_mut().interaction.selectable_labels = false;
-        let bar_h = crate::titlebar::bar_height(app, ctx, crate::studio::style::TOP_BAR_H);
+        let compact = crate::studio::style::compact(ctx);
+        let bar_h = crate::titlebar::bar_height(app, ctx, if compact { 44.0 } else { crate::studio::style::TOP_BAR_H });
         let top = Rect::from_min_size(screen.min, vec2(screen.width(), bar_h));
         let bottom = Rect::from_min_max(pos2(screen.left(), (screen.bottom() - BOTTOM_H).max(top.bottom())), screen.max);
+        // As in the editor: chrome bars and panels around the dark work area.
+        ui.painter().rect_filled(top, 0.0, t.chrome);
+        ui.painter().rect_filled(bottom, 0.0, t.chrome);
         let body = Rect::from_min_max(pos2(screen.left(), top.bottom()), pos2(screen.right(), bottom.top()));
         let mut back = header(app, ui, top);
         crate::field_tab::begin(ctx);
@@ -104,24 +110,24 @@ fn header(app: &mut PhotocraftApp, ui: &mut Ui, bar: Rect) -> bool {
     left.spacing_mut().item_spacing.x = 8.0;
     let mut back = menu_button(&mut left).clicked();
     left.label(RichText::new(crate::studio::style::APP_NAME).font(theme::semibold(18.0)).color(t.text));
-    left.add_space(6.0);
-    vsep(&mut left, 22.0);
-    left.add_space(6.0);
+    left.add_space(2.0);
+    vsep(&mut left, 20.0);
+    left.add_space(2.0);
     back |= text_link(&mut left, tl!("Home")).clicked();
-    left.label(RichText::new("/").font(theme::medium(15.0)).color(t.text_faint));
-    left.label(RichText::new(tl!("New Document")).font(theme::medium(15.0)).color(t.text));
+    left.label(RichText::new("/").font(theme::medium(13.0)).color(t.text_faint));
+    left.label(RichText::new(tl!("New Document")).font(theme::medium(13.0)).color(t.text));
     let left_end = left.min_rect().right() + 16.0;
     let mut right = ui.new_child(UiBuilder::new().max_rect(row(left_end, right_edge)).layout(Layout::right_to_left(Align::Center)));
     right.spacing_mut().item_spacing.x = 10.0;
     if cap_r > 0.0 {
-        vsep(&mut right, 22.0);
+        vsep(&mut right, 20.0);
     }
     let prefs = icons::button(&mut right, "settings", 34.0, false, "Preferences").clicked();
     let (lo, hi) = (left_end, right.min_rect().left() - 16.0);
     let w = 430.0_f32.min(hi - lo);
     if w >= 140.0 {
         let x = bar.center().x.clamp(lo + w / 2.0, hi - w / 2.0);
-        if search_field(app, ui, Rect::from_center_size(pos2(x, bar.center().y), vec2(w, 36.0))).clicked() {
+        if search_field(app, ui, Rect::from_center_size(pos2(x, bar.center().y), vec2(w, 34.0))).clicked() {
             app.ui.palette_open = true;
         }
     }
@@ -149,7 +155,7 @@ fn menu_button(ui: &mut Ui) -> Response {
 
 fn text_link(ui: &mut Ui, text: &str) -> Response {
     let t = Tokens::get(ui.ctx());
-    let r = ui.add(egui::Label::new(RichText::new(text).font(theme::medium(15.0)).color(t.text_dim)).sense(Sense::click()));
+    let r = ui.add(egui::Label::new(RichText::new(text).font(theme::medium(13.0)).color(t.text_dim)).sense(Sense::click()));
     r.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
@@ -167,10 +173,10 @@ fn search_field(app: &PhotocraftApp, ui: &mut Ui, rect: Rect) -> Response {
         Some(sc) => format!("{text} {sc}"),
         None => text.to_string(),
     };
-    let mut job = egui::text::LayoutJob::simple_singleline(text, theme::medium(14.0), t.text);
+    let mut job = egui::text::LayoutJob::simple_singleline(text, theme::medium(13.5), t.text_dim);
     job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width() - 48.0);
     let galley = p.layout_job(job);
-    p.galley(pos2(rect.left() + 38.0, rect.center().y - galley.size().y / 2.0), galley, t.text);
+    p.galley(pos2(rect.left() + 38.0, rect.center().y - galley.size().y / 2.0), galley, t.text_dim);
     resp
 }
 
@@ -184,12 +190,14 @@ fn vsep(ui: &mut Ui, h: f32) {
 fn columns(app: &mut PhotocraftApp, ui: &mut Ui, body: Rect, f: &mut Map<String, Value>) -> bool {
     let t = Tokens::get(ui.ctx());
     let w = body.width();
-    let formats_w = 244.0_f32;
-    let list_w = (w * 0.135).clamp(150.0, 215.0);
-    let right_w = (w * 0.25).clamp(290.0, 410.0);
+    let formats_w = 216.0_f32;
+    let list_w = (w * 0.125).clamp(150.0, 190.0);
+    let right_w = (w * 0.23).clamp(280.0, 340.0);
     let x1 = body.left() + formats_w;
     let x2 = x1 + list_w;
     let x3 = (body.right() - right_w).max(x2 + 120.0);
+    ui.painter().rect_filled(Rect::from_x_y_ranges(body.left()..=x2, body.y_range()), 0.0, t.chrome);
+    ui.painter().rect_filled(Rect::from_x_y_ranges(x3..=body.right(), body.y_range()), 0.0, t.chrome);
     for x in [x1, x2, x3] {
         ui.painter().vline(x, body.y_range(), Stroke::new(1.0, t.separator));
     }
@@ -208,24 +216,23 @@ fn column(ui: &mut Ui, r: Rect, margin: egui::Vec2) -> Ui {
 
 fn heading(ui: &mut Ui, text: &str) {
     let t = Tokens::get(ui.ctx());
-    ui.add(egui::Label::new(RichText::new(text).font(theme::semibold(19.0)).color(t.text)).truncate());
+    ui.add(egui::Label::new(RichText::new(text).font(theme::semibold(14.0)).color(t.text)).truncate());
 }
 
 /// Column 1, "Choose a format": the preset categories.
 fn formats(ui: &mut Ui, r: Rect, f: &mut Map<String, Value>) {
-    let mut c = column(ui, r, vec2(12.0, 22.0));
+    let mut c = column(ui, r, vec2(10.0, 16.0));
     c.horizontal(|ui| {
-        ui.add_space(8.0);
+        ui.add_space(10.0);
         heading(ui, tl!("Choose a format"));
     });
-    c.add_space(16.0);
+    c.add_space(10.0);
     let cat = get_s(f, "__category", "Recent");
     egui::ScrollArea::vertical().id_salt("new-doc-page-formats").show(&mut c, |ui| {
         for (key, icon) in FORMATS {
             if format_row(ui, key, icon, cat == key).clicked() {
                 f.insert("__category".into(), json!(key));
             }
-            ui.add_space(4.0);
         }
     });
 }
@@ -233,7 +240,7 @@ fn formats(ui: &mut Ui, r: Rect, f: &mut Map<String, Value>) {
 fn format_row(ui: &mut Ui, key: &str, icon: &str, on: bool) -> Response {
     let t = Tokens::get(ui.ctx());
     let text = label(key);
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 48.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 38.0), Sense::click());
     resp.widget_info(|| WidgetInfo::selected(egui::Role::Button, true, on, text));
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
     let (fill, ink) = match (on, resp.hovered()) {
@@ -243,17 +250,17 @@ fn format_row(ui: &mut Ui, key: &str, icon: &str, on: bool) -> Response {
     };
     let p = ui.painter();
     p.rect_filled(rect, CornerRadius::same(10), fill);
-    let icon_rect = Rect::from_center_size(pos2(rect.left() + 26.0, rect.center().y), vec2(22.0, 22.0));
+    let icon_rect = Rect::from_center_size(pos2(rect.left() + 20.0, rect.center().y), vec2(18.0, 18.0));
     if icon.is_empty() {
-        bookmark(p, icon_rect, Stroke::new(1.8, ink));
+        bookmark(p, icon_rect, Stroke::new(1.5, ink));
     } else {
-        icons::paint(ui, icon_rect, icon, 22.0, ink);
+        icons::paint(ui, icon_rect, icon, 18.0, ink);
     }
-    let font = if on { theme::semibold(16.0) } else { theme::medium(16.0) };
+    let font = if on { theme::semibold(14.0) } else { theme::medium(14.0) };
     let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font, ink);
-    job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width() - 60.0);
+    job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width() - 50.0);
     let galley = p.layout_job(job);
-    p.galley(pos2(rect.left() + 52.0, rect.center().y - galley.size().y / 2.0), galley, ink);
+    p.galley(pos2(rect.left() + 42.0, rect.center().y - galley.size().y / 2.0), galley, ink);
     resp
 }
 
@@ -267,7 +274,7 @@ fn bookmark(p: &egui::Painter, r: Rect, stroke: Stroke) {
 /// Column 2: the category's presets (or the saved ones); returns whether a second click on one
 /// asked to create.
 fn presets(app: &mut PhotocraftApp, ui: &mut Ui, r: Rect, f: &mut Map<String, Value>) -> bool {
-    let mut c = column(ui, r, vec2(12.0, 22.0));
+    let mut c = column(ui, r, vec2(10.0, 16.0));
     let cat = get_s(f, "__category", "Recent");
     if cat == "Saved" {
         return saved(app, &mut c, f);
@@ -287,7 +294,7 @@ fn presets(app: &mut PhotocraftApp, ui: &mut Ui, r: Rect, f: &mut Map<String, Va
                 // Touch-tolerant double-tap (finger jitter > egui's 6 px); see `widgets::second_click`.
                 create |= widgets::second_click(ui, &resp);
             }
-            ui.add_space(10.0);
+            ui.add_space(6.0);
         }
     });
     create
@@ -298,10 +305,10 @@ fn count_heading(ui: &mut Ui, name: &str, n: usize) {
     let t = Tokens::get(ui.ctx());
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 6.0;
-        ui.label(RichText::new(name).font(theme::semibold(19.0)).color(t.text));
-        ui.label(RichText::new(format!("({n})")).font(theme::medium(18.0)).color(t.text_dim));
+        ui.label(RichText::new(name).font(theme::semibold(14.0)).color(t.text));
+        ui.label(RichText::new(format!("({n})")).font(theme::medium(13.0)).color(t.text_dim));
     });
-    ui.add_space(16.0);
+    ui.add_space(10.0);
 }
 
 /// A preset card: page outline at the preset's aspect, bold name, size line; amber when selected.
@@ -314,21 +321,21 @@ fn preset_card(ui: &mut Ui, title: &str, size: &str, (w, h): (u32, u32), selecte
         job.halign = Align::Center;
         ui.painter().layout_job(job)
     };
-    let title_g = text(title, theme::semibold(14.5), t.text);
-    let size_g = text(size, egui::FontId::proportional(12.5), t.text_dim);
-    let height = 62.0 + title_g.size().y + 6.0 + size_g.size().y + 14.0;
+    let title_g = text(title, theme::medium(13.0), t.text);
+    let size_g = text(size, egui::FontId::proportional(11.5), t.text_dim);
+    let height = PAGE_ROW + title_g.size().y + 3.0 + size_g.size().y + 10.0;
     let (rect, resp) = ui.allocate_exact_size(vec2(width, height), Sense::click());
     resp.widget_info(|| WidgetInfo::selected(egui::Role::Button, true, selected, title));
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
     let p = ui.painter();
     let fill = if resp.hovered() { t.hover } else { t.card };
-    let stroke = if selected { Stroke::new(2.0, t.primary_bg) } else { Stroke::new(1.0, t.card_border) };
+    let stroke = if selected { Stroke::new(1.5, t.primary_bg) } else { Stroke::new(1.0, t.card_border) };
     p.rect(rect, CornerRadius::same(10), fill, stroke, StrokeKind::Inside);
-    let s = 32.0 / (w.max(h).max(1) as f32);
-    let page = Rect::from_center_size(pos2(rect.center().x, rect.top() + 34.0), vec2((w as f32 * s).max(4.0), (h as f32 * s).max(4.0)));
-    p.rect_stroke(page, 2.0, Stroke::new(1.6, t.text), StrokeKind::Inside);
-    let title_y = rect.top() + 62.0;
-    let size_y = title_y + title_g.size().y + 6.0;
+    let s = 24.0 / (w.max(h).max(1) as f32);
+    let page = Rect::from_center_size(pos2(rect.center().x, rect.top() + PAGE_ROW / 2.0 + 2.0), vec2((w as f32 * s).max(4.0), (h as f32 * s).max(4.0)));
+    p.rect_stroke(page, 2.0, Stroke::new(1.0, t.text_dim), StrokeKind::Inside);
+    let title_y = rect.top() + PAGE_ROW;
+    let size_y = title_y + title_g.size().y + 3.0;
     p.galley(pos2(rect.center().x, title_y), title_g, t.text);
     p.galley(pos2(rect.center().x, size_y), size_g, t.text_dim);
     resp
@@ -398,19 +405,18 @@ pub(crate) fn summary(f: &Map<String, Value>) -> String {
 /// The centre: title, subtitle and the page preview with its size rulers.
 fn preview(app: &PhotocraftApp, ui: &mut Ui, r: Rect, f: &Map<String, Value>) {
     let t = Tokens::get(ui.ctx());
-    let mut c = column(ui, r, vec2(28.0, 22.0));
-    c.label(RichText::new(tl!("Prepare your next creation.")).font(theme::semibold(36.0)).color(t.text));
+    let mut c = column(ui, r, vec2(28.0, 18.0));
+    c.label(RichText::new(tl!("Prepare your next creation.")).font(theme::semibold(24.0)).color(t.text));
     c.add_space(2.0);
-    c.label(RichText::new(tl!("Set the format, adjust the settings and create your document.")).font(theme::medium(17.0)).color(t.text_dim));
-    c.add_space(18.0);
+    c.add(egui::Label::new(RichText::new(tl!("Set the format, adjust the settings and create your document.")).font(theme::medium(13.5)).color(t.text_dim)).wrap());
+    c.add_space(14.0);
     widgets::hairline(&mut c);
-    c.add_space(18.0);
-    c.label(RichText::new(tl!("Document preview")).font(theme::semibold(17.0)).color(t.text));
+    c.add_space(14.0);
+    c.label(RichText::new(tl!("Document preview")).font(theme::medium(13.0)).color(t.text_dim));
     let area = c.available_rect_before_wrap();
-    // Room for the rulers above and left of the page, and the summary under it.
-    let stage = Rect::from_min_max(area.min + vec2(44.0, 56.0), pos2(area.right() - 8.0, area.bottom() - 56.0));
+    // Room for the rulers above and left of the page; the summary is on the bottom bar.
+    let stage = Rect::from_min_max(area.min + vec2(36.0, 36.0), pos2(area.right() - 8.0, area.bottom() - 16.0));
     let p = c.painter();
-    p.text(pos2(area.center().x, area.bottom() - 18.0), Align2::CENTER_CENTER, summary(f), theme::medium(15.5), t.text);
     if stage.width() < 24.0 || stage.height() < 24.0 {
         return;
     }
@@ -424,16 +430,16 @@ fn preview(app: &PhotocraftApp, ui: &mut Ui, r: Rect, f: &Map<String, Value>) {
         None => widgets::checker(p, page, 8.0),
     }
     p.rect_stroke(page, 0.0, Stroke::new(1.0, t.card_border), StrokeKind::Outside);
-    let ink = Stroke::new(1.4, t.text_dim);
-    ruler(p, page.left()..=page.right(), page.top() - 24.0, &format!("{} px", w.round() as u32), false, ink, t.text);
-    ruler(p, page.top()..=page.bottom(), page.left() - 24.0, &format!("{} px", h.round() as u32), true, ink, t.text);
+    let ink = Stroke::new(1.0, t.field_border);
+    ruler(p, page.left()..=page.right(), page.top() - 18.0, &format!("{} px", w.round() as u32), false, ink, t.text_dim);
+    ruler(p, page.top()..=page.bottom(), page.left() - 18.0, &format!("{} px", h.round() as u32), true, ink, t.text_dim);
 }
 
 /// A dimension line with end ticks along `span` at `at` (y, or x when `vertical`), labelled in its
 /// middle (the vertical label reads bottom to top).
 fn ruler(p: &egui::Painter, span: std::ops::RangeInclusive<f32>, at: f32, text: &str, vertical: bool, ink: Stroke, color: Color32) {
     let (a, b) = (*span.start(), *span.end());
-    let galley = p.layout_no_wrap(text.to_owned(), theme::medium(15.0), color);
+    let galley = p.layout_no_wrap(text.to_owned(), theme::medium(12.0), color);
     let mid = (a + b) / 2.0;
     let half = galley.size().x / 2.0 + 10.0;
     let pt = |along: f32, across: f32| if vertical { pos2(across, along) } else { pos2(along, across) };
@@ -443,7 +449,7 @@ fn ruler(p: &egui::Painter, span: std::ops::RangeInclusive<f32>, at: f32, text: 
         }
     }
     for end in [a, b] {
-        p.line_segment([pt(end, at - 6.0), pt(end, at + 6.0)], ink);
+        p.line_segment([pt(end, at - 4.0), pt(end, at + 4.0)], ink);
     }
     let gs = galley.size();
     if vertical {
@@ -456,30 +462,30 @@ fn ruler(p: &egui::Painter, span: std::ops::RangeInclusive<f32>, at: f32, text: 
 
 fn field_label(ui: &mut Ui, text: &str) {
     let t = Tokens::get(ui.ctx());
-    ui.label(RichText::new(text).size(13.5).color(t.text));
+    ui.label(RichText::new(text).size(13.0).color(t.text_dim));
 }
 
 fn separator(ui: &mut Ui) {
-    ui.add_space(10.0);
+    ui.add_space(8.0);
     widgets::hairline(ui);
-    ui.add_space(10.0);
+    ui.add_space(8.0);
 }
 
 /// The right column, "Configure document": every setting of the classic dialog.
 fn settings(app: &mut PhotocraftApp, ui: &mut Ui, r: Rect, f: &mut Map<String, Value>) {
-    let mut c = column(ui, r, vec2(24.0, 22.0));
+    let mut c = column(ui, r, vec2(16.0, 16.0));
     heading(&mut c, tl!("Configure document"));
-    c.add_space(16.0);
+    c.add_space(10.0);
     egui::ScrollArea::vertical().id_salt("new-doc-page-settings").show(&mut c, |ui| {
         ui.spacing_mut().item_spacing.y = 6.0;
         let w = (ui.available_width() - 6.0).max(120.0);
         field_label(ui, tl!("Name"));
         super::name_field(ui, f, w - 12.0);
         separator(ui);
-        ui.label(RichText::new(tl!("Dimensions")).font(theme::semibold(14.5)).color(Tokens::get(ui.ctx()).text));
+        ui.label(RichText::new(tl!("Dimensions")).font(theme::medium(13.0)).color(Tokens::get(ui.ctx()).text));
         dimensions(ui, f, w);
         ui.horizontal(|ui| {
-            ui.add_sized(vec2(w * 0.3, 20.0), egui::Label::new(RichText::new(tl!("Units")).size(13.5)));
+            ui.add_sized(vec2(w * 0.3, 20.0), egui::Label::new(RichText::new(tl!("Units")).size(13.0).color(Tokens::get(ui.ctx()).text_dim)));
             super::units_dropdown(ui, f, w * 0.7 - 8.0);
         });
         field_label(ui, crate::i18n::tr_ctx(crate::i18n::current(), "document", "Orientation"));
@@ -508,14 +514,14 @@ fn settings(app: &mut PhotocraftApp, ui: &mut Ui, r: Rect, f: &mut Map<String, V
 
 /// Width [link] Height; with the link on, editing one keeps the aspect ratio.
 fn dimensions(ui: &mut Ui, f: &mut Map<String, Value>, w: f32) {
-    let link_w = 34.0;
+    let link_w = 28.0;
     let field_w = ((w - link_w) / 2.0 - 10.0).max(50.0);
     ui.horizontal(|ui| {
         ui.allocate_ui(vec2(field_w + link_w + 12.0, 18.0), |ui| {
             ui.set_min_width(field_w + link_w + 12.0);
-            ui.label(RichText::new(tl!("Width")).size(13.5));
+            ui.label(RichText::new(tl!("Width")).size(13.0).color(Tokens::get(ui.ctx()).text_dim));
         });
-        ui.label(RichText::new(tl!("Height")).size(13.5));
+        ui.label(RichText::new(tl!("Height")).size(13.0).color(Tokens::get(ui.ctx()).text_dim));
     });
     let linked = f.get("__linked").and_then(Value::as_bool).unwrap_or(false);
     let (w0, h0) = (get_f(f, "width", 1920.0), get_f(f, "height", 1080.0));
@@ -549,18 +555,18 @@ fn orientation(ui: &mut Ui, f: &mut Map<String, Value>, w: f32) {
         ui.spacing_mut().item_spacing.x = 4.0;
         for (icon, portrait, tip) in [("rectangle-vertical", true, tl!("Portrait")), ("rectangle-horizontal", false, tl!("Landscape"))] {
             let on = (ph > pw) == portrait;
-            let (rect, resp) = ui.allocate_exact_size(vec2(52.0, 38.0), Sense::click());
+            let (rect, resp) = ui.allocate_exact_size(vec2(40.0, 28.0), Sense::click());
             resp.widget_info(|| WidgetInfo::selected(egui::Role::Button, true, on, tip));
             let resp = resp.on_hover_text(tip).on_hover_cursor(egui::CursorIcon::PointingHand);
-            let stroke = if on { Stroke::new(2.0, t.primary_bg) } else { Stroke::new(1.0, t.field_border) };
+            let stroke = if on { Stroke::new(1.5, t.primary_bg) } else { Stroke::new(1.0, t.field_border) };
             ui.painter().rect(rect, CornerRadius::same(8), if resp.hovered() { t.hover } else { t.field }, stroke, StrokeKind::Inside);
-            icons::paint(ui, rect, icon, 22.0, if on { t.primary_bg } else { t.text });
+            icons::paint(ui, rect, icon, 16.0, if on { t.primary_bg } else { t.text });
             if resp.clicked() {
                 super::set_orientation(f, portrait);
             }
         }
         ui.add_space(8.0);
-        vsep(ui, 34.0);
+        vsep(ui, 22.0);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.set_max_width(w);
             // Under Orientation, as in Photoshop: the document starts as one artboard (#9086).
@@ -570,7 +576,7 @@ fn orientation(ui: &mut Ui, f: &mut Map<String, Value>, w: f32) {
             if resp.changed() {
                 f.insert("artboard".into(), json!(artboard));
             }
-            ui.label(RichText::new(tl!("Artboards")).size(13.5).color(t.text));
+            ui.label(RichText::new(tl!("Artboards")).size(13.0).color(t.text_dim));
         });
     });
 }
@@ -591,9 +597,9 @@ fn advanced(app: &PhotocraftApp, ui: &mut Ui, f: &mut Map<String, Value>, w: f32
     let open = f.get("__advanced").and_then(Value::as_bool).unwrap_or(true);
     let resp = ui
         .horizontal(|ui| {
-            let (chevron, _) = ui.allocate_exact_size(vec2(18.0, 22.0), Sense::hover());
-            icons::paint(ui, chevron, if open { "chevron-down" } else { "chevron-right" }, 16.0, t.text);
-            ui.label(RichText::new(tl!("Advanced Options")).font(theme::semibold(16.0)).color(t.text));
+            let (chevron, _) = ui.allocate_exact_size(vec2(16.0, 18.0), Sense::hover());
+            icons::paint(ui, chevron, if open { "chevron-down" } else { "chevron-right" }, 14.0, t.text_dim);
+            ui.label(RichText::new(tl!("Advanced Options")).font(theme::medium(13.0)).color(t.text));
         })
         .response
         .interact(Sense::click())
@@ -616,15 +622,15 @@ fn save_preset(app: &mut PhotocraftApp, ui: &mut Ui, f: &mut Map<String, Value>)
     }
     let t = Tokens::get(ui.ctx());
     let text = tl!("Save Preset…");
-    let galley = ui.painter().layout_no_wrap(text.to_owned(), theme::medium(16.0), t.text);
-    let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 44.0, 36.0), Sense::click());
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), theme::medium(13.0), t.text);
+    let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, 30.0), Sense::click());
     resp.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, text));
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
     if resp.hovered() {
         ui.painter().rect_filled(rect, CornerRadius::same(8), t.hover);
     }
-    bookmark(ui.painter(), Rect::from_center_size(pos2(rect.left() + 16.0, rect.center().y), vec2(22.0, 22.0)), Stroke::new(1.8, t.text));
-    ui.painter().galley(pos2(rect.left() + 36.0, rect.center().y - galley.size().y / 2.0), galley, t.text);
+    bookmark(ui.painter(), Rect::from_center_size(pos2(rect.left() + 14.0, rect.center().y), vec2(16.0, 16.0)), Stroke::new(1.25, t.text));
+    ui.painter().galley(pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0), galley, t.text);
     if resp.clicked() {
         f.insert("__savingPreset".into(), json!(true));
         f.remove("__presetError");
@@ -638,22 +644,22 @@ fn save_preset(app: &mut PhotocraftApp, ui: &mut Ui, f: &mut Map<String, Value>)
 fn footer(ui: &mut Ui, r: Rect, f: &Map<String, Value>) -> (bool, bool) {
     let t = Tokens::get(ui.ctx());
     ui.painter().hline(r.x_range(), r.top() + 0.5, Stroke::new(1.0, t.separator));
-    let mut row = ui.new_child(UiBuilder::new().max_rect(r.shrink2(vec2(28.0, 0.0))).layout(Layout::left_to_right(Align::Center)));
+    let mut row = ui.new_child(UiBuilder::new().max_rect(r.shrink2(vec2(16.0, 0.0))).layout(Layout::left_to_right(Align::Center)));
     let back = bar_button(&mut row, tl!("Back"), false).clicked();
     let mut right = row.new_child(UiBuilder::new().max_rect(row.available_rect_before_wrap()).layout(Layout::right_to_left(Align::Center)));
-    right.spacing_mut().item_spacing.x = 16.0;
+    right.spacing_mut().item_spacing.x = 12.0;
     let create = bar_button(&mut right, tl!("Create document"), true).clicked();
-    vsep(&mut right, 46.0);
-    right.add(egui::Label::new(RichText::new(summary(f)).font(theme::medium(15.5)).color(t.text)).truncate());
+    vsep(&mut right, 22.0);
+    right.add(egui::Label::new(RichText::new(summary(f)).font(theme::medium(12.5)).color(t.text_dim)).truncate());
     (back, create)
 }
 
 /// The bottom bar's buttons: "← Back" outlined, or the amber primary "Create document →".
 fn bar_button(ui: &mut Ui, text: &str, primary: bool) -> Response {
     let t = Tokens::get(ui.ctx());
-    let (font, ink) = if primary { (theme::semibold(17.5), t.primary_text) } else { (theme::medium(16.0), t.text) };
+    let (font, ink) = if primary { (theme::semibold(14.5), t.primary_text) } else { (theme::medium(13.5), t.text) };
     let galley = ui.painter().layout_no_wrap(text.to_owned(), font, ink);
-    let size = vec2(galley.size().x + if primary { 82.0 } else { 74.0 }, if primary { 50.0 } else { 44.0 });
+    let size = vec2(galley.size().x + if primary { 58.0 } else { 52.0 }, if primary { 38.0 } else { 34.0 });
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     resp.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, text));
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
@@ -666,21 +672,21 @@ fn bar_button(ui: &mut Ui, text: &str, primary: bool) -> Response {
             _ => t.primary_bg,
         };
         p.rect_filled(rect, CornerRadius::same(10), fill);
-        p.galley(pos2(rect.left() + 34.0, rect.center().y - galley.size().y / 2.0), galley, ink);
-        arrow(p, pos2(rect.right() - 30.0, rect.center().y), 1.0, Stroke::new(2.0, ink));
+        p.galley(pos2(rect.left() + 18.0, rect.center().y - galley.size().y / 2.0), galley, ink);
+        arrow(p, pos2(rect.right() - 20.0, rect.center().y), 1.0, Stroke::new(1.5, ink));
     } else {
-        p.rect(rect, CornerRadius::same(8), if resp.hovered() { t.hover } else { Color32::TRANSPARENT }, Stroke::new(1.2, t.field_border), StrokeKind::Inside);
-        arrow(p, pos2(rect.left() + 30.0, rect.center().y), -1.0, Stroke::new(1.8, ink));
-        p.galley(pos2(rect.left() + 52.0, rect.center().y - galley.size().y / 2.0), galley, ink);
+        p.rect(rect, CornerRadius::same(8), if resp.hovered() { t.hover } else { Color32::TRANSPARENT }, Stroke::new(1.0, t.field_border), StrokeKind::Inside);
+        arrow(p, pos2(rect.left() + 18.0, rect.center().y), -1.0, Stroke::new(1.25, ink));
+        p.galley(pos2(rect.left() + 34.0, rect.center().y - galley.size().y / 2.0), galley, ink);
     }
     resp
 }
 
 /// An arrow centred on `c`, pointing right (`dir` 1) or left (-1).
 fn arrow(p: &egui::Painter, c: egui::Pos2, dir: f32, stroke: Stroke) {
-    let tip = c + vec2(8.0 * dir, 0.0);
-    p.line_segment([c - vec2(8.0 * dir, 0.0), tip], stroke);
-    p.line(vec![tip + vec2(-6.0 * dir, -6.0), tip, tip + vec2(-6.0 * dir, 6.0)], stroke);
+    let tip = c + vec2(6.0 * dir, 0.0);
+    p.line_segment([c - vec2(6.0 * dir, 0.0), tip], stroke);
+    p.line(vec![tip + vec2(-4.5 * dir, -4.5), tip, tip + vec2(-4.5 * dir, 4.5)], stroke);
 }
 
 #[cfg(test)]

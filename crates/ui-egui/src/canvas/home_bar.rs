@@ -5,10 +5,9 @@ use egui::{CornerRadius, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 
 use crate::PhotocraftApp;
 use crate::menus::{MenuItem, TOP_MENUS};
-use crate::studio::style::APP_NAME;
+use crate::studio::style::{self, APP_NAME};
 use crate::theme::{self, Tokens};
 
-const BAR_H: f32 = 60.0;
 const SEARCH_W: f32 = 430.0;
 const SEARCH_MIN: f32 = 140.0;
 const PREFS: &str = "edit.preferences.general";
@@ -18,12 +17,12 @@ pub(crate) fn home_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let (cap_l, cap_r) = crate::titlebar::reserved(app, &ctx);
     let mac_inset = if cfg!(target_os = "macos") && app.integrated_titlebar { 78.0 } else { 0.0 };
-    let height = crate::titlebar::bar_height(app, &ctx, BAR_H);
+    let height = crate::titlebar::bar_height(app, &ctx, if style::compact(&ctx) { 44.0 } else { style::TOP_BAR_H });
     let mut clicked: Option<String> = None;
-    let bar = egui::Panel::top("home_top_bar").exact_size(height).frame(egui::Frame::NONE.fill(t.canvas)).show(ui, |ui| {
+    let bar = egui::Panel::top("home_top_bar").exact_size(height).frame(egui::Frame::NONE.fill(t.chrome)).show(ui, |ui| {
         let full = ui.max_rect();
         ui.painter().hline(full.x_range(), full.bottom() - 0.5, Stroke::new(1.0, t.separator));
-        let left_edge = full.left() + if cap_l > 0.0 { cap_l + 4.0 } else { 16.0_f32.max(mac_inset) };
+        let left_edge = full.left() + if cap_l > 0.0 { cap_l + 4.0 } else { 12.0_f32.max(mac_inset) };
         let right_edge = full.right() - if cap_r > 0.0 { cap_r + 8.0 } else { 16.0 };
         let row = |l: f32, r: f32| Rect::from_x_y_ranges(l..=r.max(l), full.y_range());
 
@@ -31,13 +30,13 @@ pub(crate) fn home_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         let mut left = ui.new_child(egui::UiBuilder::new().max_rect(row(left_edge, right_edge)).layout(egui::Layout::left_to_right(egui::Align::Center)));
         left.spacing_mut().item_spacing.x = 6.0;
         menu_button(app, &mut left, &mut clicked);
-        left.add_space(10.0);
-        left.label(egui::RichText::new(APP_NAME).font(theme::semibold(21.0)).color(t.text));
-        left.add_space(14.0);
-        let (sep, _) = left.allocate_exact_size(vec2(1.0, 28.0), Sense::hover());
+        left.add_space(6.0);
+        left.label(egui::RichText::new(APP_NAME).font(theme::semibold(18.0)).color(t.text));
+        left.add_space(8.0);
+        let (sep, _) = left.allocate_exact_size(vec2(1.0, 20.0), Sense::hover());
         left.painter().vline(sep.center().x, sep.y_range(), Stroke::new(1.0, t.separator));
-        left.add_space(14.0);
-        let here = left.painter().layout_no_wrap(tl!("Home").to_owned(), theme::medium(15.0), t.text_dim);
+        left.add_space(8.0);
+        let here = left.painter().layout_no_wrap(tl!("Home").to_owned(), theme::medium(13.0), t.text_dim);
         let (r, _) = left.allocate_exact_size(here.size(), Sense::hover());
         left.painter().galley(r.min, here, t.text_dim);
         let left_end = left.min_rect().right();
@@ -45,12 +44,12 @@ pub(crate) fn home_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         // Right: Preferences.
         let mut right = ui.new_child(egui::UiBuilder::new().max_rect(row(left_end + 16.0, right_edge)).layout(egui::Layout::right_to_left(egui::Align::Center)));
         let tip = crate::shortcuts::tip_label(app, "Preferences", PREFS);
-        if crate::icons::button_with_icon_size(&mut right, "settings", 38.0, 22.0, false, &tip).clicked() {
+        if crate::icons::button(&mut right, "settings", 34.0, false, &tip).clicked() {
             clicked = Some(PREFS.to_string());
         }
         if cap_r > 0.0 {
             right.add_space(8.0);
-            let (sep, _) = right.allocate_exact_size(vec2(1.0, 28.0), Sense::hover());
+            let (sep, _) = right.allocate_exact_size(vec2(1.0, 20.0), Sense::hover());
             right.painter().vline(sep.center().x, sep.y_range(), Stroke::new(1.0, t.separator));
         }
         let right_start = right.min_rect().left().min(right_edge);
@@ -61,7 +60,7 @@ pub(crate) fn home_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         let mut gaps = vec![(lo, hi)];
         if w >= SEARCH_MIN && full.center().x.is_finite() {
             let x = full.center().x.clamp(lo + w / 2.0, hi - w / 2.0);
-            let rect = Rect::from_center_size(pos2(x, full.center().y), vec2(w, 40.0));
+            let rect = Rect::from_center_size(pos2(x, full.center().y), vec2(w, 34.0));
             if search_field(app, ui, rect).clicked() {
                 app.ui.palette_open = true;
             }
@@ -112,26 +111,26 @@ fn search_field(app: &PhotocraftApp, ui: &mut egui::Ui, rect: Rect) -> egui::Res
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
     let border = if resp.hovered() || app.ui.palette_open { t.accent_border } else { t.field_border };
     let p = ui.painter();
-    p.rect(rect, CornerRadius::same(10), t.canvas, Stroke::new(1.0, border), StrokeKind::Inside);
-    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.left() + 24.0, rect.center().y), vec2(18.0, 18.0)), "search", 18.0, t.text);
+    p.rect(rect, CornerRadius::same(10), t.field, Stroke::new(1.0, border), StrokeKind::Inside);
+    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.left() + 20.0, rect.center().y), vec2(16.0, 16.0)), "search", 16.0, t.text_dim);
     let text = match crate::shortcuts::shortcut_label(app, "edit.search") {
         Some(sc) => format!("{label} {sc}"),
         None => label.to_string(),
     };
-    let mut job = egui::text::LayoutJob::simple_singleline(text, theme::medium(15.0), t.text);
-    job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width() - 56.0);
+    let mut job = egui::text::LayoutJob::simple_singleline(text, theme::medium(13.5), t.text_dim);
+    job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width() - 48.0);
     let galley = p.layout_job(job);
-    p.galley(pos2(rect.left() + 44.0, rect.center().y - galley.size().y / 2.0), galley, t.text);
+    p.galley(pos2(rect.left() + 38.0, rect.center().y - galley.size().y / 2.0), galley, t.text_dim);
     resp
 }
 
 /// ☰: the whole menu tree (File … Help), as the menu bar has it.
 fn menu_button(app: &PhotocraftApp, ui: &mut egui::Ui, clicked: &mut Option<String>) {
-    let (rect, resp) = ui.allocate_exact_size(vec2(38.0, 38.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(34.0, 34.0), Sense::click());
     let open = egui::Popup::is_id_open(ui.ctx(), egui::Popup::default_response_id(&resp));
     let tint = crate::icons::button_chrome(ui, rect, open, resp.hovered());
-    for dy in [-7.0, 0.0, 7.0] {
-        ui.painter().hline(rect.center().x - 10.0..=rect.center().x + 10.0, rect.center().y + dy, Stroke::new(1.8, tint));
+    for dy in [-6.0, 0.0, 6.0] {
+        ui.painter().hline(rect.center().x - 9.0..=rect.center().x + 9.0, rect.center().y + dy, Stroke::new(1.8, tint));
     }
     let resp = resp.on_hover_text(tl!("Menu"));
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Menu")));

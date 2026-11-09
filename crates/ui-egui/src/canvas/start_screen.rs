@@ -15,6 +15,9 @@ enum Act {
 }
 
 const CLIPBOARD: &str = "file.newFromClipboard";
+const RAIL_W: f32 = 200.0;
+/// As tall as the editor's status line with room for its button.
+const STRIP_H: f32 = 44.0;
 
 pub(super) fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let area = ui.available_rect_before_wrap();
@@ -48,18 +51,21 @@ pub(super) fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Rail on the left; the hero, drop zone and recents beside the formats; the clipboard strip below.
 fn wide(app: &mut PhotocraftApp, ui: &mut egui::Ui, area: Rect, recent: &[String], act: &mut Option<Act>) {
     let t = Tokens::get(ui.ctx());
-    let rail = Rect::from_min_max(area.min, pos2(area.left() + if area.width() >= 1200.0 { 240.0 } else { 222.0 }, area.bottom()));
+    // As in the editor: chrome panels around the dark work area.
+    let rail = Rect::from_min_max(area.min, pos2(area.left() + RAIL_W, area.bottom()));
+    ui.painter().rect_filled(rail, 0.0, t.chrome);
     ui.painter().vline(rail.right(), rail.y_range(), Stroke::new(1.0, t.separator));
     render_rail(app, ui, rail, act);
 
     let main = Rect::from_min_max(pos2(rail.right(), area.top()), area.max);
-    let pad = (main.width() * 0.028).clamp(24.0, 40.0);
-    let strip = Rect::from_min_max(pos2(main.left() + pad, main.bottom() - 84.0), pos2(main.right() - pad, main.bottom()));
+    let pad = 28.0;
+    let strip = Rect::from_min_max(pos2(main.left(), main.bottom() - STRIP_H), main.max);
+    ui.painter().rect_filled(strip, 0.0, t.chrome);
     ui.painter().hline(strip.x_range(), strip.top(), Stroke::new(1.0, t.separator));
     render_strip(app, ui, strip, act);
 
-    let body = Rect::from_min_max(pos2(main.left() + pad, main.top() + 8.0), pos2(main.right() - pad, strip.top() - 4.0));
-    if body.width() < 820.0 {
+    let body = Rect::from_min_max(pos2(main.left() + pad, main.top() + 4.0), pos2(main.right() - 12.0, strip.top() - 4.0));
+    if body.width() < 720.0 {
         // Too narrow for two columns: the formats follow the drop zone.
         ui.scope_builder(egui::UiBuilder::new().max_rect(body), |ui| {
             egui::ScrollArea::vertical().id_salt("home-stack").auto_shrink([false, false]).show(ui, |ui| {
@@ -70,12 +76,10 @@ fn wide(app: &mut PhotocraftApp, ui: &mut egui::Ui, area: Rect, recent: &[String
         });
         return;
     }
-    let right_w = (body.width() * 0.3).clamp(280.0, 430.0);
-    let gap = (body.width() * 0.045).clamp(28.0, 66.0);
+    let right_w = (body.width() * 0.28).clamp(250.0, 320.0);
+    let gap = 28.0;
     let left = Rect::from_min_max(body.min, pos2(body.right() - right_w - gap, body.bottom()));
     let right = Rect::from_min_max(pos2(body.right() - right_w, body.top()), body.max);
-    let divider_x = (left.right() + right.left()) / 2.0;
-    ui.painter().vline(divider_x, (body.top() + 52.0)..=(body.bottom() - 36.0).max(body.top() + 52.0), Stroke::new(1.0, t.separator));
     ui.scope_builder(egui::UiBuilder::new().max_rect(left), |ui| {
         egui::ScrollArea::vertical().id_salt("home-main").auto_shrink([false, false]).show(ui, |ui| render_main(app, ui, recent, left.width(), left.height(), act));
     });
@@ -124,56 +128,58 @@ fn rail_item(ui: &mut egui::Ui, rect: Rect, icon: &str, label: &str, selected: b
     } else if resp.hovered() {
         ui.painter().rect_filled(rect, RADIUS, t.hover);
     }
-    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.left() + 27.0, rect.center().y), vec2(22.0, 22.0)), icon, 22.0, ink);
-    let font = if selected { semibold(16.5) } else { medium(16.5) };
-    let name = crate::tab_strip::elided(ui, label, font, ink, rect.width() - 70.0);
-    ui.painter().galley(pos2(rect.left() + 58.0, rect.center().y - name.size().y / 2.0), name, ink);
+    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.left() + 20.0, rect.center().y), vec2(18.0, 18.0)), icon, 18.0, ink);
+    let font = if selected { semibold(14.0) } else { medium(14.0) };
+    let name = crate::tab_strip::elided(ui, label, font, ink, rect.width() - 52.0);
+    ui.painter().galley(pos2(rect.left() + 42.0, rect.center().y - name.size().y / 2.0), name, ink);
     resp
 }
 
 /// Home (selected), New document, Open file; Settings at the foot.
 fn render_rail(app: &PhotocraftApp, ui: &mut egui::Ui, rail: Rect, act: &mut Option<Act>) {
     let t = Tokens::get(ui.ctx());
-    let x = rail.left() + 14.0..=rail.right() - 15.0;
-    let row = |y: f32| Rect::from_x_y_ranges(x.clone(), y..=y + 48.0);
+    let x = rail.left() + 10.0..=rail.right() - 10.0;
+    let row = |y: f32| Rect::from_x_y_ranges(x.clone(), y..=y + 38.0);
     // Home hides the tab strip and options bar, so this entry is the way back to the open
     // documents (with none open there is nothing behind Home).
-    if rail_item(ui, row(rail.top() + 38.0), "house", tl!("Home"), true).clicked() && !app.session.documents().is_empty() {
+    if rail_item(ui, row(rail.top() + 14.0), "house", tl!("Home"), true).clicked() && !app.session.documents().is_empty() {
         *act = Some(Act::Back);
     }
-    if rail_item(ui, row(rail.top() + 94.0), "plus", tl!("New document"), false).clicked() {
+    if rail_item(ui, row(rail.top() + 56.0), "plus", tl!("New document"), false).clicked() {
         *act = Some(Act::New);
     }
-    if rail_item(ui, row(rail.top() + 149.0), "folder", tl!("Open File"), false).clicked() {
+    if rail_item(ui, row(rail.top() + 98.0), "folder", tl!("Open File"), false).clicked() {
         *act = Some(Act::Open);
     }
-    let foot = rail.bottom() - 74.0;
-    if foot > rail.top() + 220.0 {
-        ui.painter().hline(x.clone(), foot - 14.0, Stroke::new(1.0, t.separator));
+    let foot = rail.bottom() - 48.0;
+    if foot > rail.top() + 150.0 {
+        ui.painter().hline(x.clone(), foot - 8.0, Stroke::new(1.0, t.separator));
         if rail_item(ui, row(foot), "settings", tl!("Settings"), false).clicked() {
             *act = Some(Act::Prefs);
         }
     }
 }
 
-/// A rounded icon + label button: amber with dark text when `primary`, outlined otherwise.
-fn action_button(ui: &mut egui::Ui, label: &str, icon: &str, primary: bool, size: egui::Vec2) -> egui::Response {
+/// A rounded icon + label button, the editor's Export when `primary`, a card otherwise.
+fn action_button(ui: &mut egui::Ui, label: &str, icon: &str, primary: bool) -> egui::Response {
     let t = Tokens::get(ui.ctx());
+    let font = if primary { semibold(14.5) } else { medium(14.0) };
+    let icon_s = 16.0;
+    let label_w = ui.painter().layout_no_wrap(label.to_owned(), font.clone(), t.text).size().x;
+    let size = vec2(label_w + icon_s + 8.0 + 32.0, 38.0);
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
     let (fill, stroke, ink) = if primary {
         (if resp.hovered() { t.accent } else { t.primary_bg }, Stroke::NONE, t.primary_text)
     } else {
-        (if resp.hovered() { t.hover } else { t.canvas }, Stroke::new(1.5, t.text), t.text)
+        (if resp.hovered() { t.hover } else { t.card }, Stroke::new(1.0, t.card_border), t.text)
     };
     ui.painter().rect(rect, RADIUS, fill, stroke, StrokeKind::Inside);
-    let font = semibold((size.y * 0.34).clamp(14.0, 22.0));
-    let icon_s = font.size * 1.15;
-    let galley = crate::tab_strip::elided(ui, label, font, ink, (size.x - icon_s - 30.0).max(10.0));
-    let x = rect.center().x - (galley.size().x + icon_s + 12.0) / 2.0;
+    let galley = ui.painter().layout_no_wrap(label.to_owned(), font, ink);
+    let x = rect.center().x - (galley.size().x + icon_s + 8.0) / 2.0;
     crate::icons::paint(ui, Rect::from_center_size(pos2(x + icon_s / 2.0, rect.center().y), vec2(icon_s, icon_s)), icon, icon_s, ink);
-    ui.painter().galley(pos2(x + icon_s + 12.0, rect.center().y - galley.size().y / 2.0), galley, ink);
+    ui.painter().galley(pos2(x + icon_s + 8.0, rect.center().y - galley.size().y / 2.0), galley, ink);
     resp
 }
 
@@ -181,42 +187,39 @@ fn action_button(ui: &mut egui::Ui, label: &str, icon: &str, primary: bool, size
 fn render_main(app: &mut PhotocraftApp, ui: &mut egui::Ui, recent: &[String], w: f32, h: f32, act: &mut Option<Act>) {
     let t = Tokens::get(ui.ctx());
     let top = ui.cursor().top();
-    let title_s = (w / 12.5).clamp(26.0, 62.0);
-    ui.add_space((title_s * 0.75).clamp(12.0, 44.0));
+    let title_s = (w / 28.0).clamp(22.0, 30.0);
+    ui.add_space(24.0);
     ui.add(egui::Label::new(egui::RichText::new(tl!("What shall we create today?")).font(semibold(title_s)).color(t.text)).wrap());
-    ui.add(egui::Label::new(egui::RichText::new(tl!("Start from scratch or open an idea.")).font(medium((title_s * 0.43).clamp(14.0, 26.0))).color(t.text_dim)).wrap());
-    ui.add_space((title_s * 0.5).clamp(14.0, 30.0));
+    ui.add(egui::Label::new(egui::RichText::new(tl!("Start from scratch or open an idea.")).font(medium(14.0)).color(t.text_dim)).wrap());
+    ui.add_space(18.0);
 
-    let btn_h = (title_s * 1.1).clamp(42.0, 68.0);
-    let new_w = (w * 0.4).clamp(150.0, 318.0).min((w - 12.0) / 2.0);
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 24.0_f32.min(w * 0.03).max(8.0);
-        if action_button(ui, tl!("New document"), "plus", true, vec2(new_w, btn_h)).clicked() {
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 10.0;
+        if action_button(ui, tl!("New document"), "plus", true).clicked() {
             *act = Some(Act::New);
         }
-        if action_button(ui, tl!("Open File"), "folder", false, vec2((new_w * 0.8).max(new_w.min(150.0)), btn_h)).clicked() {
+        if action_button(ui, tl!("Open File"), "folder", false).clicked() {
             *act = Some(Act::Open);
         }
     });
-    ui.add_space((title_s * 0.65).clamp(18.0, 40.0));
+    ui.add_space(24.0);
 
     // Keep the recents in view: the drop zone takes what is left, within reason.
     let used = ui.cursor().top() - top;
-    let drop_h = if recent.is_empty() { (h - used - 120.0).clamp(170.0, 400.0) } else { (h - used - 300.0).clamp(110.0, 260.0) };
+    let drop_h = if recent.is_empty() { (h - used - 110.0).clamp(130.0, 560.0) } else { (h - used - 280.0).clamp(84.0, 180.0) };
     if drop_zone(app, ui, vec2(w, drop_h)).clicked() {
         *act = Some(Act::Open);
     }
-    ui.add_space(38.0);
+    ui.add_space(20.0);
     let (line, _) = ui.allocate_exact_size(vec2(w, 1.0), Sense::hover());
     ui.painter().hline(line.x_range(), line.center().y, Stroke::new(1.0, t.separator));
-    ui.add_space(20.0);
+    ui.add_space(14.0);
     if recent.is_empty() {
         ui.horizontal(|ui| {
-            ui.add_space(8.0);
-            let (r, _) = ui.allocate_exact_size(vec2(24.0, 24.0), Sense::hover());
-            crate::icons::paint(ui, r, "file", 22.0, t.text);
-            ui.add_space(10.0);
-            ui.add(egui::Label::new(egui::RichText::new(tl!("Your recent documents will appear here.")).font(medium(16.0)).color(t.text)).truncate());
+            let (r, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
+            crate::icons::paint(ui, r, "file", 16.0, t.text_faint);
+            ui.add_space(4.0);
+            ui.add(egui::Label::new(egui::RichText::new(tl!("Your recent documents will appear here.")).font(medium(13.0)).color(t.text_dim)).truncate());
         });
     } else {
         crate::home_recent_ui::show_home_recent(app, ui, recent, w);
@@ -232,33 +235,31 @@ fn drop_zone(app: &PhotocraftApp, ui: &mut egui::Ui, size: egui::Vec2) -> egui::
     let hov = resp.hovered();
     let p = ui.painter();
     if hov {
-        p.rect_filled(r, 14.0, t.hover);
+        p.rect_filled(r, 12.0, t.hover);
     }
-    p.extend(egui::Shape::dashed_line(&rounded_outline(r.shrink(1.0), 14.0), Stroke::new(1.5, if hov { t.accent } else { t.text_dim }), 8.0, 6.0));
+    p.extend(egui::Shape::dashed_line(&rounded_outline(r.shrink(1.0), 12.0), Stroke::new(1.0, if hov { t.accent } else { t.field_border }), 6.0, 5.0));
 
-    let s = (size.y * 0.33).clamp(44.0, 130.0);
-    let c = pos2(r.center().x, r.top() + size.y * 0.42 - s * 0.1);
-    let ink = if hov { t.accent } else { t.text };
-    let head_s = (size.x / 26.0).clamp(15.0, 24.0);
+    let ink = if hov { t.accent } else { t.text_dim };
+    let icon_s = 30.0;
+    let head_s = 14.0;
     // A short zone (recents below it) keeps only the two lines of text.
-    let y = if size.y >= 170.0 {
-        crate::icons::paint(ui, Rect::from_center_size(c + vec2(s * 0.14, -s * 0.12), vec2(s, s)), "file", s * 0.8, ink);
-        p.rect_filled(Rect::from_center_size(c + vec2(-s * 0.14, s * 0.12), vec2(s * 0.52, s * 0.66)), 6.0, if hov { t.hover } else { t.chrome });
-        crate::icons::paint(ui, Rect::from_center_size(c + vec2(-s * 0.14, s * 0.12), vec2(s, s)), "file", s * 0.8, ink);
-        (r.top() + size.y * 0.42 + s * 0.62).min(r.bottom() - head_s * 2.8)
+    let y = if size.y >= 120.0 {
+        let top = r.center().y - (icon_s + 12.0 + head_s * 3.0) / 2.0;
+        crate::icons::paint(ui, Rect::from_center_size(pos2(r.center().x, top + icon_s / 2.0), vec2(icon_s, icon_s)), "file-plus", icon_s, ink);
+        top + icon_s + 12.0
     } else {
         r.center().y - head_s * 1.4
     };
-    p.text(pos2(r.center().x, y), egui::Align2::CENTER_TOP, tl!("Drag an image or PSD to start"), semibold(head_s), t.text);
+    p.text(pos2(r.center().x, y), egui::Align2::CENTER_TOP, tl!("Drag an image or PSD to start"), medium(head_s), t.text);
     // "or choose a file", the second half an amber, underlined link.
-    let small = medium(head_s * 0.86);
-    let or = p.layout_no_wrap(format!("{} ", tl!("or")), small.clone(), t.text);
+    let small = medium(13.0);
+    let or = p.layout_no_wrap(format!("{} ", tl!("or")), small.clone(), t.text_dim);
     let link = p.layout_no_wrap(tl!("choose a file").to_owned(), small, t.accent);
     let x = r.center().x - (or.size().x + link.size().x) / 2.0;
-    let ly = y + head_s * 1.7;
+    let ly = y + head_s * 1.6;
     let link_min = pos2(x + or.size().x, ly);
-    p.hline(link_min.x..=link_min.x + link.size().x, ly + link.size().y + 1.0, Stroke::new(1.2, t.accent));
-    p.galley(pos2(x, ly), or, t.text);
+    p.hline(link_min.x..=link_min.x + link.size().x, ly + link.size().y, Stroke::new(1.0, t.accent));
+    p.galley(pos2(x, ly), or, t.text_dim);
     p.galley(link_min, link, t.accent);
     resp
 }
@@ -295,22 +296,27 @@ fn home_presets() -> impl Iterator<Item = (&'static crate::new_doc_ui::Preset, &
     HOME_PRESETS.iter().filter_map(|(name, label)| crate::new_doc_ui::CATEGORIES.iter().flat_map(|c| c.1.iter()).find(|p| p.0 == *name).map(|p| (p, *label)))
 }
 
-/// "Start with a format": one card per preset; a click creates that document.
+/// "Start with a format": a card like the editor's panels, one row per preset; a click creates
+/// that document.
 fn render_formats(app: &PhotocraftApp, ui: &mut egui::Ui, w: f32, h: f32, act: &mut Option<Act>) {
     let t = Tokens::get(ui.ctx());
-    ui.add_space(if h > 0.0 { 34.0 } else { 0.0 });
-    ui.label(egui::RichText::new(tl!("Start with a format")).font(semibold((w / 16.5).clamp(18.0, 26.0))).color(t.text));
-    ui.add_space(22.0);
-    let n = HOME_PRESETS.len() as f32;
-    let card_h = if h > 0.0 { ((h - 110.0) / n - 9.0).clamp(54.0, 76.0) } else { 64.0 };
+    ui.add_space(if h > 0.0 { 12.0 } else { 0.0 });
     let units = &app.session.prefs().units_and_rulers;
-    ui.spacing_mut().item_spacing.y = 9.0;
-    for (p, label) in home_presets() {
-        let (_, pw, ph, _) = crate::new_doc_ui::at_pref_resolutions(p, units);
-        if format_card(ui, tl!(label), pw, ph, vec2(w - 2.0, card_h)).clicked() {
-            *act = Some(Act::Preset(*p));
+    egui::Frame::new().fill(t.card).stroke(Stroke::new(1.0, t.card_border)).corner_radius(12.0).inner_margin(10.0).show(ui, |ui| {
+        ui.set_width(w - 22.0);
+        ui.horizontal(|ui| {
+            ui.add_space(6.0);
+            ui.label(egui::RichText::new(tl!("Start with a format")).font(semibold(14.0)).color(t.text));
+        });
+        ui.add_space(6.0);
+        ui.spacing_mut().item_spacing.y = 2.0;
+        for (p, label) in home_presets() {
+            let (_, pw, ph, _) = crate::new_doc_ui::at_pref_resolutions(p, units);
+            if format_card(ui, tl!(label), pw, ph, vec2(w - 22.0, 46.0)).clicked() {
+                *act = Some(Act::Preset(*p));
+            }
         }
-    }
+    });
 }
 
 /// One format row: the page's orientation, the name over its size in pixels, a chevron.
@@ -320,41 +326,41 @@ fn format_card(ui: &mut egui::Ui, title: &str, pw: u32, ph: u32, size: egui::Vec
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, title));
     let hov = resp.hovered();
     let p = ui.painter();
-    p.rect(rect, RADIUS, if hov { t.hover } else { t.card }, Stroke::new(1.0, if hov { t.accent } else { t.card_border }), StrokeKind::Inside);
-    let k = (size.y / 76.0).clamp(0.7, 1.0);
-    let page = if pw >= ph { vec2(52.0, 28.0) } else { vec2(28.0, 44.0) } * k;
-    let icon_c = pos2(rect.left() + 56.0 * k, rect.center().y);
-    p.rect_stroke(Rect::from_center_size(icon_c, page), 4.0, Stroke::new(1.5, if hov { t.accent } else { t.text }), StrokeKind::Inside);
-    let sep_x = rect.left() + 112.0 * k;
-    p.vline(sep_x, (rect.center().y - 22.0 * k)..=(rect.center().y + 22.0 * k), Stroke::new(1.0, t.separator));
-    let text_x = sep_x + 30.0 * k;
-    let text_w = (rect.right() - 50.0 - text_x).max(10.0);
-    let name = crate::tab_strip::elided(ui, title, semibold(18.0 * k), t.text, text_w);
-    let dims = crate::tab_strip::elided(ui, &format!("{pw} × {ph} px"), medium(15.0 * k), t.text_dim, text_w);
-    let top = rect.center().y - (name.size().y + dims.size().y + 2.0) / 2.0;
-    let dims_y = top + name.size().y + 2.0;
+    if hov {
+        p.rect_filled(rect, RADIUS - 2.0, t.hover);
+    }
+    let page = if pw >= ph { vec2(24.0, 15.0) } else { vec2(14.0, 20.0) };
+    let icon_c = pos2(rect.left() + 24.0, rect.center().y);
+    p.rect_stroke(Rect::from_center_size(icon_c, page), 2.0, Stroke::new(1.0, if hov { t.accent } else { t.text_dim }), StrokeKind::Inside);
+    let text_x = rect.left() + 48.0;
+    let text_w = (rect.right() - 30.0 - text_x).max(10.0);
+    let name = crate::tab_strip::elided(ui, title, medium(13.0), t.text, text_w);
+    let dims = crate::tab_strip::elided(ui, &format!("{pw} × {ph} px"), medium(11.5), t.text_dim, text_w);
+    let top = rect.center().y - (name.size().y + dims.size().y + 1.0) / 2.0;
+    let dims_y = top + name.size().y + 1.0;
     p.galley(pos2(text_x, top), name, t.text);
     p.galley(pos2(text_x, dims_y), dims, t.text_dim);
-    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.right() - 26.0, rect.center().y), vec2(20.0, 20.0)), "chevron-right", 20.0, t.text);
+    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.right() - 16.0, rect.center().y), vec2(14.0, 14.0)), "chevron-right", 14.0, t.text_dim);
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
 /// The foot strip: New from Clipboard, its hint, and "See all formats →" (the New Document dialog).
 fn render_strip(app: &PhotocraftApp, ui: &mut egui::Ui, strip: Rect, act: &mut Option<Act>) {
     let t = Tokens::get(ui.ctx());
-    let cy = strip.center().y + 2.0;
+    let cy = strip.center().y;
+    let strip = strip.shrink2(vec2(28.0, 0.0));
     // Right: the amber link with its arrow.
-    let link = ui.painter().layout_no_wrap(tl!("See all formats").to_owned(), semibold(17.0), t.accent);
-    let link_rect = Rect::from_min_max(pos2(strip.right() - link.size().x - 34.0, cy - 16.0), pos2(strip.right(), cy + 16.0));
+    let link = ui.painter().layout_no_wrap(tl!("See all formats").to_owned(), medium(13.0), t.accent);
+    let link_rect = Rect::from_min_max(pos2(strip.right() - link.size().x - 24.0, cy - 14.0), pos2(strip.right(), cy + 14.0));
     let resp = ui.interact(link_rect, ui.scope_id().with("home-all-formats"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Link, true, tl!("See all formats")));
     let ink = if resp.hovered() { t.text } else { t.accent };
     let p = ui.painter();
     p.galley(pos2(link_rect.left(), cy - link.size().y / 2.0), link, ink);
     let ax = link_rect.right() - 2.0;
-    let arrow = Stroke::new(2.0, ink);
-    p.hline((ax - 20.0)..=ax, cy, arrow);
-    p.line(vec![pos2(ax - 7.0, cy - 7.0), pos2(ax, cy), pos2(ax - 7.0, cy + 7.0)], arrow);
+    let arrow = Stroke::new(1.25, ink);
+    p.hline((ax - 14.0)..=ax, cy, arrow);
+    p.line(vec![pos2(ax - 5.0, cy - 5.0), pos2(ax, cy), pos2(ax - 5.0, cy + 5.0)], arrow);
     if resp.clicked() {
         *act = Some(Act::New);
     }
@@ -362,24 +368,24 @@ fn render_strip(app: &PhotocraftApp, ui: &mut egui::Ui, strip: Rect, act: &mut O
     // Left: New from Clipboard, then what it does while there is room.
     let enabled = crate::menus::is_enabled(app, CLIPBOARD);
     let label = tl!("Clipboard");
-    let g = ui.painter().layout_no_wrap(label.to_owned(), semibold(16.0), t.text);
-    let btn = Rect::from_min_size(pos2(strip.left(), cy - 27.0), vec2(g.size().x + 84.0, 54.0));
+    let g = ui.painter().layout_no_wrap(label.to_owned(), medium(13.0), t.text);
+    let btn = Rect::from_min_size(pos2(strip.left(), cy - 15.0), vec2(g.size().x + 44.0, 30.0));
     let resp = ui.interact(btn, ui.scope_id().with("home-clipboard"), if enabled { Sense::click() } else { Sense::hover() });
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, tl!("New from Clipboard")));
     let ink = if enabled { t.text } else { t.text_faint };
     let p = ui.painter();
-    p.rect(btn, RADIUS, if enabled && resp.hovered() { t.hover } else { t.card }, Stroke::new(1.0, t.card_border), StrokeKind::Inside);
-    crate::icons::paint(ui, Rect::from_center_size(pos2(btn.left() + 34.0, cy), vec2(22.0, 22.0)), "copy", 22.0, ink);
-    p.galley(pos2(btn.left() + 62.0, cy - g.size().y / 2.0), g, ink);
+    p.rect(btn, RADIUS - 2.0, if enabled && resp.hovered() { t.hover } else { t.card }, Stroke::new(1.0, t.card_border), StrokeKind::Inside);
+    crate::icons::paint(ui, Rect::from_center_size(pos2(btn.left() + 18.0, cy), vec2(15.0, 15.0)), "copy", 15.0, ink);
+    p.galley(pos2(btn.left() + 32.0, cy - g.size().y / 2.0), g, ink);
     if enabled && resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
         *act = Some(Act::Clipboard);
     }
-    let hint_x = btn.right() + 22.0;
-    let room = link_rect.left() - 24.0 - (hint_x + 22.0);
+    let hint_x = btn.right() + 14.0;
+    let room = link_rect.left() - 24.0 - (hint_x + 14.0);
     if room > 120.0 {
-        p.vline(hint_x, (cy - 14.0)..=(cy + 14.0), Stroke::new(1.0, t.separator));
-        let hint = crate::tab_strip::elided(ui, tl!("Paste an image from the clipboard to create quickly."), medium(15.5), t.text, room);
-        p.galley(pos2(hint_x + 22.0, cy - hint.size().y / 2.0), hint, t.text);
+        p.vline(hint_x, (cy - 10.0)..=(cy + 10.0), Stroke::new(1.0, t.separator));
+        let hint = crate::tab_strip::elided(ui, tl!("Paste an image from the clipboard to create quickly."), medium(12.5), t.text_dim, room);
+        p.galley(pos2(hint_x + 14.0, cy - hint.size().y / 2.0), hint, t.text_dim);
     }
 }
 
