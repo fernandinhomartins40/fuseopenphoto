@@ -30,6 +30,17 @@ pub enum CodexRequest {
     Stop,
     /// Forget the conversation; the next message starts a new one.
     NewChat,
+    /// Use this model from the next message on, and remember it.
+    SetModel(String),
+}
+
+/// A model Codex offers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodexModel {
+    pub id: String,
+    pub name: String,
+    /// The catalog's one line (how capable, how affordable), as Codex words it.
+    pub description: String,
 }
 
 /// What the backend reports.
@@ -37,6 +48,8 @@ pub enum CodexRequest {
 pub enum CodexEvent {
     /// Who is signed in (`None`: nobody).
     Account(Option<String>),
+    /// The models on offer and the one in use.
+    Models { models: Vec<CodexModel>, current: Option<String> },
     /// Streamed text of the assistant message `item`.
     AssistantDelta {
         item: String,
@@ -134,6 +147,9 @@ pub struct CodexPanel {
     signing_in: bool,
     /// This PhotoCraft's MCP server got at least one tool call in this run.
     mcp: bool,
+    models: Vec<CodexModel>,
+    /// The model in use, by id.
+    model: Option<String>,
 }
 
 impl CodexPanel {
@@ -143,6 +159,10 @@ impl CodexPanel {
             CodexEvent::Account(account) => {
                 self.account = Some(account);
                 self.signing_in = false;
+            }
+            CodexEvent::Models { models, current } => {
+                self.models = models;
+                self.model = current;
             }
             CodexEvent::AssistantDelta { item, delta } => match self.entries.last_mut() {
                 Some(Entry::Assistant { item: last, text }) if *last == item => text.push_str(&delta),
@@ -188,6 +208,8 @@ impl CodexPanel {
         self.account = None;
         self.signing_in = false;
         self.mcp = false;
+        self.models.clear();
+        self.model = None;
     }
 
     /// The footer's status and its English text.
@@ -339,6 +361,9 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
                 if request == CodexRequest::SignIn {
                     app.codex.signing_in = true;
                 }
+                if let CodexRequest::SetModel(id) = &request {
+                    app.codex.model = Some(id.clone());
+                }
                 if request == CodexRequest::NewChat {
                     app.codex.entries.clear();
                     app.codex.busy = false;
@@ -378,7 +403,7 @@ pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
         .resizable(true)
         .default_size(if crate::studio::style::compact(ui.ctx()) { 340.0 } else { 430.0 })
         // Never so wide on a small window that the canvas goes.
-        .size_range(310.0..=(ui.available_width() * 0.6).clamp(310.0, 720.0))
+        .size_range(260.0..=(ui.available_width() * 0.6).clamp(260.0, 720.0))
         .frame(Frame::NONE.fill(t.chrome).inner_margin(Margin::symmetric(8, 10)))
         .show(ui, |ui| {
             let card = ui.max_rect();
@@ -469,10 +494,11 @@ fn header(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
 /// Conversa | Atividade, the active one underlined in amber.
 fn tabs(ui: &mut Ui, t: &Tokens, tab: &mut Tab) {
     let top = ui.cursor().top();
+    let tab_w = (ui.available_width() / 2.0).min(130.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
         for (which, label) in [(Tab::Chat, tl!("Conversation")), (Tab::Activity, tl!("Activity"))] {
-            let (rect, resp) = ui.allocate_exact_size(vec2(130.0, 32.0), Sense::click());
+            let (rect, resp) = ui.allocate_exact_size(vec2(tab_w, 32.0), Sense::click());
             let on = *tab == which;
             let color = if on || resp.hovered() { t.text } else { t.text_dim };
             ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, label, theme::medium(15.0), color);
@@ -492,26 +518,43 @@ fn tabs(ui: &mut Ui, t: &Tokens, tab: &mut Tab) {
 
 /// "Current document · name" with the layer count.
 fn context_chip(ui: &mut Ui, t: &Tokens, doc: Option<&(String, usize)>) {
+    let text = match doc {
+        Some((name, _)) => crate::i18n::fmt(tl!("Current document · {name}"), &[("name", name)]),
+        None => tl!("No document open").to_string(),
+    };
+    let count = doc.map(|(_, layers)| crate::i18n::trn(crate::i18n::current(), u64::try_from(*layers).unwrap_or(u64::MAX), "{n} layer", "{n} layers"));
+    let pill = |ui: &mut Ui, count: &str| {
+        Frame::new().stroke(Stroke::new(1.0, t.field_border)).corner_radius(8.0).inner_margin(Margin::symmetric(8, 2)).show(ui, |ui| {
+            ui.label(RichText::new(count).small().color(t.text_dim));
+        });
+    };
     Frame::new().fill(t.field).stroke(Stroke::new(1.0, t.field_border)).corner_radius(10.0).inner_margin(Margin::symmetric(10, 7)).show(ui, |ui| {
         ui.set_width(ui.available_width());
-        // In a row: a bare trailing layout takes all the height the panel has.
-        ui.horizontal(|ui| ui.with_layout(crate::direction::trailing(), |ui| {
-            if let Some((_, layers)) = doc {
-                let n = u64::try_from(*layers).unwrap_or(u64::MAX);
-                let count = crate::i18n::trn(crate::i18n::current(), n, "{n} layer", "{n} layers");
-                Frame::new().stroke(Stroke::new(1.0, t.field_border)).corner_radius(8.0).inner_margin(Margin::symmetric(8, 2)).show(ui, |ui| {
-                    ui.label(RichText::new(count).small().color(t.text_dim));
+        // Icon, gap, name, gap and the count pill's margins, measured with the fonts they use.
+        let width = |ui: &Ui, s: &str, style: egui::TextStyle| ui.painter().layout_no_wrap(s.to_string(), style.resolve(ui.style()), t.text).size().x;
+        let needed = 30.0 + width(ui, &text, egui::TextStyle::Body) + count.as_deref().map_or(0.0, |c| 24.0 + width(ui, c, egui::TextStyle::Small));
+        if needed <= ui.available_width() {
+            // In a row: a bare trailing layout takes all the height the panel has.
+            ui.horizontal(|ui| ui.with_layout(crate::direction::trailing(), |ui| {
+                if let Some(count) = &count {
+                    pill(ui, count);
+                }
+                ui.with_layout(crate::direction::row(), |ui| {
+                    ui.add(crate::icons::image("file", 16.0, t.icon));
+                    ui.label(RichText::new(&text).color(t.text));
                 });
-            }
-            ui.with_layout(crate::direction::row(), |ui| {
+            }));
+        } else {
+            // Too narrow for one line: the name wraps and the count drops below it.
+            ui.horizontal_top(|ui| {
                 ui.add(crate::icons::image("file", 16.0, t.icon));
-                let text = match doc {
-                    Some((name, _)) => crate::i18n::fmt(tl!("Current document · {name}"), &[("name", name)]),
-                    None => tl!("No document open").to_string(),
-                };
-                ui.add(egui::Label::new(RichText::new(text).color(t.text)).truncate());
+                ui.add(egui::Label::new(RichText::new(&text).color(t.text)).wrap());
             });
-        }));
+            if let Some(count) = &count {
+                ui.add_space(4.0);
+                pill(ui, count);
+            }
+        }
     });
 }
 
@@ -539,9 +582,9 @@ fn conversation(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
             }
             Entry::Done(n) => codex_row(ui, t, false, |ui| {
                 let n = u64::try_from(*n).unwrap_or(u64::MAX);
-                ui.horizontal(|ui| {
+                ui.horizontal_top(|ui| {
                     check_dot(ui, t);
-                    ui.label(RichText::new(crate::i18n::trn(crate::i18n::current(), n, "Finished in {n} step.", "Finished in {n} steps.")).color(t.text));
+                    ui.add(egui::Label::new(RichText::new(crate::i18n::trn(crate::i18n::current(), n, "Finished in {n} step.", "Finished in {n} steps.")).color(t.text)).wrap());
                 });
                 ui.add_space(4.0);
                 let show = egui::Button::image_and_text(crate::icons::image("clock", 14.0, t.accent), RichText::new(tl!("Show History")).color(t.text))
@@ -601,7 +644,8 @@ fn codex_row(ui: &mut Ui, t: &Tokens, avatar: bool, add: impl FnOnce(&mut Ui)) {
         }
         card().fill(t.card).stroke(Stroke::new(1.0, t.card_border)).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            add(ui);
+            // A Frame inherits the row's layout: without this the card's content runs sideways.
+            ui.vertical(add);
         });
     });
 }
@@ -610,13 +654,13 @@ fn codex_row(ui: &mut Ui, t: &Tokens, avatar: bool, add: impl FnOnce(&mut Ui)) {
 fn steps(ui: &mut Ui, t: &Tokens, id: usize, lines: &[String], running: bool) {
     for (k, line) in lines.iter().enumerate() {
         let pending = running && k + 1 == lines.len();
-        ui.horizontal(|ui| {
+        ui.horizontal_top(|ui| {
             if pending {
                 ui.add(egui::Spinner::new().size(16.0).color(t.accent));
             } else {
                 check_dot(ui, t);
             }
-            ui.add(egui::Label::new(RichText::new(step_label(line)).color(t.text)).truncate());
+            ui.add(egui::Label::new(RichText::new(step_label(line)).color(t.text)).wrap());
         });
         ui.separator();
     }
@@ -678,6 +722,7 @@ fn quick_actions(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
                 .fill(t.card)
                 .stroke(Stroke::new(1.0, t.field_border))
                 .corner_radius(10.0)
+                .wrap_mode(egui::TextWrapMode::Extend)
                 .min_size(vec2(0.0, 30.0));
             if ui.add_enabled(enabled, chip).clicked() {
                 acts.push(Act::Send(prompt.to_string()));
@@ -724,16 +769,41 @@ fn composer(ui: &mut Ui, t: &Tokens, p: &mut CodexPanel, acts: &mut Vec<Act>) {
     });
 }
 
-fn scope_menu(ui: &mut Ui, t: &Tokens, scope: &mut Scope) {
-    let button = egui::Button::image_and_text(crate::icons::image("file", 15.0, t.icon), RichText::new(format!("{}      ", scope.label())).color(t.text))
+/// An icon, a label and a chevron: what opens one of the chat's menus.
+fn menu_button(ui: &mut Ui, t: &Tokens, icon: &str, label: &str, tip: &str) -> egui::Response {
+    let button = egui::Button::image_and_text(crate::icons::image(icon, 15.0, t.icon), RichText::new(format!("{label}      ")).color(t.text))
         .fill(t.field)
         .stroke(Stroke::new(1.0, t.field_border))
         .corner_radius(8.0)
+        .wrap_mode(egui::TextWrapMode::Extend)
         .min_size(vec2(0.0, 30.0));
-    let resp = ui.add(button).on_hover_text(tl!("What Codex works on"));
+    let resp = ui.add(button).on_hover_text(tip);
     // An icon, not a "▾" glyph: the UI fonts may not have one.
     let r = resp.rect;
     crate::icons::paint(ui, Rect::from_center_size(pos2(r.right() - 14.0, r.center().y), vec2(12.0, 12.0)), "chevron-down", 11.0, t.text_dim);
+    resp
+}
+
+/// Which model Codex uses: the cheap ones cost far less of the user's plan.
+fn model_menu(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
+    let current = p.model.as_deref().unwrap_or_default();
+    let name = p.models.iter().find(|m| m.id == current).map_or(current, |m| m.name.as_str());
+    let resp = menu_button(ui, t, "sparkles", name, tl!("Model"));
+    egui::Popup::menu(&resp).show(|ui| {
+        crate::widgets::style_spectrum_popup_menu(ui);
+        ui.set_max_width(300.0);
+        for m in &p.models {
+            if ui.selectable_label(m.id == current, &m.name).clicked() && m.id != current {
+                acts.push(Act::Request(CodexRequest::SetModel(m.id.clone())));
+            }
+            ui.add(egui::Label::new(RichText::new(&m.description).small().color(t.text_dim)).wrap());
+            ui.add_space(4.0);
+        }
+    });
+}
+
+fn scope_menu(ui: &mut Ui, t: &Tokens, scope: &mut Scope) {
+    let resp = menu_button(ui, t, "file", scope.label(), tl!("What Codex works on"));
     egui::Popup::menu(&resp).show(|ui| {
         crate::widgets::style_spectrum_popup_menu(ui);
         for s in Scope::ALL {
@@ -754,6 +824,13 @@ fn footer(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
         Status::Live => green(t),
     };
     let state = crate::i18n::t(text);
+    let picks_model = running && !p.models.is_empty() && matches!(p.account, Some(Some(_)));
+    // Narrow: the model gets its own line, so the status isn't cut to fit beside it.
+    let stacked = ui.available_width() < 330.0;
+    if picks_model && stacked {
+        model_menu(ui, t, p, acts);
+        ui.add_space(4.0);
+    }
     ui.horizontal(|ui| {
         ui.with_layout(crate::direction::trailing(), |ui| {
             if !running {
@@ -762,6 +839,8 @@ fn footer(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
                 }
             } else if p.account == Some(None) && !p.signing_in && crate::widgets::primary_button(ui, tl!("Sign in with ChatGPT"), 0.0).clicked() {
                 acts.push(Act::Request(CodexRequest::SignIn));
+            } else if picks_model && !stacked {
+                model_menu(ui, t, p, acts);
             }
             // What is left of the row, so a narrow panel shortens the status, not the button.
             ui.with_layout(crate::direction::row(), |ui| {
@@ -1005,6 +1084,88 @@ mod tests {
         h.run_steps(3);
         assert!(h.query_by_label_contains("Connected").is_some());
         assert!(h.query_by_label("Sign in with ChatGPT").is_none());
+    }
+
+    /// However narrow the dock, the steps stack and nothing passes the card's edge.
+    #[test]
+    fn a_narrow_dock_stacks_its_content() {
+        use egui_kittest::kittest::Queryable;
+        for w in [480.0, 600.0, 1100.0] {
+            let mut h = egui_kittest::Harness::builder().with_size(vec2(w, 800.0)).build_eframe(move |cc| {
+                crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+                let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
+                let (tx, _) = std::sync::mpsc::channel();
+                let (_, rx) = std::sync::mpsc::channel();
+                app.codex.link = Some(CodexLink { tx, rx });
+                app.codex.account = Some(Some("me".into()));
+                app.codex.open = true;
+                app.codex.entries = vec![
+                    Entry::User("a request long enough that it has to take more than one line of this panel".into()),
+                    Entry::Steps(vec!["photocraft › doc_read".into(), "photocraft › layer_add".into(), "photocraft › shape_draw_with_a_long_tool_name_that_needs_room".into()]),
+                    Entry::Assistant { item: "a".into(), text: "an answer long enough that it has to take more than one line of this panel".into() },
+                    Entry::Done(3),
+                ];
+                app
+            });
+            h.run_steps(4);
+            let edge = h.get_by_label("Close").rect().right() + 2.0;
+            let (a, b) = (h.get_by_label("Doc read").rect(), h.get_by_label("Layer add").rect());
+            assert!((a.left() - b.left()).abs() < 1.0 && b.top() > a.bottom() - 1.0, "at {w}: steps side by side: {a:?} {b:?}");
+            for label in ["Doc read", "Layer add", "Shape draw with a long tool name that needs room", "Run details", "Show History", "Adjust colors", "Organize layers", "Conversation", "Activity"] {
+                let r = h.get_by_label(label).rect();
+                assert!(r.right() <= edge, "at {w}: {label} runs past the card: {r:?}, edge {edge}");
+            }
+        }
+    }
+
+    /// A long document name wraps with the count under it; a short one keeps them on one line.
+    #[test]
+    fn the_context_chip_reflows() {
+        use egui_kittest::kittest::Queryable;
+        let chip = |name: &'static str| {
+            let mut h = egui_kittest::Harness::builder().with_size(vec2(260.0, 200.0)).build_ui(move |ui| {
+                let t = Tokens::get(ui.ctx());
+                context_chip(ui, &t, Some(&(name.to_string(), 3)));
+            });
+            h.run_steps(2);
+            let text = h.get_by_label_contains(name).rect();
+            let count = h.get_by_label("3 layers").rect();
+            (text, count)
+        };
+        let (text, count) = chip("a");
+        assert!(count.left() > text.right() && count.top() < text.bottom(), "room for one line: {text:?} {count:?}");
+        let (text, count) = chip("a very long document name that cannot share a line with anything");
+        assert!(count.top() >= text.bottom() - 1.0 && text.right() <= 260.0, "stacked and inside: {text:?} {count:?}");
+        assert!(text.height() > 20.0, "the name wraps rather than being cut: {text:?}");
+    }
+
+    /// The footer lists Codex's models and asks for the one picked.
+    #[test]
+    fn the_footer_picks_a_model() {
+        use egui_kittest::kittest::Queryable;
+        let model = |id: &str, name: &str| CodexModel { id: id.into(), name: name.into(), description: format!("{name} description") };
+        let (tx, requests) = std::sync::mpsc::channel();
+        let (events, rx) = std::sync::mpsc::channel();
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 900.0)).build_eframe(move |cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
+            app.codex.link = Some(CodexLink { tx, rx });
+            app.codex.open = true;
+            app
+        });
+        events.send(CodexEvent::Account(Some("me".into()))).unwrap();
+        events.send(CodexEvent::Models { models: vec![model("big", "BigModel"), model("small", "SmallModel")], current: Some("big".into()) }).unwrap();
+        h.run_steps(3);
+        h.get_by_label_contains("BigModel").click();
+        h.run_steps(3);
+        assert!(h.query_by_label("SmallModel description").is_some(), "the menu says what each model is for");
+        h.get_by_label("SmallModel").click();
+        h.run_steps(3);
+        assert_eq!(requests.try_recv().ok(), Some(CodexRequest::SetModel("small".into())));
+        assert_eq!(h.state().codex.model.as_deref(), Some("small"));
+        assert!(h.query_by_label_contains("SmallModel").is_some(), "the footer shows the new one");
     }
 
     #[test]

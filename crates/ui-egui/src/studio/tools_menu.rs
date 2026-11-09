@@ -1,11 +1,12 @@
-//! Floating "Ferramentas" button at the canvas' top-left: the current mode's tools (every tool
-//! belongs to at least one mode), with their shortcuts, and the foreground/background colour
-//! chips (the classic toolbar's, which the studio shell doesn't draw).
+//! Floating button at the canvas' top-left, showing the active tool: it opens the current mode's
+//! tools (every tool belongs to at least one mode), with their shortcuts, and the
+//! foreground/background colour chips (the classic toolbar's, which the studio shell doesn't draw).
+//! Below it, one click away in every mode, the tools people switch between all the time.
 
 use egui::{Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
-use super::mode_bar::{select_tool, tools};
+use super::mode_bar::{select_tool, tool_name, tools};
 use super::style::RADIUS;
 use crate::PhotocraftApp;
 use crate::state::Tool;
@@ -25,6 +26,23 @@ pub struct State {
 const DEFAULT_OFFSET: egui::Vec2 = vec2(14.0, 14.0);
 /// More rows than this lay out in two columns.
 const ONE_COLUMN_MAX: usize = 8;
+const BUTTON: egui::Vec2 = vec2(RESERVED_W - 20.0, 40.0);
+/// Between the button and what opens below it.
+const BELOW_GAP: f32 = 8.0;
+/// The always-visible tools (ids without `tools.select.`).
+const QUICK: [&str; 8] = ["move", "rectMarquee", "lasso", "type", "brush", "rectangle", "crop", "hand"];
+const QUICK_SIZE: f32 = 36.0;
+const QUICK_GAP: f32 = 2.0;
+const QUICK_MARGIN: f32 = 4.0;
+
+/// How many quick tools go in a column, and the strip's size: a canvas too low for one column gets more.
+fn quick_layout(canvas_h: f32) -> (usize, egui::Vec2) {
+    let side = |n: usize| n as f32 * (QUICK_SIZE + QUICK_GAP) - QUICK_GAP + 2.0 * QUICK_MARGIN;
+    let room = canvas_h - BUTTON.y - BELOW_GAP - 2.0 * QUICK_MARGIN;
+    let fit = ((room + QUICK_GAP) / (QUICK_SIZE + QUICK_GAP)).floor();
+    let rows = if fit >= 1.0 { (fit as usize).min(QUICK.len()) } else { 1 };
+    (rows, vec2(side(QUICK.len().div_ceil(rows)), side(rows)))
+}
 
 fn c32(c: [f32; 4]) -> Color32 {
     let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
@@ -43,15 +61,22 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     // Below the document tabs, when there are any.
     let canvas = if app.last_canvas_rect.is_positive() && ui.max_rect().contains_rect(app.last_canvas_rect) { app.last_canvas_rect } else { ui.max_rect() };
     let open = app.studio.tools.open;
-    let font = FontId::proportional(15.0);
-    let galley = ui.painter().layout_no_wrap(tl!("Tools").to_string(), font, t.text);
-    let size = vec2(galley.size().x + 90.0, 40.0);
-    let offset = clamp_offset(app.studio.tools.offset.unwrap_or(DEFAULT_OFFSET), size, canvas);
+    // The button names the active tool: that is what it answers at a glance.
+    let active = crate::tool_memory::selected(app);
+    let name = tool_name(active);
+    let mut job = egui::text::LayoutJob::simple_singleline(short(&name).to_string(), FontId::proportional(15.0), t.text);
+    job.wrap = egui::text::TextWrapping::truncate_at_width(BUTTON.x - 90.0);
+    let galley = ui.painter().layout_job(job);
+    let size = BUTTON;
+    let (quick_rows, quick_size) = quick_layout(canvas.height());
+    // Whole block, so the strip can't be dragged off the canvas.
+    let block = vec2(size.x.max(quick_size.x), size.y + BELOW_GAP + quick_size.y);
+    let offset = clamp_offset(app.studio.tools.offset.unwrap_or(DEFAULT_OFFSET), block, canvas);
     let area = egui::Area::new(egui::Id::unique("studio_tools_menu")).order(egui::Order::Foreground).fixed_pos(canvas.min + offset).show(&ctx, |ui| {
         // Drag anywhere on the button to move it; a click (no drag) opens the menu.
         let (r, resp) = ui.allocate_exact_size(size, Sense::click_and_drag());
         if resp.dragged() {
-            app.studio.tools.offset = Some(clamp_offset(offset + resp.drag_delta(), size, canvas));
+            app.studio.tools.offset = Some(clamp_offset(offset + resp.drag_delta(), block, canvas));
         }
         if resp.hovered() || resp.dragged() {
             ctx.set_cursor_icon(if resp.dragged() { egui::CursorIcon::Grabbing } else { egui::CursorIcon::Grab });
@@ -70,17 +95,19 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         if !open {
             ui.painter().rect_filled(chip, RADIUS - 4.0, t.primary_bg);
         }
-        crate::icons::paint(ui, chip.shrink(6.0), "brush", 18.0, t.primary_text);
+        crate::icons::paint(ui, chip.shrink(6.0), crate::icons::tool_icon(active), 18.0, t.primary_text);
         ui.painter().galley_with_override_text_color(pos2(chip.right() + 12.0, r.center().y - galley.size().y / 2.0), galley, ink);
         crate::icons::paint(ui, Rect::from_center_size(pos2(r.right() - 20.0, r.center().y), vec2(14.0, 14.0)), "chevron-down", 14.0, ink);
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Tools")));
-        if resp.clicked() {
+        if resp.on_hover_text(tl!("Tools")).clicked() {
             app.studio.tools.open = !open;
         }
+        ui.add_space(BELOW_GAP);
         if open {
-            ui.add_space(8.0);
             let below = canvas.bottom() - r.bottom() - 40.0;
             dropdown(app, ui, &t, &ctx, below.max(120.0));
+        } else {
+            quick_strip(app, ui, &t, &ctx, quick_rows);
         }
     });
     // A press outside the menu or Escape closes it.
@@ -88,6 +115,37 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     if app.studio.tools.open && (outside || ctx.input(|i| i.key_pressed(egui::Key::Escape))) {
         app.studio.tools.open = false;
     }
+}
+
+/// The everyday tools as icon buttons, the active one amber.
+fn quick_strip(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::Context, rows: usize) {
+    let active = crate::tool_memory::selected(app);
+    egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.card_border)).corner_radius(RADIUS).inner_margin(QUICK_MARGIN).show(ui, |ui| {
+        ui.spacing_mut().item_spacing = vec2(QUICK_GAP, QUICK_GAP);
+        ui.horizontal_top(|ui| {
+            for column in QUICK.chunks(rows.max(1)) {
+                ui.vertical(|ui| {
+                    for name in column {
+                        let Some(tool) = crate::tool_shortcuts::tool(&format!("tools.select.{name}")) else { continue };
+                        let (r, resp) = ui.allocate_exact_size(vec2(QUICK_SIZE, QUICK_SIZE), Sense::click());
+                        let on = tool == active;
+                        if on {
+                            ui.painter().rect_filled(r, RADIUS - 4.0, t.primary_bg);
+                        } else if resp.hovered() {
+                            ui.painter().rect_filled(r, RADIUS - 4.0, t.hover);
+                        }
+                        crate::icons::paint(ui, r.shrink(8.0), crate::icons::tool_icon(tool), 20.0, if on { t.primary_text } else { t.icon });
+                        let label = tl!(tool.label());
+                        let tip = crate::tool_shortcuts::shortcut(app, tool).map_or_else(|| label.to_string(), |sc| format!("{label} ({})", crate::shortcuts::pretty(&sc)));
+                        resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, on, label));
+                        if resp.on_hover_text(tip).clicked() {
+                            select_tool(app, ctx, name);
+                        }
+                    }
+                });
+            }
+        });
+    });
 }
 
 fn dropdown(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &Tokens, ctx: &egui::Context, max_h: f32) {
@@ -289,6 +347,37 @@ mod tests {
         h.run_steps(2);
         assert_eq!(h.state().ui.tool, crate::state::Tool::Crop);
         assert!(!h.state().studio.tools.open);
+    }
+
+    /// The everyday tools are one click away in any mode, and the button names the active one.
+    #[test]
+    fn quick_tools_switch_with_one_click() {
+        let mut h = Harness::builder().with_size(vec2(1100.0, 620.0)).with_step_dt(1.0 / 60.0).build_eframe(|cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
+            app
+        });
+        h.run_steps(5);
+        for name in QUICK {
+            let tool = crate::tool_shortcuts::tool(&format!("tools.select.{name}")).unwrap();
+            h.get_by_label(tool.label()).click();
+            h.run_steps(3);
+            assert_eq!(crate::tool_memory::selected(h.state()), tool, "{name}");
+            assert!(!h.state().studio.tools.open, "the strip picks without opening the menu");
+        }
+        let canvas = h.state().last_canvas_rect;
+        let hand = h.get_by_label(Tool::Hand.label()).rect();
+        assert!(canvas.contains_rect(hand), "the strip fits a laptop's canvas: {hand:?} in {canvas:?}");
+    }
+
+    #[test]
+    fn a_low_canvas_gets_more_quick_columns() {
+        let tall = quick_layout(900.0);
+        assert_eq!(tall.0, QUICK.len());
+        let low = quick_layout(280.0);
+        assert!(low.0 < QUICK.len() && low.1.x > tall.1.x && BUTTON.y + BELOW_GAP + low.1.y <= 280.0, "{low:?}");
+        assert_eq!(quick_layout(10.0).0, 1, "never zero rows");
     }
 
     #[test]

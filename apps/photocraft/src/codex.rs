@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Stdio};
 use std::sync::mpsc::{Sender, channel};
 
-use photocraft_ui_egui::codex_panel::{CodexEvent, CodexLink, CodexRequest};
+use photocraft_ui_egui::codex_panel::{CodexEvent, CodexLink, CodexModel, CodexRequest};
 use serde_json::{Value, json};
 
 /// What Codex is told about where it runs.
@@ -128,7 +128,7 @@ pub fn start(codex: &Path, port: u16, token: &str, cwd: &Path, home: &Path, ctx:
     let cwd = cwd.to_string_lossy().into_owned();
     std::thread::spawn(move || {
         let mut driver =
-            Driver { stdin, next_id: 0, pending: HashMap::new(), thread: None, turn: None, starting: false, queued: Vec::new(), events: ev_tx, ctx, cwd };
+            Driver { stdin, next_id: 0, pending: HashMap::new(), thread: None, turn: None, starting: false, queued: Vec::new(), model: None, events: ev_tx, ctx, cwd };
         driver.request("initialize", json!({"clientInfo": {"name": "photocraft", "title": photocraft_ui_egui::studio::style::APP_NAME, "version": env!("CARGO_PKG_VERSION")}}));
         for input in in_rx {
             match input {
@@ -146,6 +146,9 @@ pub fn start(codex: &Path, port: u16, token: &str, cwd: &Path, home: &Path, ctx:
     });
     Ok(CodexLink { tx: ui_tx, rx: ev_rx })
 }
+
+/// shortcut: one page of `model/list`, enough for today's catalog (nine models); follow `nextCursor` if it nears this.
+const MODEL_PAGE: u32 = 100;
 
 enum Input {
     Ui(CodexRequest),
@@ -166,6 +169,8 @@ struct Driver {
     starting: bool,
     /// Messages waiting for the conversation to start.
     queued: Vec<String>,
+    /// The model picked in the chat or saved in Codex's config (`None`: the catalog's default).
+    model: Option<String>,
     events: Sender<CodexEvent>,
     ctx: egui::Context,
     cwd: String,
@@ -173,6 +178,20 @@ struct Driver {
 
 fn text(v: &Value, key: &str) -> Option<String> {
     v.get(key).and_then(Value::as_str).map(str::to_owned)
+}
+
+/// The models of a `model/list` reply and the current one: `configured`, else the catalog's default.
+fn models(result: &Value, configured: Option<&str>) -> (Vec<CodexModel>, Option<String>) {
+    let data = result.get("data").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
+    let list = data
+        .iter()
+        .filter_map(|m| {
+            let id = text(m, "id")?;
+            Some(CodexModel { name: text(m, "displayName").unwrap_or_else(|| id.clone()), description: text(m, "description").unwrap_or_default(), id })
+        })
+        .collect();
+    let default = data.iter().find(|m| m.get("isDefault").and_then(Value::as_bool) == Some(true)).and_then(|m| text(m, "id"));
+    (list, configured.map(str::to_owned).or(default))
 }
 
 impl Driver {
@@ -214,11 +233,17 @@ impl Driver {
                 }
             }
             CodexRequest::NewChat => (self.thread, self.turn) = (None, None),
+            CodexRequest::SetModel(model) => {
+                // Codex's config, in its own home: the choice outlives this run.
+                self.request("config/value/write", json!({"keyPath": "model", "value": model, "mergeStrategy": "replace"}));
+                self.model = Some(model);
+            }
         }
     }
 
     fn turn_start(&mut self, thread: &str, message: &str) {
-        self.request("turn/start", json!({"threadId": thread, "input": [{"type": "text", "text": message}]}));
+        // Also for a conversation already running: the model may have changed since it started.
+        self.request("turn/start", json!({"threadId": thread, "input": [{"type": "text", "text": message}], "model": self.model}));
     }
 
     fn message(&mut self, v: &Value) {
@@ -247,6 +272,15 @@ impl Driver {
                 let account = result.get("account").filter(|a| !a.is_null());
                 let who = account.map(|a| text(a, "email").or_else(|| text(a, "type")).unwrap_or_else(|| "signed in".into()));
                 self.emit(CodexEvent::Account(who));
+                self.request("config/read", json!({}));
+            }
+            "config/read" => {
+                self.model = result.get("config").and_then(|c| text(c, "model"));
+                self.request("model/list", json!({"limit": MODEL_PAGE}));
+            }
+            "model/list" => {
+                let (models, current) = models(result, self.model.as_deref());
+                self.emit(CodexEvent::Models { models, current });
             }
             "account/logout" => self.request("account/read", json!({})),
             "account/login/start" => {
@@ -280,6 +314,9 @@ impl Driver {
             self.queued.clear();
         }
         self.emit(CodexEvent::Error(format!("{method}: {message}")));
+        if method == "config/read" {
+            self.request("model/list", json!({"limit": MODEL_PAGE}));
+        }
         if matches!(method, "thread/start" | "turn/start") {
             self.emit(CodexEvent::TurnFinished);
         }
@@ -374,6 +411,21 @@ impl Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn model_list_reads_the_catalog_and_the_saved_choice_wins() {
+        let reply = json!({"data": [
+            {"id": "big", "displayName": "Big", "description": "Frontier.", "isDefault": true},
+            {"id": "small", "displayName": "Small", "description": "Affordable.", "isDefault": false},
+            {"displayName": "no id"},
+        ]});
+        let (list, current) = models(&reply, None);
+        assert_eq!(list.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), ["big", "small"]);
+        assert_eq!(list.get(1).map(|m| m.description.as_str()), Some("Affordable."));
+        assert_eq!(current.as_deref(), Some("big"));
+        assert_eq!(models(&reply, Some("small")).1.as_deref(), Some("small"));
+        assert_eq!(models(&json!({}), None), (Vec::new(), None));
+    }
 
     #[test]
     fn server_args_are_valid_toml_values() {
