@@ -25,13 +25,15 @@ const CODEX: &str = "window.toggle.codex";
 const RAIL_W: f32 = 80.0;
 const TILE_W: f32 = 64.0;
 const TILE_H: f32 = 70.0;
+const RAIL_W_COMPACT: f32 = 60.0;
+const TILE_COMPACT: f32 = 44.0;
 
 pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let backdrop = crate::prefs_ui::pasteboard_color(app).unwrap_or(t.canvas);
     crate::direction::end_panel("studio-rail")
         .resizable(false)
-        .exact_size(RAIL_W)
+        .exact_size(if super::style::compact(ui.ctx()) { RAIL_W_COMPACT } else { RAIL_W })
         .frame(egui::Frame::NONE.fill(backdrop).inner_margin(egui::Margin { left: 8, right: 8, top: 12, bottom: 12 }))
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 8.0;
@@ -57,7 +59,9 @@ pub fn toggle(current: Option<&'static str>, key: &'static str) -> Option<&'stat
 
 /// A rounded icon-over-label tile, amber when its panel is showing.
 fn tile(ui: &mut egui::Ui, t: &Tokens, icon: &str, label: &str, on: bool) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(TILE_W, TILE_H), Sense::click());
+    let compact = super::style::compact(ui.ctx());
+    let size = if compact { vec2(TILE_COMPACT, TILE_COMPACT) } else { vec2(TILE_W, TILE_H) };
+    let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     let fill = if on {
         t.accent_soft
     } else if resp.hovered() {
@@ -68,11 +72,16 @@ fn tile(ui: &mut egui::Ui, t: &Tokens, icon: &str, label: &str, on: bool) -> Res
     let border = if on { t.accent_border } else { t.card_border };
     ui.painter().rect(rect, CornerRadius::same(12), fill, Stroke::new(1.0, border), StrokeKind::Inside);
     let tint = if on { t.accent } else { t.icon };
-    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.center().x, rect.top() + 26.0), vec2(24.0, 24.0)), icon, 22.0, tint);
-    let text = if on { t.accent_text } else { t.text };
-    ui.painter().text(pos2(rect.center().x, rect.bottom() - 16.0), Align2::CENTER_CENTER, label, FontId::proportional(11.0), text);
+    // On a laptop the tile is its icon; the name is the tooltip.
+    let icon_y = if compact { rect.center().y } else { rect.top() + 26.0 };
+    crate::icons::paint(ui, Rect::from_center_size(pos2(rect.center().x, icon_y), vec2(24.0, 24.0)), icon, 22.0, tint);
+    if !compact {
+        let text = if on { t.accent_text } else { t.text };
+        ui.painter().text(pos2(rect.center().x, rect.bottom() - 16.0), Align2::CENTER_CENTER, label, FontId::proportional(11.0), text);
+    }
     resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), on, label));
-    resp.on_hover_cursor(egui::CursorIcon::PointingHand)
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if compact { resp.on_hover_text(label) } else { resp }
 }
 
 #[cfg(test)]

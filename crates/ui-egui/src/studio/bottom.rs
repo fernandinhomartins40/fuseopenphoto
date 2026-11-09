@@ -32,18 +32,31 @@ pub struct State {
 const STATUS_H: f32 = 34.0;
 const STRIP_H: f32 = 170.0;
 const PROPS_H: f32 = 42.0;
+const STATUS_H_COMPACT: f32 = 28.0;
+const STRIP_H_COMPACT: f32 = 112.0;
+const PROPS_H_COMPACT: f32 = 36.0;
 /// Width of the Opacity / Fill pop-up fields (the classic Layers panel's).
 const PCT_W: f32 = 66.0 + widgets::POPUP_ARROW_W;
 
-/// Draw the three rows. Bottom panels claim the edge in call order: the first is the lowest.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+/// A bottom row. Bottom panels claim the edge in call order: the first is the lowest.
+fn row(id: &'static str, h: f32, fill: egui::Color32, margin_y: i8) -> egui::Panel {
+    egui::Panel::bottom(id).exact_size(h).frame(egui::Frame::NONE.fill(fill).inner_margin(egui::Margin::symmetric(12, margin_y)))
+}
+
+/// The status line, the whole window wide.
+pub fn status(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    let row = |id: &'static str, h: f32, fill| {
-        egui::Panel::bottom(id).exact_size(h).frame(egui::Frame::NONE.fill(fill).inner_margin(egui::Margin::symmetric(12, 0)))
-    };
-    row("studio_status", STATUS_H, t.chrome).show(ui, |ui| status_line(app, ui));
-    row("studio_layer_strip", STRIP_H, t.dock).frame(egui::Frame::NONE.fill(t.dock).inner_margin(egui::Margin::symmetric(12, 10))).show(ui, |ui| strip::show(app, ui));
-    row("studio_layer_props", PROPS_H, t.chrome).show(ui, |ui| props_bar(app, ui));
+    let h = if super::style::compact(ui.ctx()) { STATUS_H_COMPACT } else { STATUS_H };
+    row("studio_status", h, t.chrome, 0).show(ui, |ui| status_line(app, ui));
+}
+
+/// The layer strip and, above it, the layer properties.
+pub fn rows(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+    let t = Tokens::get(ui.ctx());
+    let compact = super::style::compact(ui.ctx());
+    let (strip_h, margin) = if compact { (STRIP_H_COMPACT, 0) } else { (STRIP_H, 10) };
+    row("studio_layer_strip", strip_h, t.dock, margin).show(ui, |ui| strip::show(app, ui));
+    row("studio_layer_props", if compact { PROPS_H_COMPACT } else { PROPS_H }, t.chrome, 0).show(ui, |ui| props_bar(app, ui));
 }
 
 // ------------------------------------------------------------------------------- status line
@@ -163,7 +176,7 @@ fn props_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let active = doc.as_ref().zip(st.and_then(|s| s.active_layer)).and_then(|(d, id)| d.layer(id).cloned());
     let lang = crate::i18n::current();
     egui::ScrollArea::horizontal().id_salt("studio-props-bar").auto_shrink([false, false]).show(ui, |ui| {
-        ui.set_min_height(PROPS_H);
+        ui.set_min_height(ui.available_height());
         crate::direction::horizontal_centered(ui, |ui| {
             let (ids, target) = match (&doc, &active) {
                 (Some(d), Some(l)) => targets(d, l, &selection),

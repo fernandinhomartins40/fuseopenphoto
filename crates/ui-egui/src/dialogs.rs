@@ -1382,7 +1382,7 @@ mod preference_resize_tests {
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, Default::default());
+        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
         h.run_steps(5);
         assert_buttons_in_corner(&h, "on open");
         let opened = frame(&h);

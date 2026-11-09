@@ -831,7 +831,7 @@ fn web_preview_grows_with_resize_and_accepts_zoom_and_pan() {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
     h.run_steps(5);
     let pane = |h: &egui_kittest::Harness<'_, PhotocraftApp>| {
         let r = &h.state().ui.dialogs[0].fields["__previewRects"][0];

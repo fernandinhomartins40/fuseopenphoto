@@ -9,6 +9,8 @@ use serde_json::json;
 
 use super::Mode;
 use super::style::{MODE_BAR_H, RADIUS};
+
+const MODE_BAR_H_COMPACT: f32 = 42.0;
 use crate::PhotocraftApp;
 use crate::state::Tool;
 use crate::theme::Tokens;
@@ -154,7 +156,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     }
     let t = Tokens::get(ui.ctx());
     egui::Panel::top("studio_mode_bar")
-        .exact_size(MODE_BAR_H)
+        .exact_size(if super::style::compact(ui.ctx()) { MODE_BAR_H_COMPACT } else { MODE_BAR_H })
         .frame(egui::Frame::NONE.fill(t.chrome).stroke(Stroke::new(1.0, t.separator)))
         .show(ui, |ui| {
             let full = ui.max_rect();
@@ -165,7 +167,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             let widths: Vec<f32> = items.iter().map(|(_, g)| pad * 2.0 + icon_w + gap + g.size().x).collect();
             let total = widths.iter().sum::<f32>() + (items.len().saturating_sub(1)) as f32 * (sep_gap * 2.0 + 1.0);
             let mut x = (full.center().x - total / 2.0).max(full.left() + 8.0);
-            let h = (MODE_BAR_H - 16.0).max(20.0);
+            let h = (ui.available_height() - 8.0).clamp(20.0, MODE_BAR_H - 16.0);
             let ctx = ui.ctx().clone();
             for (i, ((mode, galley), w)) in items.into_iter().zip(widths).enumerate() {
                 if i > 0 {

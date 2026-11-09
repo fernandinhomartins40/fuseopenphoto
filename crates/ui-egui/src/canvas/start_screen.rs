@@ -48,7 +48,7 @@ pub(super) fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Rail on the left; the hero, drop zone and recents beside the formats; the clipboard strip below.
 fn wide(app: &mut PhotocraftApp, ui: &mut egui::Ui, area: Rect, recent: &[String], act: &mut Option<Act>) {
     let t = Tokens::get(ui.ctx());
-    let rail = Rect::from_min_max(area.min, pos2(area.left() + if area.width() >= 1200.0 { 240.0 } else { 200.0 }, area.bottom()));
+    let rail = Rect::from_min_max(area.min, pos2(area.left() + if area.width() >= 1200.0 { 240.0 } else { 222.0 }, area.bottom()));
     ui.painter().vline(rail.right(), rail.y_range(), Stroke::new(1.0, t.separator));
     render_rail(app, ui, rail, act);
 

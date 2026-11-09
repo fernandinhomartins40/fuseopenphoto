@@ -194,6 +194,7 @@ fn reset_under_an_output_size_leaves_nothing_to_reset() {
 fn the_options_bar_reset_button_resets_a_changed_frame() {
     use egui_kittest::kittest::{NodeT, Queryable};
     let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    app.studio.classic = true;
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());

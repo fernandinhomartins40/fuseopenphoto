@@ -32,7 +32,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let (cap_l, cap_r) = crate::titlebar::reserved(app, &ctx);
     // macOS draws its traffic lights over an integrated title bar's left end.
     let mac_inset = if cfg!(target_os = "macos") && app.integrated_titlebar { 78.0 } else { 0.0 };
-    let height = crate::titlebar::bar_height(app, &ctx, style::TOP_BAR_H);
+    let height = crate::titlebar::bar_height(app, &ctx, if style::compact(&ctx) { 44.0 } else { style::TOP_BAR_H });
     let mut clicked: Option<String> = None;
     let bar = egui::Panel::top("studio_top_bar").exact_size(height).frame(egui::Frame::NONE.fill(t.chrome)).show(ui, |ui| {
         let full = ui.max_rect();

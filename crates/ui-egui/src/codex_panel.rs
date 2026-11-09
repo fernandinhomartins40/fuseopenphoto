@@ -376,11 +376,14 @@ pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
     let p = &mut app.codex;
     crate::direction::end_panel("codex")
         .resizable(true)
-        .default_size(430.0)
-        .size_range(390.0..=720.0)
+        .default_size(if crate::studio::style::compact(ui.ctx()) { 340.0 } else { 430.0 })
+        // Never so wide on a small window that the canvas goes.
+        .size_range(310.0..=(ui.available_width() * 0.6).clamp(310.0, 720.0))
         .frame(Frame::NONE.fill(t.chrome).inner_margin(Margin::symmetric(8, 10)))
         .show(ui, |ui| {
             let card = ui.max_rect();
+            // The content is drawn in a child: without this the panel thinks it is empty and shrinks to its minimum.
+            ui.expand_to_include_rect(card);
             ui.painter().rect(card, 12.0, t.card, Stroke::new(1.0, t.card_border), StrokeKind::Inside);
             let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(card.shrink(14.0)).layout(egui::Layout::top_down(egui::Align::Min)));
             ui.set_clip_rect(card);
@@ -394,7 +397,7 @@ pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
             });
             egui::Panel::bottom("codex_foot").frame(Frame::NONE).resizable(false).show_separator_line(false).show(&mut ui, |ui| {
                 ui.add_space(8.0);
-                if p.tab == Tab::Chat {
+                if p.tab == Tab::Chat && !crate::studio::style::short(ui.ctx()) {
                     quick_actions(ui, &t, p, &mut acts);
                     ui.add_space(8.0);
                 }
@@ -446,11 +449,17 @@ fn header(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
                     acts.push(if running { Act::Restart } else { Act::Start });
                 }
             });
-            let new_chat = egui::Button::image_and_text(crate::icons::image("plus", 14.0, t.icon), RichText::new(tl!("New Chat")).color(t.text))
-                .fill(t.card)
-                .stroke(Stroke::new(1.0, t.field_border))
-                .corner_radius(8.0);
-            if ui.add_enabled(running, new_chat).clicked() {
+            // Narrow: the "+" alone beats a label that runs over the title.
+            let clicked = if ui.available_width() < 150.0 {
+                ui.add_enabled_ui(running, |ui| crate::icons::button(ui, "plus", 26.0, false, tl!("New Chat"))).inner.clicked()
+            } else {
+                let new_chat = egui::Button::image_and_text(crate::icons::image("plus", 14.0, t.icon), RichText::new(tl!("New Chat")).color(t.text))
+                    .fill(t.card)
+                    .stroke(Stroke::new(1.0, t.field_border))
+                    .corner_radius(8.0);
+                ui.add_enabled(running, new_chat).clicked()
+            };
+            if clicked {
                 acts.push(Act::Request(CodexRequest::NewChat));
             }
         });
@@ -686,7 +695,7 @@ fn composer(ui: &mut Ui, t: &Tokens, p: &mut CodexPanel, acts: &mut Vec<Act>) {
             running,
             egui::TextEdit::multiline(&mut p.input)
                 .frame(egui::Frame::NONE)
-                .desired_rows(2)
+                .desired_rows(if crate::studio::style::compact(ui.ctx()) { 1 } else { 2 })
                 .desired_width(f32::INFINITY)
                 .hint_text(tl!("What do you want to create or edit?")),
         );
@@ -746,9 +755,6 @@ fn footer(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
     };
     let state = crate::i18n::t(text);
     ui.horizontal(|ui| {
-        let (r, _) = ui.allocate_exact_size(vec2(10.0, 16.0), Sense::hover());
-        ui.painter().circle_filled(r.center(), 4.0, dot);
-        ui.label(RichText::new(format!("{} · {state}", tl!("Codex CLI"))).color(t.text_dim));
         ui.with_layout(crate::direction::trailing(), |ui| {
             if !running {
                 if crate::widgets::secondary_button(ui, tl!("Start Codex"), 0.0).clicked() {
@@ -757,6 +763,12 @@ fn footer(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
             } else if p.account == Some(None) && !p.signing_in && crate::widgets::primary_button(ui, tl!("Sign in with ChatGPT"), 0.0).clicked() {
                 acts.push(Act::Request(CodexRequest::SignIn));
             }
+            // What is left of the row, so a narrow panel shortens the status, not the button.
+            ui.with_layout(crate::direction::row(), |ui| {
+                let (r, _) = ui.allocate_exact_size(vec2(10.0, 16.0), Sense::hover());
+                ui.painter().circle_filled(r.center(), 4.0, dot);
+                ui.add(egui::Label::new(RichText::new(format!("{} · {state}", tl!("Codex CLI"))).color(t.text_dim)).truncate());
+            });
         });
     });
 }

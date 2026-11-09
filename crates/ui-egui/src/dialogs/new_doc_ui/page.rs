@@ -184,8 +184,8 @@ fn vsep(ui: &mut Ui, h: f32) {
 fn columns(app: &mut PhotocraftApp, ui: &mut Ui, body: Rect, f: &mut Map<String, Value>) -> bool {
     let t = Tokens::get(ui.ctx());
     let w = body.width();
-    let formats_w = (w * 0.15).clamp(180.0, 240.0);
-    let list_w = (w * 0.135).clamp(170.0, 215.0);
+    let formats_w = 244.0_f32;
+    let list_w = (w * 0.135).clamp(150.0, 215.0);
     let right_w = (w * 0.25).clamp(290.0, 410.0);
     let x1 = body.left() + formats_w;
     let x2 = x1 + list_w;

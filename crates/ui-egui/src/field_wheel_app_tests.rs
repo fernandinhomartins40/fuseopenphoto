@@ -16,6 +16,7 @@ fn harness() -> Harness<'static, PhotocraftApp> {
         let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         app.ui.tool = Tool::Brush;
+        app.studio.classic = true;
         app
     });
     h.run_steps(8);

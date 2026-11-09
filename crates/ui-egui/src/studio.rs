@@ -57,11 +57,20 @@ pub struct StudioState {
 pub fn frame(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     top_bar::show(app, ui);
     mode_bar::show(app, ui);
-    bottom::show(app, ui);
-    right_rail::show(app, ui);
-    crate::codex_panel::dock(app, ui);
-    // Codex replaces the contextual panel (mockup 1); a panel the rail picks still shows beside it.
-    if !app.codex.open || app.studio.rail.pick.is_some() {
+    bottom::status(app, ui);
+    if app.codex.open {
+        // Codex runs down to the status line and the layer rows stay under the canvas (mockup 1):
+        // the chat needs the height, above all on a laptop.
+        right_rail::show(app, ui);
+        crate::codex_panel::dock(app, ui);
+        bottom::rows(app, ui);
+        // Codex replaces the contextual panel; a panel the rail picks still shows beside it.
+        if app.studio.rail.pick.is_some() {
+            right_panel::show(app, ui);
+        }
+    } else {
+        bottom::rows(app, ui);
+        right_rail::show(app, ui);
         right_panel::show(app, ui);
     }
     let t = Tokens::get(ui.ctx());

@@ -14,6 +14,7 @@ use crate::{PhotocraftApp, icons, widgets};
 
 const TABS_W: f32 = 132.0;
 const SIDE_W: f32 = 40.0;
+const SIDE_W_COMPACT: f32 = 66.0;
 const THUMB_W: f32 = 150.0;
 /// How much lower each nesting level sits, so a group's contents read as inside it.
 const NEST_STEP: f32 = 6.0;
@@ -29,7 +30,9 @@ pub(super) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing.x = 10.0;
         ui.allocate_ui_with_layout(vec2(TABS_W, h), Layout::top_down(Align::Min), |ui| tabs(app, ui, h));
         let tab = app.studio.bottom.tab;
-        let side = if tab == Tab::Layers { SIDE_W + 10.0 } else { 0.0 };
+        let compact = crate::studio::style::compact(ui.ctx());
+        let side_w = if compact { SIDE_W_COMPACT } else { SIDE_W };
+        let side = if tab == Tab::Layers { side_w + 10.0 } else { 0.0 };
         let w = (ui.available_width() - side).max(0.0);
         ui.allocate_ui_with_layout(vec2(w, h), Layout::left_to_right(Align::Min), |ui| {
             ui.set_min_size(vec2(w, h));
@@ -40,7 +43,9 @@ pub(super) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             }
         });
         if tab == Tab::Layers {
-            ui.allocate_ui_with_layout(vec2(SIDE_W, h), Layout::top_down(Align::Center), side_column(app));
+            // Too low for the column: two by two.
+            let layout = if compact { Layout::left_to_right(Align::Min).with_main_wrap(true) } else { Layout::top_down(Align::Center) };
+            ui.allocate_ui_with_layout(vec2(side_w, h), layout, side_column(app));
         }
     });
 }
@@ -64,7 +69,8 @@ fn tabs(app: &mut PhotocraftApp, ui: &mut egui::Ui, h: f32) {
             (Tab::Channels, "blend", tl!("Channels")),
             (Tab::Paths, "spline", crate::i18n::tr_ctx(lang, "studio", "Paths")),
         ] {
-            let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 36.0), Sense::click());
+            // Three rows share the strip, however low it is.
+            let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ((h - 14.0) / 3.0).min(36.0)), Sense::click());
             let on = app.studio.bottom.tab == tab;
             if on {
                 ui.painter().rect_filled(r, RADIUS - 2.0, t.accent_soft);
@@ -674,15 +680,15 @@ fn side_column(app: &mut PhotocraftApp) -> impl FnOnce(&mut egui::Ui) + '_ {
             let whole = selection.len() > 1 && selection.iter().any(|s| s.0 == id);
             crate::panels::dropped_on(ui, b).then(|| (command.to_string(), if whole { json!({}) } else { json!({"layer": id}) }))
         };
-        ui.spacing_mut().item_spacing.y = 6.0;
-        let new_layer = icons::button(ui, "square-plus", 34.0, false, &crate::shortcuts::tip_label(app, "Create a new layer", "layer.new.layer"));
+        ui.spacing_mut().item_spacing.y = 6.0; let btn = if crate::studio::style::compact(&ctx) { 28.0 } else { 34.0 };
+        let new_layer = icons::button(ui, "square-plus", btn, false, &crate::shortcuts::tip_label(app, "Create a new layer", "layer.new.layer"));
         if new_layer.clicked() {
             // ⌥-click asks first (the New Layer dialog), ⌘/Ctrl-click adds it below.
             let (alt, below) = ui.input(|i| (i.modifiers.alt, i.modifiers.command));
             actions.push(("layer.new.layer".into(), if alt { Value::Null } else if below { json!({"position": "below"}) } else { json!({}) }));
         }
         actions.extend(drop_on(ui, &new_layer, "layer.duplicate"));
-        let group = icons::button(ui, "folder-plus", 34.0, false, tl!("Create a new group"));
+        let group = icons::button(ui, "folder-plus", btn, false, tl!("Create a new group"));
         if group.clicked() {
             // Several selected layers (or ⇧) go into the new group; ⌥ asks first, ⌘ adds below.
             let m = ui.input(|i| i.modifiers);
@@ -703,7 +709,7 @@ fn side_column(app: &mut PhotocraftApp) -> impl FnOnce(&mut egui::Ui) + '_ {
         } else {
             ("layer.delete", tl!("Delete layer"))
         };
-        let trash = icons::button(ui, "trash", 34.0, false, label);
+        let trash = icons::button(ui, "trash", btn, false, label);
         if trash.clicked() {
             if let Some(picked) = crate::smart_ui::selected(&ctx, &doc, active) {
                 // A selected smart filter is what Delete removes (#4751).
@@ -716,7 +722,7 @@ fn side_column(app: &mut PhotocraftApp) -> impl FnOnce(&mut egui::Ui) + '_ {
             }
         }
         actions.extend(drop_on(ui, &trash, "layer.delete"));
-        let more = icons::button(ui, "ellipsis", 34.0, false, tl!("More options"));
+        let more = icons::button(ui, "ellipsis", btn, false, tl!("More options"));
         egui::Popup::menu(&more).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| more_menu(app, ui, &mut actions));
         run_actions(app, &ctx, actions);
     }

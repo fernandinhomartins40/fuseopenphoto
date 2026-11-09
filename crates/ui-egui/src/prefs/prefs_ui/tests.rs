@@ -393,7 +393,7 @@ fn manual_theme_tokens_and_global_styles_stay_fixed_across_os_changes() {
 
 #[test]
 fn auto_appearance_replaces_a_restored_egui_dark_pin() {
-    let (mut app, _) = app_with_saved(Some(json!({"interface": {"appearanceMode": "auto"}}).to_string()));
+    let (mut app, _) = app_with_saved(Some(json!({"version": photocraft_engine::prefs::PREFS_VERSION, "interface": {"appearanceMode": "auto"}}).to_string()));
     let ctx = egui::Context::default();
     ctx.set_theme(egui::ThemePreference::Dark);
     assert_eq!(ctx.options(|o| o.theme_preference), egui::ThemePreference::Dark);
