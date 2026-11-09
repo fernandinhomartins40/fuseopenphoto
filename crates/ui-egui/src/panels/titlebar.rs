@@ -264,7 +264,9 @@ pub fn caption_buttons(app: &mut PhotocraftApp, ui: &mut Ui, bar: Rect) {
     let windows = s.family == CaptionFamily::Windows;
     let mut clicked = None;
     for (c, r, centre) in layout(&s, bar, bar.left().max(content.left()), bar.right().min(content.right())) {
-        let resp = ui.interact(r, caption_id(c), if windows { Sense::click() } else { Sense::click_and_drag() });
+        // A full-window page (New Document) draws its own buttons over the bar's: same place, other layer.
+        let id = if ui.layer_id().order == egui::Order::Background { caption_id(c) } else { caption_id(c).with(ui.layer_id().id) };
+        let resp = ui.interact(r, id, if windows { Sense::click() } else { Sense::click_and_drag() });
         if resp.drag_started_by(PointerButton::Primary) {
             start_os_move(ui.ctx());
         }

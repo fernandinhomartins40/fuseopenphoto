@@ -82,7 +82,9 @@ fn documents(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         paint_dots(ui, ui.available_rect_before_wrap(), app.session.prefs().interface.show_canvas_dots);
         return;
     }
-    if !app.ui.view.hides_tabs() || opening {
+    // The studio shell's mockups have no tab for a lone document; it would sit under the Tools button.
+    let lone_studio_doc = !app.studio.classic && n <= 1;
+    if (!app.ui.view.hides_tabs() && !lone_studio_doc) || opening {
         // Flat Spectrum tabs sit directly against the canvas. The parent's default vertical
         // item spacing would otherwise leave a visible gap below the tab strip (#2188).
         let spacing = ui.spacing().item_spacing.y;

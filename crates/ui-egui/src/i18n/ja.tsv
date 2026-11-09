@@ -998,7 +998,7 @@
 	All Caps	すべて大文字
 	All Slices	すべてのスライス
 	All User Slices	すべてのユーザースライス
-	All shortcuts reset to {app} defaults.	すべてのショートカットを初期状態に戻しました。
+	All shortcuts reset to {app} defaults.	{app}のすべてのショートカットを初期状態に戻しました。
 	Alt	Alt
 	Alt-click to define a source point to clone from	Alt+クリックでコピー元を指定
 	Always use pressure for opacity	常に筆圧を不透明度に使う
@@ -1580,7 +1580,6 @@
 	Keyboard shortcuts imported	キーボードショートカットを読み込みました
 	Your keyboard shortcut set {set} is in use here: {n} shortcuts differ from the defaults. Edit › Keyboard Shortcuts shows them; Reset All to Defaults undoes this.	キーボードショートカットセット {set} をここで使用しています。{n} 個のショートカットが既定と異なります。編集 › キーボードショートカットで確認でき、「すべて既定に戻す」で元に戻せます。
 	Import keyboard shortcuts?	キーボードショートカットを読み込みますか？
-	{app} found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from {app}'s. Import it?	このコンピューターで、別の画像編集アプリのキーボードショートカットセット {set} が見つかりました。{n} 個のショートカットが {app} と異なります。読み込みますか？
 	Edit › Keyboard Shortcuts › Reset All to Defaults undoes an import.	編集 › キーボードショートカット › 「すべて既定に戻す」で読み込みを元に戻せます。
 	Don't Import	読み込まない
 	The keyboard shortcut set was not imported: {error}	キーボードショートカットセットは読み込まれませんでした: {error}

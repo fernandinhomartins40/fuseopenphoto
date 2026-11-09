@@ -19,7 +19,7 @@ const CLIPBOARD: &str = "file.newFromClipboard";
 pub(super) fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let area = ui.available_rect_before_wrap();
     let t = Tokens::get(ui.ctx());
-    ui.painter().rect_filled(area, 0.0, t.chrome);
+    ui.painter().rect_filled(area, 0.0, t.canvas);
     open_on_double_click(app, ui, area);
 
     // File › Open Recent, newest first (on the web there are no paths to reopen).
@@ -165,7 +165,7 @@ fn action_button(ui: &mut egui::Ui, label: &str, icon: &str, primary: bool, size
     let (fill, stroke, ink) = if primary {
         (if resp.hovered() { t.accent } else { t.primary_bg }, Stroke::NONE, t.primary_text)
     } else {
-        (if resp.hovered() { t.hover } else { t.chrome }, Stroke::new(1.5, t.text), t.text)
+        (if resp.hovered() { t.hover } else { t.canvas }, Stroke::new(1.5, t.text), t.text)
     };
     ui.painter().rect(rect, RADIUS, fill, stroke, StrokeKind::Inside);
     let font = semibold((size.y * 0.34).clamp(14.0, 22.0));

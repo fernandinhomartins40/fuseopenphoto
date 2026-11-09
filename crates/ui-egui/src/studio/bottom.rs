@@ -30,7 +30,7 @@ pub struct State {
 }
 
 const STATUS_H: f32 = 34.0;
-const STRIP_H: f32 = 150.0;
+const STRIP_H: f32 = 170.0;
 const PROPS_H: f32 = 42.0;
 /// Width of the Opacity / Fill pop-up fields (the classic Layers panel's).
 const PCT_W: f32 = 66.0 + widgets::POPUP_ARROW_W;
@@ -42,7 +42,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         egui::Panel::bottom(id).exact_size(h).frame(egui::Frame::NONE.fill(fill).inner_margin(egui::Margin::symmetric(12, 0)))
     };
     row("studio_status", STATUS_H, t.chrome).show(ui, |ui| status_line(app, ui));
-    row("studio_layer_strip", STRIP_H, t.dock).show(ui, |ui| strip::show(app, ui));
+    row("studio_layer_strip", STRIP_H, t.dock).frame(egui::Frame::NONE.fill(t.dock).inner_margin(egui::Margin::symmetric(12, 10))).show(ui, |ui| strip::show(app, ui));
     row("studio_layer_props", PROPS_H, t.chrome).show(ui, |ui| props_bar(app, ui));
 }
 

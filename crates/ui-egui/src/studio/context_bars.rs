@@ -85,8 +85,10 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut Ui) {
         }
     }
     if super::options_pill::shows_for(app.ui.tool, app.ui.transform.is_some()) {
-        let max_w = (canvas.width() - 2.0 * GAP - 16.0).max(80.0);
-        floating(ui, "studio-tool-options", pos2(canvas.center().x, top), Align2::CENTER_TOP, canvas, |ui| {
+        // Beside the Tools button, not under it.
+        let left = canvas.left() + super::tools_menu::RESERVED_W;
+        let max_w = (canvas.right() - GAP - left - 16.0).max(80.0);
+        floating(ui, "studio-tool-options", pos2((left + canvas.right() - GAP) / 2.0, top), Align2::CENTER_TOP, canvas, |ui| {
             super::options_pill::contents(app, ui, max_w);
         });
     }

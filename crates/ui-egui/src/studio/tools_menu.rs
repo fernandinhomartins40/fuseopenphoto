@@ -11,6 +11,9 @@ use crate::PhotocraftApp;
 use crate::state::Tool;
 use crate::theme::Tokens;
 
+/// The canvas width the button takes at its default place, kept clear by the tool options bar.
+pub const RESERVED_W: f32 = 196.0;
+
 #[derive(Default)]
 pub struct State {
     pub open: bool,
@@ -37,7 +40,8 @@ fn clamp_offset(offset: egui::Vec2, size: egui::Vec2, canvas: Rect) -> egui::Vec
 pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let ctx = ui.ctx().clone();
-    let canvas = ui.max_rect();
+    // Below the document tabs, when there are any.
+    let canvas = if app.last_canvas_rect.is_positive() && ui.max_rect().contains_rect(app.last_canvas_rect) { app.last_canvas_rect } else { ui.max_rect() };
     let open = app.studio.tools.open;
     let font = FontId::proportional(15.0);
     let galley = ui.painter().layout_no_wrap(tl!("Tools").to_string(), font, t.text);

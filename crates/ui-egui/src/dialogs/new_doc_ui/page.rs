@@ -40,7 +40,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ctx: &egui::Context, f: &mut Map<Str
     let mut outcome = None;
     egui::Area::new(id).order(egui::Order::Foreground).fixed_pos(screen.min).constrain(false).movable(false).show(ctx, |ui| {
         let t = Tokens::get(ctx);
-        ui.painter().rect_filled(screen, 0.0, t.chrome);
+        ui.painter().rect_filled(screen, 0.0, t.canvas);
         // The whole window is the page's: nothing underneath takes the pointer.
         ui.allocate_rect(screen, Sense::hover());
         ui.style_mut().interaction.selectable_labels = false;
@@ -511,12 +511,17 @@ fn dimensions(ui: &mut Ui, f: &mut Map<String, Value>, w: f32) {
     let link_w = 34.0;
     let field_w = ((w - link_w) / 2.0 - 10.0).max(50.0);
     ui.horizontal(|ui| {
-        ui.add_sized(vec2(field_w + link_w + 12.0, 18.0), egui::Label::new(RichText::new(tl!("Width")).size(13.5)));
+        ui.allocate_ui(vec2(field_w + link_w + 12.0, 18.0), |ui| {
+            ui.set_min_width(field_w + link_w + 12.0);
+            ui.label(RichText::new(tl!("Width")).size(13.5));
+        });
         ui.label(RichText::new(tl!("Height")).size(13.5));
     });
     let linked = f.get("__linked").and_then(Value::as_bool).unwrap_or(false);
     let (w0, h0) = (get_f(f, "width", 1920.0), get_f(f, "height", 1080.0));
     ui.horizontal(|ui| {
+        // The row's height from the start: otherwise the fields centre on different heights.
+        ui.set_min_height(link_w);
         if super::size_field(ui, f, "width", field_w) && linked {
             keep_aspect(f, "height", h0 * get_f(f, "width", w0) / w0.max(1.0));
         }

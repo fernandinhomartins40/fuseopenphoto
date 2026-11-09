@@ -1064,6 +1064,7 @@ fn middle_clicking_an_edited_tab_prompts_instead_of_discarding() {
 fn spectrum_document_tabs_meet_canvas_without_a_gap() {
     for kind in [crate::theme::ThemeKind::Pro, crate::theme::ThemeKind::ProMedium] {
         let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        app.studio.classic = true;
         app.run("file.new", json!({"width": 80, "height": 60})).unwrap();
         app.sync_views();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(680.0, 480.0)).build_ui_state(

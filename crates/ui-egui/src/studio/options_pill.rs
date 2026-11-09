@@ -44,6 +44,8 @@ pub fn contents(app: &mut PhotocraftApp, ui: &mut egui::Ui, max_w: f32) {
         w.open.bg_stroke = Stroke::new(1.0, t.accent);
     }
     ctx.data_mut(|d| d.insert_temp(theme_id(), row));
+    // An Area offers its last size; without this the row stays clipped at the first frame's width.
+    ui.set_max_width(max_w);
     egui::ScrollArea::horizontal().id_salt("studio-tool-options").max_width(max_w).show(ui, |ui| {
         crate::panels::tool_options(app, ui, false);
     });

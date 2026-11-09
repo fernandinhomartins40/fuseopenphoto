@@ -60,7 +60,10 @@ pub fn frame(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     bottom::show(app, ui);
     right_rail::show(app, ui);
     crate::codex_panel::dock(app, ui);
-    right_panel::show(app, ui);
+    // Codex replaces the contextual panel (mockup 1); a panel the rail picks still shows beside it.
+    if !app.codex.open || app.studio.rail.pick.is_some() {
+        right_panel::show(app, ui);
+    }
     let t = Tokens::get(ui.ctx());
     let backdrop = crate::prefs_ui::pasteboard_color(app).unwrap_or(t.canvas);
     egui::CentralPanel::default().frame(egui::Frame::NONE.fill(backdrop)).show(ui, |ui| {

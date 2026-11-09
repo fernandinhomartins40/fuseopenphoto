@@ -20,7 +20,7 @@ pub(crate) fn home_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let mac_inset = if cfg!(target_os = "macos") && app.integrated_titlebar { 78.0 } else { 0.0 };
     let height = crate::titlebar::bar_height(app, &ctx, BAR_H);
     let mut clicked: Option<String> = None;
-    let bar = egui::Panel::top("home_top_bar").exact_size(height).frame(egui::Frame::NONE.fill(t.chrome)).show(ui, |ui| {
+    let bar = egui::Panel::top("home_top_bar").exact_size(height).frame(egui::Frame::NONE.fill(t.canvas)).show(ui, |ui| {
         let full = ui.max_rect();
         ui.painter().hline(full.x_range(), full.bottom() - 0.5, Stroke::new(1.0, t.separator));
         let left_edge = full.left() + if cap_l > 0.0 { cap_l + 4.0 } else { 16.0_f32.max(mac_inset) };
@@ -112,7 +112,7 @@ fn search_field(app: &PhotocraftApp, ui: &mut egui::Ui, rect: Rect) -> egui::Res
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
     let border = if resp.hovered() || app.ui.palette_open { t.accent_border } else { t.field_border };
     let p = ui.painter();
-    p.rect(rect, CornerRadius::same(10), t.chrome, Stroke::new(1.0, border), StrokeKind::Inside);
+    p.rect(rect, CornerRadius::same(10), t.canvas, Stroke::new(1.0, border), StrokeKind::Inside);
     crate::icons::paint(ui, Rect::from_center_size(pos2(rect.left() + 24.0, rect.center().y), vec2(18.0, 18.0)), "search", 18.0, t.text);
     let text = match crate::shortcuts::shortcut_label(app, "edit.search") {
         Some(sc) => format!("{label} {sc}"),

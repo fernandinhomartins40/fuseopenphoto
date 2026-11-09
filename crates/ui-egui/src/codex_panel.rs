@@ -377,7 +377,7 @@ pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
     crate::direction::end_panel("codex")
         .resizable(true)
         .default_size(430.0)
-        .size_range(320.0..=720.0)
+        .size_range(390.0..=720.0)
         .frame(Frame::NONE.fill(t.chrome).inner_margin(Margin::symmetric(8, 10)))
         .show(ui, |ui| {
             let card = ui.max_rect();
@@ -485,7 +485,8 @@ fn tabs(ui: &mut Ui, t: &Tokens, tab: &mut Tab) {
 fn context_chip(ui: &mut Ui, t: &Tokens, doc: Option<&(String, usize)>) {
     Frame::new().fill(t.field).stroke(Stroke::new(1.0, t.field_border)).corner_radius(10.0).inner_margin(Margin::symmetric(10, 7)).show(ui, |ui| {
         ui.set_width(ui.available_width());
-        ui.with_layout(crate::direction::trailing(), |ui| {
+        // In a row: a bare trailing layout takes all the height the panel has.
+        ui.horizontal(|ui| ui.with_layout(crate::direction::trailing(), |ui| {
             if let Some((_, layers)) = doc {
                 let n = u64::try_from(*layers).unwrap_or(u64::MAX);
                 let count = crate::i18n::trn(crate::i18n::current(), n, "{n} layer", "{n} layers");
@@ -501,7 +502,7 @@ fn context_chip(ui: &mut Ui, t: &Tokens, doc: Option<&(String, usize)>) {
                 };
                 ui.add(egui::Label::new(RichText::new(text).color(t.text)).truncate());
             });
-        });
+        }));
     });
 }
 
