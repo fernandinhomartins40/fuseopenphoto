@@ -507,7 +507,6 @@ mod tests {
             let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
             app.session.edit_prefs(|p| p.interface.language = "pt-br".into());
             app.run("file.new", json!({"width": 1200, "height": 800})).unwrap();
-            app.run("layer.new.layer", json!({})).unwrap();
             app
         });
         h.run_steps(5);
@@ -542,6 +541,11 @@ mod tests {
         };
         for (name, pick, pinned, tab) in views {
             check(&mut h, name, pick, pinned, tab);
+        }
+        // The Background showed the document's Properties; a pixel layer shows its own.
+        h.state_mut().run("layer.new.layer", json!({})).unwrap();
+        for tab in [0, 1] {
+            check(&mut h, "Layer", None, Some(View::Properties), tab);
         }
         // A type layer (Texto | Efeitos) and an adjustment layer (Ajuste | Máscara).
         h.state_mut().run("type.create", json!({"text": "Preenchimento", "size": 40, "x": 10, "y": 60})).unwrap();
