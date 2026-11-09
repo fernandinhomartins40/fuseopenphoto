@@ -14,7 +14,7 @@ concurrency:
 jobs:
   checks:
     runs-on: windows-latest
-    timeout-minutes: 120
+    timeout-minutes: 300 # TEMP-FULL-UI-SUITE: was 120; restore at merge
     env:
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_INCREMENTAL: "0"
@@ -43,3 +43,15 @@ jobs:
 
       - name: App tests
         run: cargo test -p photocraft --bins
+
+      # TEMP-FULL-UI-SUITE (agent branch only; drop at merge): the whole ui-egui suite, with the
+      # craft-fonts build input so the CJK/Arabic glyph tests have their fonts.
+      - name: "TEMP: craft-fonts"
+        uses: actions/checkout@v4
+        with:
+          repository: storytold/craft-fonts
+          path: craft-fonts
+          persist-credentials: false
+      - name: "TEMP: full ui-egui tests"
+        shell: bash
+        run: CRAFT_FONTS_DIR="$PWD/craft-fonts" cargo test -p photocraft-ui-egui --lib --tests --no-fail-fast
