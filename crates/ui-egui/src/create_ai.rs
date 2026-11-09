@@ -191,7 +191,7 @@ pub(crate) fn filter_keys(app: &PhotocraftApp, ctx: &egui::Context) {
 
 /// How long to hold Codex's next request; `None` when it can run now.
 pub(crate) fn hold(app: &PhotocraftApp, now: f64) -> Option<f64> {
-    (app.create_ai.hold_until > now).then(|| app.create_ai.hold_until - now)
+    (app.create_ai.hold_until > now).then_some(app.create_ai.hold_until - now)
 }
 
 /// What the user sees for an edit; `None` for commands that only read.

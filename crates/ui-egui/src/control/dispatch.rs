@@ -226,7 +226,7 @@ fn render_preview(app: &mut PhotocraftApp, p: &Value) -> Outcome {
         Some(region) => {
             let Some([x, y, w, h]) = region_param(region) else { return err("`region` must be [x, y, width, height] with a positive size") };
             let wanted = photocraft_geom::Rect::new(x, y, x.saturating_add(w), y.saturating_add(h)).intersect(&bounds);
-            if wanted.width() <= 0 || wanted.height() <= 0 {
+            if wanted.width() == 0 || wanted.height() == 0 {
                 return err("`region` is outside the document");
             }
             wanted
