@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Stdio};
 use std::sync::mpsc::{Sender, channel};
 
-use photocraft_ui_egui::codex_panel::{CodexAccount, CodexEvent, CodexLink, CodexModel, CodexRequest, NEW_ACCOUNT};
+use photocraft_ui_egui::codex_panel::{CodexAccount, CodexEvent, CodexHistory, CodexLink, CodexModel, CodexRequest, CodexThread, NEW_ACCOUNT};
 use serde_json::{Value, json};
 
 /// What Codex is told about where it runs.
@@ -219,6 +219,39 @@ pub fn start(codex: &Path, port: u16, token: &str, cwd: &Path, home: &Path, ctx:
     Ok(CodexLink { tx: ui_tx, rx: ev_rx })
 }
 
+/// shortcut: the newest conversations only; page with `nextCursor` if users want older ones.
+const THREAD_PAGE: u32 = 50;
+
+/// The conversations of a `thread/list` reply.
+fn threads(result: &Value) -> Vec<CodexThread> {
+    let data = result.get("data").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
+    data.iter()
+        .filter_map(|t| {
+            let title = text(t, "name").filter(|n| !n.trim().is_empty()).or_else(|| text(t, "preview")).unwrap_or_default();
+            Some(CodexThread { id: text(t, "id")?, title, updated: t.get("updatedAt").and_then(Value::as_i64).unwrap_or(0) })
+        })
+        .collect()
+}
+
+/// What a resumed conversation said: the user's text, Codex's messages and its tool calls.
+fn history(thread: &Value) -> Vec<CodexHistory> {
+    let turns = thread.get("turns").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
+    let items = turns.iter().flat_map(|t| t.get("items").and_then(Value::as_array).map_or(&[][..], Vec::as_slice));
+    items
+        .filter_map(|item| match item.get("type").and_then(Value::as_str)? {
+            "userMessage" => {
+                let parts = item.get("content").and_then(Value::as_array)?;
+                let text: Vec<&str> = parts.iter().filter_map(|c| c.get("text").and_then(Value::as_str)).collect();
+                (!text.is_empty()).then(|| CodexHistory::User(text.join("\n")))
+            }
+            "agentMessage" => text(item, "text").filter(|t| !t.is_empty()).map(CodexHistory::Assistant),
+            "mcpToolCall" => Some(CodexHistory::Step(format!("{} › {}", text(item, "server").unwrap_or_default(), text(item, "tool").unwrap_or_default()))),
+            "imageGeneration" => Some(CodexHistory::Step("Generating image…".into())),
+            _ => None,
+        })
+        .collect()
+}
+
 /// shortcut: one page of `model/list`, enough for today's catalog (nine models); follow `nextCursor` if it nears this.
 const MODEL_PAGE: u32 = 100;
 
@@ -295,7 +328,7 @@ impl Driver {
                     self.queued.push((text, files));
                     if !self.starting {
                         self.starting = true;
-                        let params = json!({"cwd": self.cwd, "approvalPolicy": "never", "sandbox": "read-only", "developerInstructions": INSTRUCTIONS.replace("{app}", photocraft_ui_egui::studio::style::APP_NAME)});
+                        let params = self.thread_params();
                         self.request("thread/start", params);
                     }
                 }
@@ -306,6 +339,13 @@ impl Driver {
                 }
             }
             CodexRequest::NewChat => (self.thread, self.turn) = (None, None),
+            CodexRequest::ListThreads => self.request("thread/list", json!({"limit": THREAD_PAGE})),
+            CodexRequest::Resume(id) => {
+                (self.thread, self.turn) = (None, None);
+                let mut params = self.thread_params();
+                params["threadId"] = json!(id);
+                self.request("thread/resume", params);
+            }
             CodexRequest::SetModel(model) => {
                 // Codex's config, in its own home: the choice outlives this run.
                 self.request("config/value/write", json!({"keyPath": "model", "value": model, "mergeStrategy": "replace"}));
@@ -332,6 +372,11 @@ impl Driver {
             }
         }
         self.emit(CodexEvent::Accounts { list: accounts(&base), current: id });
+    }
+
+    /// How every conversation runs: in this app's folder, read-only, told where it is.
+    fn thread_params(&self) -> Value {
+        json!({"cwd": self.cwd, "approvalPolicy": "never", "sandbox": "read-only", "developerInstructions": INSTRUCTIONS.replace("{app}", photocraft_ui_egui::studio::style::APP_NAME)})
     }
 
     fn turn_start(&mut self, thread: &str, message: &str, files: &[String]) {
@@ -384,6 +429,12 @@ impl Driver {
                         self.emit(CodexEvent::Error(format!("could not open the browser ({e}); sign in at {url}")));
                     }
                 }
+            }
+            "thread/list" => self.emit(CodexEvent::Threads(threads(result))),
+            "thread/resume" => {
+                let thread = result.get("thread").unwrap_or(&Value::Null);
+                self.thread = text(thread, "id");
+                self.emit(CodexEvent::Resumed(history(thread)));
             }
             "thread/start" => {
                 self.starting = false;
@@ -516,6 +567,24 @@ impl Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn saved_conversations_list_and_reopen() {
+        let list = threads(&json!({"data": [
+            {"id": "a", "name": null, "preview": "make a menu", "updatedAt": 100},
+            {"id": "b", "name": "Logo", "preview": "x", "updatedAt": 50},
+            {"preview": "no id"},
+        ]}));
+        assert_eq!(list.iter().map(|t| (t.id.as_str(), t.title.as_str())).collect::<Vec<_>>(), [("a", "make a menu"), ("b", "Logo")]);
+        let said = history(&json!({"turns": [{"items": [
+            {"type": "userMessage", "content": [{"type": "text", "text": "hi"}, {"type": "localImage", "path": "x.png"}]},
+            {"type": "reasoning"},
+            {"type": "mcpToolCall", "server": "photocraft", "tool": "doc_inspect"},
+            {"type": "agentMessage", "text": "Done."},
+        ]}]}));
+        assert_eq!(said, [CodexHistory::User("hi".into()), CodexHistory::Step("photocraft › doc_inspect".into()), CodexHistory::Assistant("Done.".into())]);
+        assert!(history(&json!({})).is_empty());
+    }
 
     #[test]
     fn images_go_as_images_and_other_files_as_paths() {

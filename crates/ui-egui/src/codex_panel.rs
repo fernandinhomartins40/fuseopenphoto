@@ -32,6 +32,28 @@ pub enum CodexRequest {
     NewChat,
     /// Use this model from the next message on, and remember it.
     SetModel(String),
+    /// List the conversations saved on this computer for this account.
+    ListThreads,
+    /// Continue a saved conversation.
+    Resume(String),
+}
+
+/// A conversation saved on this computer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodexThread {
+    pub id: String,
+    /// Its name, else the start of its first message.
+    pub title: String,
+    /// Unix seconds.
+    pub updated: i64,
+}
+
+/// What a saved conversation said, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CodexHistory {
+    User(String),
+    Assistant(String),
+    Step(String),
 }
 
 /// What [`CodexStartFn`] gets to add an account, in place of an existing account's id.
@@ -62,6 +84,10 @@ pub enum CodexEvent {
     Accounts { list: Vec<CodexAccount>, current: String },
     /// This account has run out of its plan's usage.
     LimitReached,
+    /// The conversations saved for this account, newest first.
+    Threads(Vec<CodexThread>),
+    /// A saved conversation was reopened: what it said so far.
+    Resumed(Vec<CodexHistory>),
     /// The models on offer and the one in use.
     Models { models: Vec<CodexModel>, current: Option<String> },
     /// Streamed text of the assistant message `item`.
@@ -174,6 +200,8 @@ pub struct CodexPanel {
     attachments: Vec<String>,
     /// Where the dock was last drawn: files dropped there are attachments.
     dock_rect: Option<Rect>,
+    /// The saved conversations, as last listed.
+    threads: Vec<CodexThread>,
 }
 
 impl CodexPanel {
@@ -246,6 +274,22 @@ impl CodexPanel {
                 self.account_id = Some(current);
             }
             CodexEvent::LimitReached => self.limit = true,
+            CodexEvent::Threads(threads) => self.threads = threads,
+            CodexEvent::Resumed(history) => {
+                self.entries.clear();
+                for item in history {
+                    match item {
+                        CodexHistory::User(text) => self.entries.push(Entry::User(shown_prompt(&text))),
+                        CodexHistory::Assistant(text) => {
+                            let item = format!("history-{}", self.entries.len());
+                            self.entries.push(Entry::Assistant { item, text });
+                        }
+                        CodexHistory::Step(line) => self.step(line),
+                    }
+                }
+                self.busy = false;
+                self.turn_start = self.entries.len();
+            }
             CodexEvent::Models { models, current } => {
                 self.models = models;
                 self.model = current;
@@ -500,6 +544,8 @@ enum Act {
     Detach(String),
     /// Move to this account (or [`NEW_ACCOUNT`]), which starts a new conversation.
     SwitchAccount(String),
+    /// File › Create with AI.
+    CreateAi,
 }
 
 fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
@@ -529,6 +575,7 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
                     app.codex.entries.push(Entry::Error(e));
                 }
             }
+            Act::CreateAi => crate::create_ai::open(app),
             Act::Detach(path) => app.codex.attachments.retain(|p| *p != path),
             Act::SwitchAccount(id) => {
                 let name = app.codex.accounts.iter().find(|a| a.id == id).map(|a| a.label.clone());
@@ -545,6 +592,11 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
                 }
                 if let CodexRequest::SetModel(id) = &request {
                     app.codex.model = Some(id.clone());
+                }
+                if matches!(request, CodexRequest::Resume(_)) {
+                    app.codex.entries.clear();
+                    app.codex.busy = false;
+                    app.codex.limit = false;
                 }
                 if request == CodexRequest::NewChat {
                     app.codex.entries.clear();
@@ -606,7 +658,7 @@ pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
             });
             egui::Panel::bottom("codex_foot").frame(Frame::NONE).resizable(false).show_separator_line(false).show(&mut ui, |ui| {
                 ui.add_space(8.0);
-                if p.tab == Tab::Chat && !crate::studio::style::short(ui.ctx()) {
+                if p.tab == Tab::Chat {
                     quick_actions(ui, &t, p, &mut acts);
                     ui.add_space(8.0);
                 }
@@ -662,6 +714,14 @@ fn header(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
                     acts.push(if running { Act::Restart } else { Act::Start });
                 }
             });
+            let history = ui.add_enabled_ui(running, |ui| crate::icons::button(ui, "clock", 26.0, false, tl!("Conversations"))).inner;
+            if history.clicked() {
+                acts.push(Act::Request(CodexRequest::ListThreads));
+            }
+            egui::Popup::menu(&history).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| {
+                crate::widgets::style_spectrum_popup_menu(ui);
+                thread_list(ui, t, p, acts);
+            });
             // Narrow: the "+" alone beats a label that runs over the title.
             let clicked = if ui.available_width() < 150.0 {
                 ui.add_enabled_ui(running, |ui| crate::icons::button(ui, "plus", 26.0, false, tl!("New Chat"))).inner.clicked()
@@ -702,6 +762,52 @@ fn tabs(ui: &mut Ui, t: &Tokens, tab: &mut Tab) {
     let r = ui.max_rect();
     let y = ui.cursor().top().max(top + 32.0);
     ui.painter().hline(r.x_range(), y, Stroke::new(1.0, t.separator));
+}
+
+/// The saved conversations, newest first; a click continues one.
+fn thread_list(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
+    ui.set_width(300.0);
+    ui.label(RichText::new(tl!("Conversations")).font(theme::semibold(14.0)).color(t.text));
+    ui.add_space(4.0);
+    if p.threads.is_empty() {
+        ui.label(RichText::new(tl!("No saved conversations yet.")).small().color(t.text_dim));
+        return;
+    }
+    egui::ScrollArea::vertical().max_height(360.0).show(ui, |ui| {
+        for thread in &p.threads {
+            let when = chrono::DateTime::from_timestamp(thread.updated, 0)
+                .map(|d| d.with_timezone(&chrono::Local).format("%d/%m %H:%M").to_string())
+                .unwrap_or_default();
+            let title = shown_prompt(&thread.title);
+            let resp = ui
+                .vertical(|ui| {
+                    ui.add(egui::Label::new(RichText::new(&title).color(t.text)).truncate());
+                    ui.label(RichText::new(when).small().color(t.text_dim));
+                })
+                .response
+                .interact(Sense::click())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            if resp.hovered() {
+                ui.painter().rect_filled(resp.rect.expand(2.0), 6.0, t.hover.gamma_multiply(0.5));
+            }
+            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &title));
+            if resp.clicked() {
+                acts.push(Act::Request(CodexRequest::Resume(thread.id.clone())));
+                ui.close();
+            }
+            ui.separator();
+        }
+    });
+}
+
+/// A message as the user wrote it: without the scope the chat added, and a long recipe cut short.
+fn shown_prompt(text: &str) -> String {
+    let text = [Scope::Layer, Scope::Selection].iter().find_map(|s| text.strip_prefix(s.prompt("").as_str())).unwrap_or(text).trim();
+    const MAX: usize = 300;
+    match text.char_indices().nth(MAX) {
+        Some((cut, _)) => format!("{}…", &text[..cut]),
+        None => text.to_string(),
+    }
 }
 
 /// "Current document · name" with the layer count.
@@ -926,10 +1032,22 @@ fn activity(ui: &mut Ui, t: &Tokens, p: &CodexPanel) {
 fn quick_actions(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
     let enabled = p.link.is_some() && !p.busy;
     ui.horizontal_wrapped(|ui| {
-        let chips = [
+        // The feature people come to the chat for, in amber.
+        let label = tl!("Image to editable PSD");
+        let chip = egui::Button::image_and_text(crate::icons::image(crate::create_ai::ICON, 15.0, t.accent), RichText::new(label).color(t.accent))
+            .fill(t.card)
+            .stroke(Stroke::new(1.0, t.accent))
+            .corner_radius(10.0)
+            .wrap_mode(egui::TextWrapMode::Extend)
+            .min_size(vec2(0.0, 30.0));
+        if ui.add_enabled(enabled, chip).on_hover_text(tl!("Create with AI")).clicked() {
+            acts.push(Act::CreateAi);
+        }
+        // A low window keeps only the one above.
+        let chips = if crate::studio::style::short(ui.ctx()) { Vec::new() } else { vec![
             ("sun", tl!("Adjust colors"), tl!("Adjust the colors of the current document so they look balanced.")),
             ("layers", tl!("Organize layers"), tl!("Organize the layers of the current document: clear names and groups.")),
-        ];
+        ] };
         for (icon, label, prompt) in chips {
             let chip = egui::Button::image_and_text(crate::icons::image(icon, 15.0, t.icon), RichText::new(label).color(t.text))
                 .fill(t.card)
@@ -1483,6 +1601,48 @@ mod tests {
         assert_eq!(requests.try_recv().ok(), Some(CodexRequest::SetModel("small".into())));
         assert_eq!(h.state().codex.model.as_deref(), Some("small"));
         assert!(h.query_by_label_contains("SmallModel").is_some(), "the footer shows the new one");
+    }
+
+    /// The dock opens Create with AI, on a laptop too.
+    #[test]
+    fn the_dock_opens_create_with_ai() {
+        use egui_kittest::kittest::Queryable;
+        let (tx, _requests) = std::sync::mpsc::channel();
+        let (_events, rx) = std::sync::mpsc::channel();
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(1100.0, 620.0)).build_eframe(move |cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
+            app.codex.link = Some(CodexLink { tx, rx });
+            app.codex.open = true;
+            app
+        });
+        h.run_steps(3);
+        h.get_by_label("Image to editable PSD").click();
+        h.run_steps(3);
+        assert!(h.state().create_ai.dialog_open());
+    }
+
+    /// A saved conversation comes back as the chat showed it, and the list shows what it was about.
+    #[test]
+    fn a_saved_conversation_reopens() {
+        let mut p = CodexPanel::default();
+        p.entries.push(Entry::User("old".into()));
+        p.apply(CodexEvent::Resumed(vec![
+            CodexHistory::User(Scope::Layer.prompt("make it red")),
+            CodexHistory::Step("photocraft › layer_add".into()),
+            CodexHistory::Step("photocraft › type_create".into()),
+            CodexHistory::Assistant("Done.".into()),
+        ]));
+        assert_eq!(
+            p.entries,
+            vec![
+                Entry::User("make it red".into()),
+                Entry::Steps(vec!["photocraft › layer_add".into(), "photocraft › type_create".into()]),
+                Entry::Assistant { item: "history-2".into(), text: "Done.".into() },
+            ]
+        );
+        assert_eq!(shown_prompt(&"x".repeat(400)).chars().count(), 301);
     }
 
     #[test]
