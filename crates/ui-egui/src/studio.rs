@@ -3,7 +3,7 @@
 //! ```text
 //! ┌ top_bar ── ☰ · name · document · undo/redo · command search · saved · Export ─────────────┐
 //! ├ mode_bar ─ Compor · Selecionar · Retocar · Cor e luz · Texto ─────────────────────────────┤
-//! │ tools_menu (floating)   context_bars (floating)      │ right_panel │ right_rail │
+//! │ tools_menu (floating)   context_bars + options_pill  │ right_panel │ right_rail │
 //! │                 canvas (CentralPanel)                 │ (contextual)│ Histórico… │
 //! ├ bottom ─ layer properties bar · layer strip (Camadas/Canais/Caminhos) · status/zoom ─────┤
 //! ```
@@ -18,6 +18,7 @@ use crate::theme::Tokens;
 pub mod bottom;
 pub mod context_bars;
 pub mod mode_bar;
+pub mod options_pill;
 pub mod right_panel;
 pub mod right_rail;
 pub mod style;
