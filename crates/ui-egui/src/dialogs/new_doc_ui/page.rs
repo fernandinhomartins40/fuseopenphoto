@@ -209,7 +209,6 @@ fn column(ui: &mut Ui, r: Rect, margin: egui::Vec2) -> Ui {
 fn heading(ui: &mut Ui, text: &str) {
     let t = Tokens::get(ui.ctx());
     ui.add(egui::Label::new(RichText::new(text).font(theme::semibold(19.0)).color(t.text)).truncate());
-    ui.add_space(16.0);
 }
 
 /// Column 1, "Choose a format": the preset categories.
@@ -219,6 +218,7 @@ fn formats(ui: &mut Ui, r: Rect, f: &mut Map<String, Value>) {
         ui.add_space(8.0);
         heading(ui, tl!("Choose a format"));
     });
+    c.add_space(16.0);
     let cat = get_s(f, "__category", "Recent");
     egui::ScrollArea::vertical().id_salt("new-doc-page-formats").show(&mut c, |ui| {
         for (key, icon) in FORMATS {
@@ -469,6 +469,7 @@ fn separator(ui: &mut Ui) {
 fn settings(app: &mut PhotocraftApp, ui: &mut Ui, r: Rect, f: &mut Map<String, Value>) {
     let mut c = column(ui, r, vec2(24.0, 22.0));
     heading(&mut c, tl!("Configure document"));
+    c.add_space(16.0);
     egui::ScrollArea::vertical().id_salt("new-doc-page-settings").show(&mut c, |ui| {
         ui.spacing_mut().item_spacing.y = 6.0;
         let w = (ui.available_width() - 6.0).max(120.0);
