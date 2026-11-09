@@ -77,7 +77,7 @@ mod tests {
         let mut s = photocraft_engine::Session::new();
         s.execute("file.new", json!({"width":8,"height":8})).unwrap();
         s.execute("layer.new.layer", json!({"name":"Ink"})).unwrap();
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     }
     #[test]
     fn cancel_keeps_layer_and_confirmation_preference() {
@@ -117,7 +117,7 @@ mod tests {
         let mut session = photocraft_engine::Session::new();
         session.execute("file.new", json!({"width":8,"height":8})).unwrap();
         session.execute("layer.new.layer", json!({"name":"Fresh"})).unwrap();
-        let mut fresh = PhotocraftApp::new(session, crate::Services { load_prefs: Some(Box::new(move || Some(text.clone()))), ..Default::default() });
+        let mut fresh = PhotocraftApp::new_classic(session, crate::Services { load_prefs: Some(Box::new(move || Some(text.clone()))), ..Default::default() });
         fresh.run("layer.delete", json!({"__trash":true})).unwrap();
         assert!(fresh.ui.dialogs.is_empty());
     }

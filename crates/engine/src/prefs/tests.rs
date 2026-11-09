@@ -101,6 +101,7 @@ fn home_recent_files_preference_defaults_on_persists_and_resets() {
 #[test]
 fn appearance_defaults_to_studio_dark() {
     let p = Preferences::default();
+    assert_eq!(p.interface.theme, Theme::Studio);
     assert_eq!(p.interface.appearance_mode, AppearanceMode::Dark);
     assert_eq!(p.interface.dark_theme, DarkTheme::Studio);
     assert_eq!(p.interface.light_theme, LightTheme::ProLight);

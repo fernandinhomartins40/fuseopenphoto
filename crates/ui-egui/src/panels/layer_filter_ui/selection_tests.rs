@@ -19,7 +19,7 @@ fn harness() -> Harness<'static, PhotocraftApp> {
     s.execute("layer.setProps", json!({"layer": text, "name": "Hello"})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     h.run_steps(8);
     h
@@ -81,7 +81,7 @@ fn a_filter_on_before_the_rows_first_draw_deselects_the_hidden_layers() {
     s.execute("layer.select", json!({"layer": red.0})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
         app.ui.layer_filter = vec!["type".into()];
         app
     });

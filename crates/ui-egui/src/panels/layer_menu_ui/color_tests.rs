@@ -12,7 +12,7 @@ fn harness(kind: crate::theme::ThemeKind, ppp: f32) -> (Harness<'static, crate::
     let other = LayerId(s.execute("layer.new.layer", json!({"name": "Other layer"})).unwrap()["layer"].as_u64().unwrap());
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(ppp).with_max_steps(64).build_eframe(move |cc| {
         crate::PhotocraftApp::setup_context(&cc.egui_ctx, kind);
-        let mut app = crate::PhotocraftApp::new(s, crate::Services::default());
+        let mut app = crate::PhotocraftApp::new_classic(s, crate::Services::default());
         app.ui.theme = kind;
         app
     });

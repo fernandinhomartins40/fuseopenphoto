@@ -7,7 +7,7 @@ use serde_json::json;
 use super::*;
 
 fn app() -> PhotocraftApp {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30, "depth": 16})).unwrap();
     app
 }
@@ -76,7 +76,7 @@ fn cancelling_a_new_pattern_fill_adds_nothing() {
     let r = crate::menus::invoke(&mut app, &ctx, cmds::CREATE, json!({"pattern": "Grid"})).unwrap();
     assert!(r["layer"].as_u64().is_some());
     // No document: an error, not a dialog or a panic.
-    let mut empty = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut empty = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     assert!(crate::menus::invoke(&mut empty, &ctx, cmds::CREATE, json!({})).is_err());
     assert!(empty.ui.dialogs.is_empty());
 }
@@ -125,7 +125,7 @@ fn harness() -> (Harness<'static, PhotocraftApp>, LayerId) {
     s.execute("layer.new.layer", json!({"name": "Other"})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));

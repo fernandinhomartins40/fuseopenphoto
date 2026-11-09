@@ -5,7 +5,7 @@ fn mask_toggle_label_follows_history_and_selected_layer() {
     let mut s = photocraft_engine::Session::new();
     s.execute("file.new", json!({"width": 10, "height": 10})).unwrap();
     s.execute("layer.new.layer", json!({})).unwrap();
-    let mut app = crate::PhotocraftApp::new(s, Default::default());
+    let mut app = crate::PhotocraftApp::new_classic(s, Default::default());
     let toggle = "layer.layerMask.enabled";
     let check = |app: &crate::PhotocraftApp, label: Option<&str>| {
         let st = app.session.active().unwrap();
@@ -44,7 +44,7 @@ fn mask_toggle_label_follows_history_and_selected_layer() {
     check(&app, Some("Enable Layer Mask"));
     app.session.active_mut().unwrap().active_layer = None;
     assert!(!crate::menus::is_enabled(&app, toggle));
-    let empty = crate::PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let empty = crate::PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     assert!(!crate::menus::is_enabled(&empty, toggle));
 }
 
@@ -64,7 +64,7 @@ fn mask_toggle_context_menu_follows_the_clicked_layer_and_existing_translations(
         let other = s.active().unwrap().active_layer.unwrap();
         s.execute("layer.layerMask.revealAll", json!({})).unwrap();
         s.execute("layer.layerMask.enabled", json!({})).unwrap();
-        let app = crate::PhotocraftApp::new(s, Default::default());
+        let app = crate::PhotocraftApp::new_classic(s, Default::default());
         // `other` stays the active layer with its mask disabled; the menu is opened over `clicked`,
         // whose mask is enabled, and selects it first (a single-layer menu).
         let mut h = Harness::builder().with_size(egui::vec2(400.0, 900.0)).build_ui_state(
@@ -136,7 +136,7 @@ fn smart_object_context_menu_edits_the_clicked_layer() {
         let mut h =
             Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(ppp).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
                 PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                PhotocraftApp::new(s, crate::Services::default())
+                PhotocraftApp::new_classic(s, crate::Services::default())
             });
         let ctx = h.ctx.clone();
         let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -185,7 +185,7 @@ fn mask_thumbnail_context_menu_acts_on_the_clicked_mask() {
     s.execute("select.rect", json!({"x": 0, "y": 0, "width": 20, "height": 60})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -224,7 +224,7 @@ fn a_long_layer_menu_stays_inside_a_short_window_and_scrolls() {
     let mut s = photocraft_engine::Session::new();
     s.execute("file.new", json!({"width": 32, "height": 24})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Paint"})).unwrap();
-    let app = crate::PhotocraftApp::new(s, crate::Services::default());
+    let app = crate::PhotocraftApp::new_classic(s, crate::Services::default());
     let layer = {
         let st = app.session.active().unwrap();
         st.doc.layer(st.active_layer.unwrap()).unwrap().clone()
@@ -361,7 +361,7 @@ fn open_multi_selection_menu() -> (egui_kittest::Harness<'static, crate::Photocr
         egui_kittest::Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(1.0).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(
             move |cc| {
                 PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                PhotocraftApp::new(s, crate::Services::default())
+                PhotocraftApp::new_classic(s, crate::Services::default())
             },
         );
     let ctx = h.ctx.clone();
@@ -512,7 +512,7 @@ fn a_group_offers_merge_group() {
     let e: Vec<(&str, &str)> = entries(&g, false, false).into_iter().flatten().collect();
     assert!(e.contains(&("Merge Group", "layer.mergeGroup")), "{e:?}");
     assert!(!e.iter().any(|x| x.0 == "Merge Down"));
-    let mut app = crate::PhotocraftApp::new(s, Default::default());
+    let mut app = crate::PhotocraftApp::new_classic(s, Default::default());
     app.sync_views();
     let items = crate::menus::menu_items(&app);
     let item = items.iter().find(|i| i.id == "layer.mergeLayers").unwrap();

@@ -242,7 +242,7 @@ fn color_picker_opens_with_hex_focused_and_selected() {
 
 #[test]
 fn color_picker_dialog_hex_field_is_in_tab_order_and_confirms_typed_color() {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let mut h = Harness::builder().with_size(vec2(760.0, 480.0)).build_ui_state(|ui, app| crate::dialogs::show(app, ui.ctx()), app);
     PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
     open(h.state_mut(), "foreground");
@@ -259,7 +259,7 @@ fn color_picker_dialog_hex_field_is_in_tab_order_and_confirms_typed_color() {
 
 #[test]
 fn alt_reset_restores_orig_color() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.tools.foreground = [0.2, 0.4, 0.6, 1.0];
     let id = open(&mut app, "foreground");
     let f = &mut app.ui.dialog_mut(id).unwrap().fields;
@@ -320,7 +320,7 @@ fn picker_places_actions_above_two_columns_and_web_colors_under_the_field() {
 fn the_picker_window_is_no_bigger_than_photoshops() {
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(photocraft_engine::Session::new(), Default::default())
+        PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default())
     });
     h.run_steps(4);
     let id = open(h.state_mut(), "foreground");
@@ -371,7 +371,7 @@ fn web_only_snaps_hex_field_and_component_edits() {
 
 #[test]
 fn web_only_survives_reopen_and_other_picker_targets() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.ui.color_panel.web_only = true;
     let id = open(&mut app, "foreground");
     let f = &app.ui.dialog_mut(id).unwrap().fields;
@@ -388,7 +388,7 @@ fn web_only_survives_reopen_and_other_picker_targets() {
 
 #[test]
 fn sample_at_snaps_when_only_web_colors_is_on() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let id = open(&mut app, "foreground");
     let f = &mut app.ui.dialog_mut(id).unwrap().fields;
     f.insert("__webOnly".into(), json!(true));
@@ -400,7 +400,7 @@ fn sample_at_snaps_when_only_web_colors_is_on() {
 fn side_buttons_and_keyboard_confirm_or_cancel_without_changing_the_other_color() {
     for target in ["foreground", "background"] {
         for action in ["OK", "Cancel", "Enter", "Escape"] {
-            let app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+            let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
             let mut h = Harness::builder().with_size(vec2(760.0, 480.0)).build_ui_state(|ui, app| crate::dialogs::show(app, ui.ctx()), app);
             PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
             let original_fg = h.state().session.tools.foreground;
@@ -569,7 +569,7 @@ fn hue_survives_grey_and_ok_sets_the_colour() {
     f.insert("color".into(), json!("#808080"));
     f.insert("__hsv".into(), json!([200.0, 0.0, 128.0 / 255.0]));
     assert_eq!(current(&f).hsv[0], 200.0);
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     let id = open(&mut app, "background");
     let d = app.ui.dialog_mut(id).unwrap();
     d.fields.insert("color".into(), json!("#3366cc"));
@@ -582,7 +582,7 @@ fn hue_survives_grey_and_ok_sets_the_colour() {
 /// reopening the picker shows them again.
 #[test]
 fn cmyk_values_survive_ok_and_a_reopen() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     let cyan = [1.0, 0.0, 0.0, 0.0];
     let id = open(&mut app, "foreground");
     let d = app.ui.dialog_mut(id).unwrap();
@@ -602,7 +602,7 @@ fn dialog_color(app: &PhotocraftApp, id: u64) -> &str {
 
 #[test]
 fn the_top_picker_samples_the_image() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 20, "background": "transparent"})).unwrap();
     app.run("shape.create", json!({"kind": "rect", "rect": [0, 0, 20, 20], "fill": "#ff0000"})).unwrap();
     app.run("shape.create", json!({"kind": "rect", "rect": [20, 0, 10, 20], "fill": "#00ff00"})).unwrap();

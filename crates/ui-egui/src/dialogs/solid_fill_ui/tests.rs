@@ -15,7 +15,7 @@ fn harness(ppp: f32) -> (Harness<'static, PhotocraftApp>, LayerId) {
     let mut h =
         Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(ppp).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            PhotocraftApp::new(s, crate::Services::default())
+            PhotocraftApp::new_classic(s, crate::Services::default())
         });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -278,7 +278,7 @@ fn cmyk_typed_into_the_picker_is_the_fills_colour_in_a_cmyk_document() {
     let mut s = photocraft_engine::Session::new();
     s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
     s.execute("image.mode.cmyk", json!({})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     let typed = |f: &mut serde_json::Map<String, serde_json::Value>, inks: [f32; 4]| {
         let [r, g, b] = photocraft_color::convert::cmyk_to_rgb(inks).map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8);
         f.insert("color".into(), json!(format!("#{r:02x}{g:02x}{b:02x}")));
@@ -337,7 +337,7 @@ fn same_hex_inks_preview_and_thumbnail_as_ok_commits_them() {
     let mut s = photocraft_engine::Session::new();
     s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
     s.execute("image.mode.cmyk", json!({})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     let near = [0.5, 0.5, 0.499, 1.0];
     let id = open_new(&mut app).unwrap();
     let mut f = app.ui.dialogs.iter().find(|d| d.id == id).unwrap().fields.clone();

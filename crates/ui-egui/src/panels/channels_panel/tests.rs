@@ -11,7 +11,7 @@ fn modifier_operations() {
 
 #[test]
 fn rename_field_interrupts_the_ime_only_when_it_takes_focus() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("channel.new", json!({})).unwrap();
     let ctx = egui::Context::default();
@@ -33,7 +33,7 @@ fn rename_field_interrupts_the_ime_only_when_it_takes_focus() {
 
 #[test]
 fn channel_thumbs_honours_show_channels_in_color() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let ctx = egui::Context::default();
     let thumbs_gray = app.channel_thumbs(&ctx);
@@ -48,7 +48,7 @@ fn channel_thumbs_honours_show_channels_in_color() {
 /// textures rather than new ones (#4518).
 #[test]
 fn channel_thumbs_skip_selection_steps_and_reuse_textures() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     let ctx = egui::Context::default();
     // Texture uploads one pass makes (new textures and updates both count).
@@ -83,7 +83,7 @@ fn channels_harness() -> (egui_kittest::Harness<'static, PhotocraftApp>, u64) {
     // 60 fps steps, so two clicks a frame apart count as a double-click.
     let mut h = egui_kittest::Harness::builder().with_size(vec2(1440.0, 1000.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new(
@@ -446,7 +446,7 @@ fn recording_a_colour_row_click_saves_as_photoshop_select() {
 #[test]
 fn panel_menu_items_act_on_the_targeted_channel() {
     use egui_kittest::kittest::{NodeT, Queryable};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 24})).unwrap();
     app.run("channel.newSpot", json!({"name": "Ink", "fromSelection": false})).unwrap();
     app.run("channel.target", json!({"channel": 0})).unwrap();
@@ -478,7 +478,7 @@ fn alpha_names(app: &PhotocraftApp) -> Vec<String> {
 }
 
 fn menu_app(mode: &str) -> PhotocraftApp {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 24, "mode": mode})).unwrap();
     app
 }
@@ -563,7 +563,7 @@ fn panel_menu_greys_items_without_one_channel_or_a_document() {
     app.run("channel.target", json!({"channel": {"color": 1}, "extend": true})).unwrap();
     assert_eq!(app.session.active().unwrap().channel_view.selected_colors.len(), 2);
     assert!(menu_disabled(&menu_harness(app), "Duplicate Channel"), "two colour channels are targeted");
-    let h = menu_harness(PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default()));
+    let h = menu_harness(PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default()));
     for label in [
         "New Channel…",
         "Duplicate Channel",

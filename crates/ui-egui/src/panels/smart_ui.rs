@@ -570,7 +570,7 @@ mod layer_thumbnail_scaling_tests {
             assert!(matches!(session.active().unwrap().doc.layers.last().unwrap().content, LayerContent::Smart(_)));
             let mut h = Harness::builder().with_size(vec2(1440.0, 1400.0)).with_max_steps(64).build_eframe(move |cc| {
                 PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                PhotocraftApp::new(session, crate::Services::default())
+                PhotocraftApp::new_classic(session, crate::Services::default())
             });
             h.state_mut().ui.layers_panel_options.thumbnail_size = setting;
             h.run_steps(8);
@@ -612,7 +612,7 @@ mod tests {
     /// the layer mask, no rasterize prompt), and clicking the layer thumbnail goes back.
     #[test]
     fn the_filter_mask_thumbnail_targets_the_filter_mask() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PhotocraftApp::new_classic(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
@@ -645,7 +645,7 @@ mod tests {
 
     #[test]
     fn selecting_the_filter_mask_replaces_a_layer_mask_view() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PhotocraftApp::new_classic(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
@@ -764,7 +764,7 @@ mod tests {
         s.execute("edit.fill", json!({"contents": "black"})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("image.adjustments.brightnessContrast", json!({"brightness": 40, "contrast": -10})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
         let sm = match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
             other => panic!("expected a smart object, got {other:?}"),
@@ -797,7 +797,7 @@ mod tests {
         s.execute("edit.fill", json!({"contents": "color", "color": "#2030c0"})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("image.adjustments.selectiveColor", json!({"colors": "blues", "cyan": 30, "relative": false})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
         app.background_jobs = false;
         let recorded = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
@@ -853,7 +853,7 @@ mod tests {
         s.execute("select.deselect", json!({})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("filter.blur.gaussianBlur", json!({"radius": 1.0})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
         app.background_jobs = false;
         let smart = |app: &PhotocraftApp, doc: &Document| match &doc.layer(LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
@@ -890,7 +890,7 @@ mod tests {
     /// still edit the filter mask.
     #[test]
     fn only_filter_mask_edits_carry_the_filter_mask_target() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PhotocraftApp::new_classic(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();

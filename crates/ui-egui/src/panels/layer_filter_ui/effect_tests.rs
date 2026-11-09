@@ -110,7 +110,7 @@ fn the_panel_filters_by_the_effect_picked_in_the_dropdown() {
     let session = session();
     let mut h = Harness::builder().with_size(vec2(1440.0, 1200.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        PhotocraftApp::new_classic(session, crate::Services::default())
     });
     h.run_steps(8);
     h.get_by_value("Kind").click();

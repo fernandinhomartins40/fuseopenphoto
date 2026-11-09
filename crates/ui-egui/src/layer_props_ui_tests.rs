@@ -10,7 +10,7 @@ use crate::PhotocraftApp;
 fn app() -> Harness<'static, PhotocraftApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app
@@ -42,7 +42,7 @@ fn the_layers_panel_locks_every_selected_layer() {
 fn the_basic_lock_toggle_locks_every_selected_layer() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::ThemeKind::Studio);
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("prefs.set", json!({"path": "interface.theme", "value": crate::theme::ThemeKind::Studio.id()})).unwrap();
         app.ui.theme = crate::theme::ThemeKind::Studio;
         app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
