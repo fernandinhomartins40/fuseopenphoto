@@ -73,9 +73,13 @@ fn the_page_fits_720p_and_1080p() {
     for size in [egui::vec2(1280.0, 720.0), egui::vec2(1920.0, 1080.0)] {
         let h = harness(size, false);
         let screen = Rect::from_min_size(egui::Pos2::ZERO, size);
+        // A field's label and the field itself share the name: check every node of it.
         for name in ["Back", "Create document", "Search command", "Recent", "Saved", "Name", "Width", "Height", "Resolution"] {
-            let r = h.get_by_label(name).rect();
-            assert!(screen.contains_rect(r), "{name} at {r:?} in {size:?}");
+            let rects: Vec<Rect> = h.query_all_by_label(name).map(|n| n.rect()).collect();
+            assert!(!rects.is_empty(), "{name} is on the page");
+            for r in rects {
+                assert!(screen.contains_rect(r), "{name} at {r:?} in {size:?}");
+            }
         }
     }
 }
