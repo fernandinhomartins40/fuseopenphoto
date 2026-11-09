@@ -521,6 +521,12 @@ pub fn fmt(template: &str, args: &[(&str, &str)]) -> String {
     out
 }
 
+/// Fill `{app}` with the product name ([`crate::studio::style::APP_NAME`]), so translated text
+/// never hard-codes it: `app(tl!("Restart {app}"))`.
+pub fn app(text: &str) -> String {
+    fmt(text, &[("app", crate::studio::style::APP_NAME)])
+}
+
 /// A plural-aware message: `one`/`other` are the English forms (with `{n}` where the count goes).
 pub fn trn(lang: Lang, n: u64, one: &str, other: &str) -> String {
     let idx = (lang.0.plural)(n);

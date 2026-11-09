@@ -28,7 +28,7 @@ use crate::PhotocraftApp;
 use crate::i18n::{Lang, tr, tr_id};
 use crate::menus::MenuItem;
 
-pub const APP_NAME: &str = "PhotoCraft";
+pub use crate::studio::style::APP_NAME;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MenuBar {

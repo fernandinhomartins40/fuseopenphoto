@@ -74,8 +74,8 @@ jobs:
         with:
           name: windows-x64
           path: |
-            dist/release/*.msi
-            dist/release/*-portable.zip
+            dist/release/fuse-open-photo-*.msi
+            dist/release/fuse-open-photo-*-portable.zip
           if-no-files-found: error
 
       # A rolling pre-release per branch, so the latest installer is always one click away.
@@ -87,4 +87,4 @@ jobs:
         run: |
           tag="latest-${BRANCH//\//-}"
           gh release delete "$tag" --cleanup-tag --yes -R "$GITHUB_REPOSITORY" 2>/dev/null || true
-          gh release create "$tag" dist/release/*.msi dist/release/*-portable.zip             -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease             --title "Última versão ($BRANCH)"             --notes "Build automático de $GITHUB_SHA. Baixe o .msi para instalar, ou o -portable.zip para usar sem instalar."
+          gh release create "$tag" dist/release/fuse-open-photo-*.msi dist/release/fuse-open-photo-*-portable.zip             -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease             --title "Última versão ($BRANCH)"             --notes "Build automático de $GITHUB_SHA. Baixe o .msi para instalar, ou o -portable.zip para usar sem instalar."

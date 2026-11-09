@@ -383,12 +383,12 @@ fn dialog_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, d: &Dialog, fields: &
             }
         }
         DialogKind::About => {
-            // Tabs About · Contributors · Models. The
+            // Tabs About · Open-source licenses. The
             // tab is a dialog field, so automation can switch it with `ui.dialog.set`.
             let tab = about_tab(fields);
             let mut chosen = tab;
             ui.horizontal(|ui| {
-                for (key, label) in [("about", tl!("About")), ("contributors", tl!("Contributors")), ("models", tl!("Models"))] {
+                for (key, label) in [("about", tl!("About")), ("licenses", tl!("Open-source licenses"))] {
                     if crate::widgets::pill_tab(ui, label, tab == key).clicked() {
                         chosen = key;
                     }
@@ -398,7 +398,7 @@ fn dialog_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, d: &Dialog, fields: &
                 fields.insert("tab".into(), json!(chosen));
             }
             ui.add_space(8.0);
-            about_tab_body(app, ui, chosen);
+            about_tab_body(ui, chosen);
         }
         DialogKind::Command => outcome = command_body(app, ui, d, fields, id, interactive),
         DialogKind::LayerStyle => outcome = crate::layer_style::body_with_response(app, ui, fields, interactive),
@@ -820,7 +820,7 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// The About window's tabs, as stored in its `tab` field.
-pub const ABOUT_TABS: [&str; 3] = ["about", "contributors", "models"];
+pub const ABOUT_TABS: [&str; 2] = ["about", "licenses"];
 
 /// The About tab to show: the `tab` field when it names one, otherwise "about".
 fn about_tab(fields: &serde_json::Map<String, Value>) -> &'static str {
@@ -828,16 +828,16 @@ fn about_tab(fields: &serde_json::Map<String, Value>) -> &'static str {
     ABOUT_TABS.iter().copied().find(|t| *t == want).unwrap_or("about")
 }
 
-/// One About tab's contents: the credits lists, or the product blurb and links.
-fn about_tab_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, tab: &str) {
+/// One About tab's contents: the licence notices, or the product name, version and blurb.
+fn about_tab_body(ui: &mut egui::Ui, tab: &str) {
     match tab {
-        "contributors" => crate::credits::contributors_ui(app, ui),
-        "models" => crate::credits::models_ui(ui),
+        "licenses" => crate::credits::licenses_ui(ui),
         _ => {
-            ui.label(tl!("PhotoCraft — an open-source, native image editor written in Rust."));
+            use crate::studio::style::{APP_NAME, COMPANY};
+            ui.label(egui::RichText::new(APP_NAME).strong().size(18.0));
             ui.label(crate::i18n::fmt(tl!("Version {version}"), &[("version", &photocraft_engine::build_info::long_version())]));
-            ui.add_space(10.0);
-            ui.weak("egui · wgpu · photocraft-engine");
+            ui.add_space(6.0);
+            ui.label(crate::i18n::fmt(tl!("{app} — a native image editor by {company}."), &[("app", APP_NAME), ("company", COMPANY)]));
         }
     }
 }
@@ -858,7 +858,10 @@ fn display_title(d: &Dialog) -> String {
             // Dialog labels are catalogued with their "…" ("Export As…"); some commands omit it.
             let with_dots = format!("{}…", label.trim_end_matches('…'));
             let shown = if crate::i18n::has(crate::i18n::current(), label) { tl!(label) } else { tl!(&with_dots) };
-            shown.trim_end_matches('…').to_string()
+            crate::i18n::app(shown.trim_end_matches('…'))
+        }
+        DialogKind::About if d.fields.get("systemInfo").and_then(Value::as_bool) != Some(true) => {
+            crate::i18n::fmt(tl!("About {app}"), &[("app", crate::studio::style::APP_NAME)])
         }
         _ => tl!(&title(d)).to_string(),
     }
@@ -868,7 +871,7 @@ pub fn title(d: &Dialog) -> String {
     match d.kind {
         DialogKind::NewDocument => "New Document".into(),
         DialogKind::About if d.fields.get("systemInfo").and_then(Value::as_bool) == Some(true) => "System Info".into(),
-        DialogKind::About => "About PhotoCraft".into(),
+        DialogKind::About => format!("About {}", crate::studio::style::APP_NAME),
         DialogKind::LayerStyle => "Layer Style".into(),
         DialogKind::Command => d.fields.get("__label").and_then(Value::as_str).unwrap_or("Command").trim_end_matches('…').to_string(),
         DialogKind::Error => "Error".into(),

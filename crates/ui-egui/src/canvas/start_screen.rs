@@ -282,7 +282,7 @@ fn rounded_outline(r: Rect, radius: f32) -> Vec<egui::Pos2> {
 
 /// Built-in New Document presets offered on Home: (name in `new_doc_ui::CATEGORIES`, short label).
 const HOME_PRESETS: &[(&str, &str)] = &[
-    ("Default PhotoCraft Size", "Default"),
+    ("Default Size", "Default"),
     ("A4", "A4"),
     ("Letter", "Letter"),
     ("Landscape, 6 x 4", "Landscape"),

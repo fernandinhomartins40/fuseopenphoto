@@ -6,6 +6,7 @@
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=../../brand.env");
     println!("cargo:rerun-if-changed=../../assets/app-icon/photocraft.ico");
     println!("cargo:rerun-if-env-changed=PHOTOCRAFT_REQUIRE_WINRES");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
@@ -19,12 +20,16 @@ fn main() {
         println!("cargo:rustc-link-arg-bins=/DELAYLOAD:windows.data.pdf.dll");
         println!("cargo:rustc-link-arg-bins=delayimp.lib");
     }
+    // The product name and company come from brand.env, the one place a rename happens.
+    let brand = std::fs::read_to_string("../../brand.env").unwrap_or_default();
+    let get = |k: &str| brand.lines().find_map(|l| l.strip_prefix(k)?.strip_prefix('=')).unwrap_or("").trim().to_owned();
+    let (name, company) = (get("BRAND_NAME"), get("BRAND_COMPANY"));
     let mut res = winresource::WindowsResource::new();
     res.set_icon("../../assets/app-icon/photocraft.ico")
-        .set("ProductName", "PhotoCraft")
-        .set("FileDescription", "PhotoCraft image editor")
-        .set("CompanyName", "Learning Machines LLC")
-        .set("LegalCopyright", "Copyright (c) the PhotoCraft authors. MIT OR Apache-2.0.")
+        .set("ProductName", &name)
+        .set("FileDescription", &format!("{name} image editor"))
+        .set("CompanyName", &company)
+        .set("LegalCopyright", &format!("Copyright (c) {company} and contributors. MIT OR Apache-2.0."))
         .set("OriginalFilename", "photocraft.exe")
         .set("InternalName", "photocraft");
     if let Err(e) = res.compile() {

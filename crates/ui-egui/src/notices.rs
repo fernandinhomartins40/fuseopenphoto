@@ -44,7 +44,7 @@ impl Notice {
     /// `s` (the title or a line) in the current language, with [`Notice::args`] filled in.
     pub fn text(&self, s: &str) -> String {
         let args: Vec<(&str, &str)> = self.args.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-        crate::i18n::fmt(crate::i18n::t(s), &args)
+        crate::i18n::app(&crate::i18n::fmt(crate::i18n::t(s), &args))
     }
 }
 
@@ -83,17 +83,17 @@ pub(crate) fn paste_hint(app: &PhotocraftApp) -> String {
 /// fall back to, so the clipboard may hold an image all the same. Say so, and give the command
 /// that starts this install under XWayland, where the X11 clipboard works, when there is one.
 pub fn clipboard_unreadable(app: &mut PhotocraftApp) {
-    app.ui.status = tl!("Nothing to paste: PhotoCraft can't read the system clipboard here").into();
+    app.ui.status = crate::i18n::app(tl!("Nothing to paste: {app} can't read the system clipboard here"));
     app.ui.status_error = false;
     if app.ui.notices.iter().any(|notice| notice.title == CLIPBOARD_UNREADABLE) {
         return;
     }
     // English templates, translated when drawn, as in `wayland_file_drop_guidance`.
     let mut lines =
-        vec!["PhotoCraft can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.".to_owned()];
+        vec!["{app} can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.".to_owned()];
     let mut args = Vec::new();
     if let Some(command) = &app.services.xwayland_command {
-        lines.push("To paste from other apps, start PhotoCraft under XWayland: `{command}`".to_owned());
+        lines.push("To paste from other apps, start {app} under XWayland: `{command}`".to_owned());
         args.push(("command".to_owned(), command.clone()));
     }
     let id = post(app, CLIPBOARD_UNREADABLE, lines, false, None);
@@ -312,7 +312,7 @@ mod tests {
             let r = crate::menus::invoke(&mut app, &ctx, "edit.paste", serde_json::json!({})).unwrap();
             assert_eq!(r["pasted"], serde_json::json!(false));
         }
-        assert_eq!(app.ui.status, "Nothing to paste: PhotoCraft can't read the system clipboard here");
+        assert_eq!(app.ui.status, format!("Nothing to paste: {} can't read the system clipboard here", crate::studio::style::APP_NAME));
         let shown: Vec<_> = app.ui.notices.iter().filter(|notice| notice.title == CLIPBOARD_UNREADABLE).collect();
         assert_eq!(shown.len(), 1, "a second paste doesn't stack another notice");
         let guidance = english(shown[0]);

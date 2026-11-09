@@ -1,37 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <!-- Product identity: ProductName and Company come from brand.env at the repository root,
+       passed by package.ps1 as -d ProductName=... -d Company=... -->
+  <?ifndef ProductName ?>
+  <?error ProductName is not defined: build with package.ps1, which reads brand.env ?>
+  <?endif?>
+  <?ifndef Company ?>
+  <?error Company is not defined: build with package.ps1, which reads brand.env ?>
+  <?endif?>
   <?ifndef HasCodex ?>
   <?define HasCodex=0 ?>
   <?endif?>
   <?ifndef HasCraftFontLicences ?>
   <?define HasCraftFontLicences=0 ?>
   <?endif?>
-  <Package Name="PhotoCraft" Manufacturer="Learning Machines LLC" Version="$(var.Version)" UpgradeCode="D9660F32-2D0A-4ABE-B73D-17BE25F1542C" Scope="perUserOrMachine" Compressed="yes" Language="1033">
-    <SummaryInformation Description="PhotoCraft image editor" Manufacturer="Learning Machines LLC" />
+  <Package Name="$(var.ProductName)" Manufacturer="$(var.Company)" Version="$(var.Version)" UpgradeCode="833166CE-AE62-44C1-8F7F-9F9B10E03C8F" Scope="perUserOrMachine" Compressed="yes" Language="1033">
+    <SummaryInformation Description="$(var.ProductName) image editor" Manufacturer="$(var.Company)" />
     <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of PhotoCraft is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of $(var.ProductName) is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <!-- MSI caches this icon using its Id as the filename. Advertised shortcuts to an
          .exe need an .exe icon identifier (ICE50), even when the source is an ICO. -->
     <Icon Id="PhotocraftIcon.exe" SourceFile="$(var.IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="PhotocraftIcon.exe" />
-    <Property Id="ARPURLINFOABOUT" Value="https://getartcraft.com/apps/photocraft" />
-    <Property Id="ARPURLUPDATEINFO" Value="https://getartcraft.com/apps/photocraft" />
-    <Property Id="ARPHELPLINK" Value="https://discord.gg/artcraft" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="CraftSuiteFolder" Name="ArtCraft">
-        <Directory Id="INSTALLFOLDER" Name="PhotoCraft" />
+      <Directory Id="CraftSuiteFolder" Name="$(var.Company)">
+        <Directory Id="INSTALLFOLDER" Name="$(var.ProductName)" />
       </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder" />
 
     <!-- An upgrade installs where the user put the previous version (written by PhotocraftApp). -->
 
-    <Feature Id="Main" Title="PhotoCraft" Level="1">
+    <Feature Id="Main" Title="$(var.ProductName)" Level="1">
       <?if $(var.HasCraftFontLicences) = 1 ?>
       <ComponentGroupRef Id="CraftFontLicences" />
       <?endif?>
@@ -55,8 +60,8 @@
     <Property Id="PhotocraftVersion" Value="$(var.DisplayVersion)" />
 
     <!-- Finish page: say where to find the app, and offer to start it (ticked by default). -->
-    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="PhotoCraft $(var.DisplayVersion) is installed. You can start it any time from the Start menu." />
-    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch PhotoCraft" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="$(var.ProductName) $(var.DisplayVersion) is installed. You can start it any time from the Start menu." />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch $(var.ProductName)" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WixShellExecTarget" Value="[#PhotocraftExe]" />
     <!-- Runs in the wizard's own (unelevated) process, so the app starts as the user, not as admin. -->
@@ -70,69 +75,46 @@
     </ComponentGroup>
     <?endif?>
     <ComponentGroup Id="PhotocraftFiles" Directory="INSTALLFOLDER">
-      <Component Id="PhotocraftApp" Guid="A6DE41B7-A80F-4C59-A17E-BB68065BF67E">
+      <Component Id="PhotocraftApp" Guid="CD820670-5E55-4EAF-9798-1C569C780C0A">
         <File Id="PhotocraftExe" Source="$(var.BinDir)\photocraft.exe" KeyPath="yes">
-          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="PhotoCraft" Description="PhotoCraft image editor" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="PhotocraftIcon.exe" IconIndex="0" />
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="$(var.ProductName)" Description="$(var.ProductName) image editor" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="PhotocraftIcon.exe" IconIndex="0" />
         </File>
 
-        <!-- .pcraft: PhotoCraft's own format; PhotoCraft is its default app. -->
-        <ProgId Id="Photocraft.Document" Description="PhotoCraft Document" Icon="PhotocraftExe" IconIndex="0">
+        <!-- .pcraft: the app's own format; this app is its default handler. -->
+        <ProgId Id="FuseOpenPhoto.Document" Description="$(var.ProductName) Document" Icon="PhotocraftExe" IconIndex="0">
           <Extension Id="pcraft" ContentType="application/x-photocraft">
             <Verb Id="open" Command="Open" TargetFile="PhotocraftExe" Argument="&quot;%1&quot;" />
           </Extension>
         </ProgId>
         <!-- PSD/PSB and images: offered under "Open with", never forced as the default. -->
-        <ProgId Id="Photocraft.PhotoshopDocument" Description="PSD Document" Icon="PhotocraftExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Photocraft.PhotoshopDocument\shell\open\command" Value="&quot;[#PhotocraftExe]&quot; &quot;%1&quot;" Type="string" />
-        <ProgId Id="Photocraft.Image" Description="Image" Icon="PhotocraftExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Photocraft.Image\shell\open\command" Value="&quot;[#PhotocraftExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.psd\OpenWithProgids" Name="Photocraft.PhotoshopDocument" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.psb\OpenWithProgids" Name="Photocraft.PhotoshopDocument" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.pdn\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.ora\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.kra\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.krz\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.png\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.jpg\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.jpeg\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.tif\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.tiff\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.webp\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.gif\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.bmp\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.tga\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.exr\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.hdr\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.avif\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.qoi\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.ico\OpenWithProgids" Name="Photocraft.Image" Value="" Type="string" />
+        <ProgId Id="FuseOpenPhoto.PhotoshopDocument" Description="PSD Document" Icon="PhotocraftExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\FuseOpenPhoto.PhotoshopDocument\shell\open\command" Value="&quot;[#PhotocraftExe]&quot; &quot;%1&quot;" Type="string" />
+        <ProgId Id="FuseOpenPhoto.Image" Description="Image" Icon="PhotocraftExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\FuseOpenPhoto.Image\shell\open\command" Value="&quot;[#PhotocraftExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.psd\OpenWithProgids" Name="FuseOpenPhoto.PhotoshopDocument" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.psb\OpenWithProgids" Name="FuseOpenPhoto.PhotoshopDocument" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.pdn\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.ora\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.kra\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.krz\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.png\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.jpg\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.jpeg\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.tif\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.tiff\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.webp\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.gif\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.bmp\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.tga\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.exr\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.hdr\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.avif\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.qoi\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.ico\OpenWithProgids" Name="FuseOpenPhoto.Image" Value="" Type="string" />
 
-        <!-- "Open with" app list and the Run dialog (Win+R "photocraft"). -->
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe" Name="FriendlyAppName" Value="PhotoCraft" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\shell\open\command" Value="&quot;[#PhotocraftExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".pcraft" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".psd" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".psb" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".pdn" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".ora" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".kra" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".krz" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".png" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".jpg" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".jpeg" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".tif" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".tiff" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".webp" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".gif" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".bmp" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".tga" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".exr" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".hdr" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".avif" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".qoi" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\photocraft.exe\SupportedTypes" Name=".ico" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\photocraft.exe" Value="[#PhotocraftExe]" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\PhotoCraft" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+        <!-- No App Paths or "Applications" keys: they are keyed by the exe name, which an
+             installed PhotoCraft shares, so writing (and uninstalling) them would break that app. -->
+        <RegistryValue Root="HKMU" Key="Software\$(var.Company)\$(var.ProductName)" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
       </Component>
 
       <Component Id="PhotocraftCli">

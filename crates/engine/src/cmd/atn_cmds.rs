@@ -98,7 +98,7 @@ pub const PHOTOSHOP_STEP: &str = "actions.photoshopStep";
 /// Photoshop's Insert Stop: `{"message", "allowContinue"}`.
 pub const STOP_MESSAGE: &str = "actions.stopMessage";
 /// The set name Save Actions uses for actions that came from no set.
-pub const DEFAULT_SET: &str = "PhotoCraft Actions";
+pub const DEFAULT_SET: &str = "Default Actions";
 
 fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
     EngineError::BadParams { cmd: cmd.into(), msg: msg.into() }
@@ -120,7 +120,7 @@ fn stop_message(_: &mut Session, p: &Value) -> Result<Value> {
 fn photoshop_step_run(_: &mut Session, p: &Value) -> Result<Value> {
     let name = jstr(p, "name").filter(|n| !n.is_empty()).unwrap_or("this step");
     let event = jstr(p, "event").unwrap_or("?");
-    Err(EngineError::Other(format!("Photoshop step \"{name}\" ({event}) has no PhotoCraft equivalent yet; switch it off in the Actions panel to skip it")))
+    Err(EngineError::Other(format!("Photoshop step \"{name}\" ({event}) has no equivalent here yet; switch it off in the Actions panel to skip it")))
 }
 
 pub fn specs() -> Vec<CommandSpec> {
@@ -140,7 +140,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Save Actions…",
             menu: &[],
             shortcut: None,
-            params: r##"{"path":".atn file"? (else the bytes come back as base64 `data`),"set":name? (that set's actions, none for an empty New Set set; default: every action, as the set "PhotoCraft Actions"),"action":name|index? (one action),"skipUnsupported":bool=false (leave out steps with no Photoshop equivalent instead of failing)} → {set, actions:[names], steps, bytes, skipped:[{action, step, id}], path|data}"##,
+            params: r##"{"path":".atn file"? (else the bytes come back as base64 `data`),"set":name? (that set's actions, none for an empty New Set set; default: every action, as the set "Default Actions"),"action":name|index? (one action),"skipUnsupported":bool=false (leave out steps with no Photoshop equivalent instead of failing)} → {set, actions:[names], steps, bytes, skipped:[{action, step, id}], path|data}"##,
             enabled: always,
             run: save,
             journal: false,

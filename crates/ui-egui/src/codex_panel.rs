@@ -291,7 +291,7 @@ fn ensure_started(app: &mut PhotocraftApp) {
         return;
     }
     let Some(start) = app.services.codex.as_mut() else {
-        app.codex.entries.push(Entry::Error(tl!("Codex is not available in this version of PhotoCraft.").into()));
+        app.codex.entries.push(Entry::Error(crate::i18n::app(tl!("Codex is not available in this version of {app}."))));
         return;
     };
     match start() {
