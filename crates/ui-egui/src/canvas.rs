@@ -43,6 +43,8 @@ pub mod scrollbars;
 pub mod select_mask_view;
 mod selection;
 pub mod snap_ui;
+mod home_bar;
+pub(crate) use home_bar::home_bar;
 mod start_screen;
 mod strokes;
 pub(crate) mod tabs;

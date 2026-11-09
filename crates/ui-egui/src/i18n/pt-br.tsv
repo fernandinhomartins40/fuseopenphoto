@@ -4627,3 +4627,12 @@ studio-tool	Slice Select	Seleção de fatia
 	Opening the browser…	Abrindo o navegador…
 	Sign in with your ChatGPT account to use Codex.	Entre com sua conta do ChatGPT para usar o Codex.
 	Codex CLI not found: install it (npm install -g @openai/codex) or set PHOTOCRAFT_CODEX	Codex CLI não encontrado: instale-o (npm install -g @openai/codex) ou defina PHOTOCRAFT_CODEX
+	What shall we create today?	O que vamos criar hoje?
+	Start from scratch or open an idea.	Comece do zero ou abra uma ideia.
+	Drag an image or PSD to start	Arraste uma imagem ou PSD para começar
+	or	ou
+	choose a file	escolha um arquivo
+	Your recent documents will appear here.	Seus documentos recentes aparecerão aqui.
+	Start with a format	Começar com um formato
+	Paste an image from the clipboard to create quickly.	Cole uma imagem da área de transferência para criar rapidamente.
+	See all formats	Ver todos os formatos
