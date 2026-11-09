@@ -786,6 +786,10 @@ fn invoke_window_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str)
             crate::codex_panel::toggle(app);
             Some(Ok(Value::Null))
         }
+        crate::create_ai::COMMAND => {
+            crate::create_ai::open(app);
+            Some(Ok(Value::Null))
+        }
         _ if id.starts_with("window.toggle.") => Some(toggle_panel(app, id)),
         _ => None,
     }

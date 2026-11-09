@@ -177,6 +177,63 @@ pub struct CodexPanel {
 }
 
 impl CodexPanel {
+    /// Use this link (tests' fake backends, in other modules).
+    #[cfg(test)]
+    pub(crate) fn connect(&mut self, link: CodexLink) {
+        self.link = Some(link);
+    }
+
+    pub(crate) fn is_running(&self) -> bool {
+        self.link.is_some()
+    }
+
+    pub(crate) fn is_signed_in(&self) -> bool {
+        matches!(self.account, Some(Some(_)))
+    }
+
+    pub(crate) fn is_busy(&self) -> bool {
+        self.busy
+    }
+
+    pub(crate) fn limit_reached(&self) -> bool {
+        self.limit
+    }
+
+    pub(crate) fn clear_limit(&mut self) {
+        self.limit = false;
+    }
+
+    pub(crate) fn has_models(&self) -> bool {
+        !self.models.is_empty()
+    }
+
+    pub(crate) fn has_model(&self, id: &str) -> bool {
+        self.models.iter().any(|m| m.id == id)
+    }
+
+    /// Where the dock was last drawn.
+    pub(crate) fn dock(&self) -> Option<Rect> {
+        self.dock_rect
+    }
+
+    /// Interrupt the running turn.
+    pub(crate) fn stop_turn(&mut self) {
+        self.request(CodexRequest::Stop);
+    }
+
+    /// Use `wanted` from the next message on; returns the model it replaced, if it changed.
+    pub(crate) fn switch_model(&mut self, wanted: Option<String>) -> Option<String> {
+        let wanted = wanted.filter(|w| self.model.as_ref() != Some(w))?;
+        let previous = self.model.replace(wanted.clone());
+        self.request(CodexRequest::SetModel(wanted));
+        previous
+    }
+
+    /// The assistant's messages, oldest first.
+    pub(crate) fn assistant_texts(&self) -> impl DoubleEndedIterator<Item = &str> {
+        self.entries.iter().filter_map(|e| if let Entry::Assistant { text, .. } = e { Some(text.as_str()) } else { None })
+    }
+
     /// Apply one backend event; returns an image to place.
     fn apply(&mut self, event: CodexEvent) -> Option<PathBuf> {
         match event {
@@ -364,8 +421,40 @@ fn file_name(path: &str) -> String {
     std::path::Path::new(path).file_name().map_or_else(|| path.to_string(), |n| n.to_string_lossy().into_owned())
 }
 
+/// Images Codex can look at itself; any other file is a path it may read.
+pub(crate) fn is_reference_image(path: &str) -> bool {
+    std::path::Path::new(path).extension().and_then(|e| e.to_str()).is_some_and(|e| ["png", "jpg", "jpeg", "webp", "gif"].iter().any(|i| e.eq_ignore_ascii_case(i)))
+}
+
+/// The newest error in the chat.
+pub(crate) fn last_error(app: &PhotocraftApp) -> Option<String> {
+    app.codex.entries.iter().rev().find_map(|e| if let Entry::Error(e) = e { Some(e.clone()) } else { None })
+}
+
+/// The error of the turn that just ended, if it had one.
+pub(crate) fn last_turn_error(app: &PhotocraftApp) -> Option<String> {
+    let turn = app.codex.entries.get(app.codex.turn_start..)?;
+    turn.iter().rev().find_map(|e| if let Entry::Error(e) = e { Some(e.clone()) } else { None })
+}
+
+/// A fresh conversation: Codex and the chat both forget.
+pub(crate) fn new_chat(app: &mut PhotocraftApp) {
+    let ctx = egui::Context::default();
+    run(app, &ctx, vec![Act::Request(CodexRequest::NewChat)]);
+}
+
+/// Send `prompt` with `files`, showing `shown` in the chat instead of the prompt.
+pub(crate) fn send_as(app: &mut PhotocraftApp, shown: String, prompt: String, files: Vec<String>) {
+    let p = &mut app.codex;
+    p.turn_start = p.entries.len();
+    p.entries.push(Entry::User(shown));
+    p.busy = true;
+    p.limit = false;
+    p.request(CodexRequest::Send { text: prompt, files });
+}
+
 /// Start the backend if it isn't running.
-fn ensure_started(app: &mut PhotocraftApp) {
+pub(crate) fn ensure_started(app: &mut PhotocraftApp) {
     start_on(app, None);
 }
 
@@ -673,7 +762,7 @@ fn conversation(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
         match entry {
             Entry::User(text) => user_bubble(ui, t, text),
             Entry::Assistant { text, .. } => codex_row(ui, t, true, |ui| {
-                ui.add(egui::Label::new(RichText::new(text).color(t.text)).wrap());
+                ui.add(egui::Label::new(RichText::new(crate::create_ai::strip_tag(text)).color(t.text)).wrap());
             }),
             Entry::Steps(lines) => {
                 let running = p.busy && i == last;
@@ -943,20 +1032,29 @@ fn menu_button(ui: &mut Ui, t: &Tokens, icon: &str, label: &str, tip: &str) -> e
 
 /// Which model Codex uses: the cheap ones cost far less of the user's plan.
 fn model_menu(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
-    let current = p.model.as_deref().unwrap_or_default();
+    if let Some(id) = model_picker(ui, t, p, p.model.as_deref()) {
+        acts.push(Act::Request(CodexRequest::SetModel(id)));
+    }
+}
+
+/// A menu of Codex's models, each with what it is for, showing `current`; returns the one picked.
+pub(crate) fn model_picker(ui: &mut Ui, t: &Tokens, p: &CodexPanel, current: Option<&str>) -> Option<String> {
+    let current = current.unwrap_or_default();
     let name = p.models.iter().find(|m| m.id == current).map_or(current, |m| m.name.as_str());
     let resp = menu_button(ui, t, "sparkles", name, tl!("Model"));
+    let mut picked = None;
     egui::Popup::menu(&resp).show(|ui| {
         crate::widgets::style_spectrum_popup_menu(ui);
         ui.set_max_width(300.0);
         for m in &p.models {
             if ui.selectable_label(m.id == current, &m.name).clicked() && m.id != current {
-                acts.push(Act::Request(CodexRequest::SetModel(m.id.clone())));
+                picked = Some(m.id.clone());
             }
             ui.add(egui::Label::new(RichText::new(&m.description).small().color(t.text_dim)).wrap());
             ui.add_space(4.0);
         }
     });
+    picked
 }
 
 fn scope_menu(ui: &mut Ui, t: &Tokens, scope: &mut Scope) {

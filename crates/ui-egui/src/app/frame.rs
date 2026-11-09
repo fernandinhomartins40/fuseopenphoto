@@ -91,6 +91,7 @@ impl PhotocraftApp {
         crate::color_picker_ui::widget_tick(self, ctx);
         // Background jobs: apply finished ones, keep frames coming, Esc cancels (before the
         // shortcuts see Esc).
+        crate::create_ai::filter_keys(self, ctx);
         if !screen_picker::tick(self, ctx) {
             jobs_ui::tick(self, ctx);
             #[cfg(not(target_arch = "wasm32"))]
@@ -122,7 +123,7 @@ impl PhotocraftApp {
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
         if !dropped.is_empty() {
             let at = self.cursor_pos(ctx);
-            if !crate::codex_panel::take_drop(self, &dropped, at) {
+            if !crate::create_ai::take_drop(self, ctx, &dropped) && !crate::codex_panel::take_drop(self, &dropped, at) {
                 self.open_dropped(ctx, dropped, at);
             }
             // Files dragged in from another app's window: PhotoCraft comes to the front and takes
@@ -342,6 +343,7 @@ impl PhotocraftApp {
         crate::codex_panel::poll(self);
         palette::show(self, &ctx);
         dialogs::show(self, &ctx);
+        crate::create_ai::show(self, &ctx);
         layers_panel_ui::show_dialog(self, &ctx);
         rasterize_prompt::run_pending(self, &ctx);
         jobs_ui::dialog(self, &ctx);

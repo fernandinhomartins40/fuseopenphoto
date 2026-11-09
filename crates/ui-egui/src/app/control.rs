@@ -22,13 +22,21 @@ impl PhotocraftApp {
 
     pub(crate) fn drain_control(&mut self, ctx: &egui::Context) {
         let Some(rx) = self.control_rx.take() else { return };
-        while let Ok(req) = rx.try_recv() {
+        loop {
+            // Create with AI paces Codex's edits, so each can be seen.
+            if let Some(wait) = crate::create_ai::hold(self, ctx.input(|i| i.time)) {
+                ctx.request_repaint_after(std::time::Duration::from_secs_f64(wait));
+                break;
+            }
+            let Ok(req) = rx.try_recv() else { break };
             let reply = req.reply.clone();
             if req.deadline.is_some_and(|deadline| std::time::Instant::now() >= deadline) || !req.dispatch.start() {
                 let _ = reply.send(serde_json::json!({"ok": false, "error": crate::control::expired_error()}));
                 continue;
             }
-            match crate::control::handle(self, ctx, &req) {
+            let outcome = crate::control::handle(self, ctx, &req);
+            crate::create_ai::observe(self, ctx, &req.method, &req.params);
+            match outcome {
                 crate::control::Outcome::Done(v) => {
                     let _ = reply.send(v);
                 }

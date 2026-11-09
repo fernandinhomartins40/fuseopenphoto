@@ -2391,6 +2391,42 @@
 	Luminance Smoothness	Suavidade da luminância
 	Make	Fabricante
 	Model	Modelo
+	Create with AI	Criar com IA
+	Create with AI…	Criar com IA…
+	Send an image and Codex rebuilds it as an editable document, with separate layers, real text and new images.	Envie uma imagem e o Codex a recria como um documento editável, com camadas separadas, textos de verdade e imagens novas.
+	This can take over an hour and use a lot of your plan. The editor stays locked until it finishes, and you can stop whenever you want.	Pode levar mais de uma hora e consumir bastante do seu plano. O editor fica travado até terminar, e você pode parar quando quiser.
+	Choose an image	Escolher uma imagem
+	Drag your image here	Arraste sua imagem para cá
+	or click to choose a file	ou clique para escolher um arquivo
+	This file isn't a PNG, JPEG, WebP or GIF image.	Este arquivo não é uma imagem PNG, JPEG, WebP ou GIF.
+	Could not read this image.	Não foi possível ler esta imagem.
+	Reference	Referência
+	Turning {name} into an editable document	Transformando {name} em um documento editável
+	Analyzing the image	Analisando a imagem
+	Creating the text	Criando os textos
+	Generating the images	Gerando as imagens
+	Applying the effects	Aplicando os efeitos
+	Organizing the layers	Organizando as camadas
+	Checking the result	Conferindo o resultado
+	Writing the text	Escrevendo o texto
+	Drawing a shape	Desenhando uma forma
+	Applying an effect	Aplicando um efeito
+	Positioning	Posicionando
+	Placing an image	Colocando uma imagem
+	Adjusting a layer	Ajustando uma camada
+	Editing	Editando
+	Waiting for Codex: sign in on the panel if it asks	Aguardando o Codex: entre pelo painel se ele pedir
+	Step {n} of {total}	Etapa {n} de {total}
+	Getting started	Começando
+	{n} min	{n} min
+	Usage limit reached: switch accounts on the panel to continue	Limite de uso atingido: troque de conta no painel para continuar
+	Try again	Tentar de novo
+	Stopping…	Parando…
+	Stopped. Keep what was done?	Parado. Manter o que já foi feito?
+	Keep	Manter
+	Discard	Descartar
+	Your editable document is ready	Seu documento editável está pronto
+	Save PSD…	Salvar PSD…
 	Attach files	Anexar arquivos
 	Add account	Adicionar conta
 	Switch to {name}	Trocar para {name}

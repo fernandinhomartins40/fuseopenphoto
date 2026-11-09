@@ -2421,3 +2421,25 @@ fn shift_right_menu_choose_rejects_bad_choices_and_sets_the_tool() {
     shift_right(&mut app, &ctx, "magicEraser");
     assert!(inspect(&app, &ctx)["brushModeMenu"].is_null());
 }
+
+/// The preview is the document, not the window; a region looks closer, and a bad one is refused.
+#[test]
+fn render_preview_takes_the_document_or_a_region() {
+    use base64::Engine as _;
+    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let ctx = egui::Context::default();
+    app.services.encode_png = Some(Box::new(|w, h, _| Ok(vec![w as u8, h as u8])));
+    assert_eq!(call(&mut app, &ctx, "ui.renderPreview", json!({}))["ok"], json!(false), "no document");
+    app.run("file.new", json!({"width": 100, "height": 50})).unwrap();
+    let mut size = |p: Value| {
+        let v = call(&mut app, &ctx, "ui.renderPreview", p);
+        v["result"]["base64"].as_str().map(|b| base64::engine::general_purpose::STANDARD.decode(b).unwrap())
+    };
+    assert_eq!(size(json!({"maxSide": 1024})), Some(vec![100, 50]));
+    assert_eq!(size(json!({"maxSide": 50})), Some(vec![50, 25]), "scaled to fit");
+    assert_eq!(size(json!({"region": [10, 10, 20, 10]})), Some(vec![20, 10]));
+    assert_eq!(size(json!({"region": [90, 40, 50, 50]})), Some(vec![10, 10]), "cut at the document's edge");
+    for bad in [json!({"region": [500, 500, 10, 10]}), json!({"region": [0, 0, 0, 10]}), json!({"region": [0, 0, 10]}), json!({"region": "x"})] {
+        assert_eq!(size(bad.clone()), None, "{bad}");
+    }
+}

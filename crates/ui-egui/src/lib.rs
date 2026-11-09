@@ -30,6 +30,7 @@ macro_rules! tl {
 mod brush_mode_menu;
 pub mod canvas;
 pub mod codex_panel;
+pub mod create_ai;
 pub mod studio;
 pub mod control;
 pub mod dialogs;
@@ -459,6 +460,8 @@ pub struct PhotocraftApp {
     control_rx: Option<Receiver<ControlRequest>>,
     /// Window › Codex chat (`codex_panel`).
     pub codex: codex_panel::CodexPanel,
+    /// File › Create with AI (`create_ai`).
+    pub create_ai: create_ai::CreateAi,
     /// The studio shell (`studio`): mode, regions' state, Classic Layout.
     pub studio: studio::StudioState,
     /// `ui.screenshot` requests: bounded admission, a weak-slot callback per issuance, monotonic

@@ -86,6 +86,7 @@ impl PhotocraftApp {
             opacity_keys: None,
             control_rx: None,
             codex: Default::default(),
+            create_ai: Default::default(),
             studio: Default::default(),
             captures: crate::screenshot::Captures::default(),
             type_ime: type_tool::ImeState::default(),

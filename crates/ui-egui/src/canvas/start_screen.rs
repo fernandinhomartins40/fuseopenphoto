@@ -8,6 +8,7 @@ use egui::{Stroke, StrokeKind, pos2, vec2};
 enum Act {
     New,
     Open,
+    CreateAi,
     Preset(crate::new_doc_ui::Preset),
     Clipboard,
     Prefs,
@@ -96,6 +97,7 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, act: Act) {
             Ok(())
         }
         Act::Open => app.open_dialog_file().map(|_| ()),
+        Act::CreateAi => crate::menus::invoke(app, ctx, crate::create_ai::COMMAND, serde_json::json!({})).map(|_| ()),
         Act::Preset(p) => {
             // Made exactly as File › New › Create makes it (remembered settings, New › Recent, fit).
             let units = app.session.prefs().units_and_rulers.clone();
@@ -151,8 +153,11 @@ fn render_rail(app: &PhotocraftApp, ui: &mut egui::Ui, rail: Rect, act: &mut Opt
     if rail_item(ui, row(rail.top() + 98.0), "folder", tl!("Open File"), false).clicked() {
         *act = Some(Act::Open);
     }
+    if rail_item(ui, row(rail.top() + 140.0), crate::create_ai::ICON, tl!("Create with AI"), false).clicked() {
+        *act = Some(Act::CreateAi);
+    }
     let foot = rail.bottom() - 48.0;
-    if foot > rail.top() + 150.0 {
+    if foot > rail.top() + 190.0 {
         ui.painter().hline(x.clone(), foot - 8.0, Stroke::new(1.0, t.separator));
         if rail_item(ui, row(foot), "settings", tl!("Settings"), false).clicked() {
             *act = Some(Act::Prefs);
@@ -200,6 +205,9 @@ fn render_main(app: &mut PhotocraftApp, ui: &mut egui::Ui, recent: &[String], w:
         }
         if action_button(ui, tl!("Open File"), "folder", false).clicked() {
             *act = Some(Act::Open);
+        }
+        if action_button(ui, tl!("Create with AI"), crate::create_ai::ICON, false).clicked() {
+            *act = Some(Act::CreateAi);
         }
     });
     ui.add_space(24.0);
@@ -265,7 +273,7 @@ fn drop_zone(app: &PhotocraftApp, ui: &mut egui::Ui, size: egui::Vec2) -> egui::
 }
 
 /// The outline of a rounded rectangle as a closed polyline, for the dashed border.
-fn rounded_outline(r: Rect, radius: f32) -> Vec<egui::Pos2> {
+pub(crate) fn rounded_outline(r: Rect, radius: f32) -> Vec<egui::Pos2> {
     let rad = radius.min(r.width() / 2.0).min(r.height() / 2.0).max(0.0);
     let corners = [(r.right() - rad, r.top() + rad, -90.0_f32), (r.right() - rad, r.bottom() - rad, 0.0), (r.left() + rad, r.bottom() - rad, 90.0), (r.left() + rad, r.top() + rad, 180.0)];
     let mut pts = Vec::with_capacity(4 * 7 + 1);

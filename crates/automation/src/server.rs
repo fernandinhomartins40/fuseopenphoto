@@ -241,6 +241,10 @@ pub struct PreviewParams {
     /// Zero requests full size within that ceiling. Bridge mode returns the window screenshot.
     #[serde(default)]
     pub max_side: Option<u32>,
+    /// Bridge mode: only this part of the document, `[x, y, width, height]` in pixels, to look
+    /// closely at a detail.
+    #[serde(default)]
+    pub region: Option<[i64; 4]>,
 }
 
 #[derive(Debug, Default, Deserialize, JsonSchema)]
@@ -929,9 +933,13 @@ impl PhotocraftMcp {
         to_result(b.call_read("engine.execute", json!({"command": "document.inspect", "params": params})).await)
     }
 
-    #[tool(description = "Render the flattened document and return it as a PNG image (bridge mode: window screenshot).")]
+    #[tool(description = "Render the flattened document, or a `region` of it, and return it as a PNG image.")]
     async fn doc_render_preview(&self, Parameters(p): Parameters<PreviewParams>) -> Result<CallToolResult, McpError> {
         let max = p.max_side.unwrap_or(1024);
+        let region = p.region;
+        if region.is_some() && self.bridge_client().is_none() {
+            return Ok(fail("`region` is only supported in bridge mode"));
+        }
         if let Some(r) = self
             .headless_op(move |h| {
                 let res = h.render_png(p.index, max);
@@ -952,12 +960,34 @@ impl PhotocraftMcp {
             return Ok(no_backend());
         };
         if p.index.is_some() {
-            return Ok(fail("`index` is only supported in headless mode; bridge previews capture the app window"));
+            return Ok(fail("`index` is only supported in headless mode; bridge previews show the active document"));
         }
-        self.screenshot(b, Some(max)).await
+        if max > MAX_PREVIEW_SIDE {
+            return Ok(fail(format!("automation preview side exceeds {MAX_PREVIEW_SIDE} pixels")));
+        }
+        let response = match b.call_read("ui.renderPreview", json!({"maxSide": max, "region": region})).await {
+            Ok(response) => response,
+            Err(error) => return Ok(fail(error)),
+        };
+        let Some(encoded) = response.get("base64").and_then(Value::as_str) else {
+            return Ok(fail("app preview response did not contain PNG data"));
+        };
+        let bytes = match base64::engine::general_purpose::STANDARD.decode(encoded) {
+            Ok(bytes) => bytes,
+            Err(error) => return Ok(fail(format!("app preview data: {error}"))),
+        };
+        let bytes = match downscale_png(&bytes, max) {
+            Ok(Some(small)) => small,
+            Ok(None) => bytes,
+            Err(error) => return Ok(fail(error)),
+        };
+        if let Err(error) = check_png(bytes.len()) {
+            return Ok(fail(error));
+        }
+        Ok(png_result(&bytes, format!("preview of the active document (max side {max})")))
     }
 
-    #[tool(description = "Render a bounded flattened PNG preview (bridge mode: app window screenshot).")]
+    #[tool(description = "Render a bounded flattened PNG preview of the document, or of a `region` of it.")]
     async fn render_preview(&self, p: Parameters<PreviewParams>) -> Result<CallToolResult, McpError> {
         self.doc_render_preview(p).await
     }

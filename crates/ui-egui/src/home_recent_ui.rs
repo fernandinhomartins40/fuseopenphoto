@@ -250,7 +250,7 @@ fn read_psd_thumbnail_bounded(path: &Path, file_len: u64) -> Option<ColorImage> 
 
 /// Load thumbnail image with bounded streaming I/O and strict size limits.
 #[cfg(not(target_arch = "wasm32"))]
-fn load_thumbnail_image_bounded(path: &str, file_len: u64) -> Option<ColorImage> {
+pub(crate) fn load_thumbnail_image_bounded(path: &str, file_len: u64) -> Option<ColorImage> {
     let std_path = Path::new(path);
     let ext = std_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 

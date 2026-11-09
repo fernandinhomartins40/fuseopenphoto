@@ -193,7 +193,21 @@ fn cards(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         actions.push(done);
     }
     let rows = card_rows(app, &doc, &selection, &isolated);
-    egui::ScrollArea::horizontal().id_salt(("studio-layer-cards", doc.id.0)).auto_shrink([false, false]).show(ui, |ui| {
+    // A real bar, always there: the strip is how the user gets to the layers past its edge.
+    ui.spacing_mut().scroll = egui::style::ScrollStyle { bar_width: 6.0, dormant_handle_opacity: 0.28, active_handle_opacity: 0.5, interact_handle_opacity: 0.75, foreground_color: true, ..egui::style::ScrollStyle::solid() };
+    let area = egui::ScrollArea::horizontal()
+        .id_salt(("studio-layer-cards", doc.id.0))
+        .auto_shrink([false, false])
+        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysVisible)
+        // A press on the strip belongs to the cards; only the bar and the wheel scroll it.
+        .scroll_source(egui::scroll_area::ScrollSource { drag: egui::scroll_area::DragScroll::Never, ..egui::scroll_area::ScrollSource::ALL });
+    area.show(ui, |ui| {
+        // egui leaves a vertical wheel alone in a horizontal area, and a mouse has no other.
+        let wheel = ctx.input(|i| i.smooth_scroll_delta().y);
+        if wheel != 0.0 && ui.rect_contains_pointer(ui.clip_rect()) {
+            ui.scroll_with_delta(vec2(wheel, 0.0));
+            ctx.input_mut(|i| i.smooth_scroll_delta.y = 0.0);
+        }
         let dragging = ctx.data(|d| d.get_temp::<u64>(drag_key())).is_some() && ctx.input(|i| i.pointer.primary_down());
         // The vertical edge scroll of the classic list, turned on its side.
         let flip = |p: Pos2| pos2(p.y, p.x);
@@ -279,7 +293,8 @@ fn card(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, d
     let rect = Rect::from_min_size(slot.min + vec2(0.0, inset), vec2(w, h));
     let resp = ui.interact(rect, ui.scope_id().with(("studio-card", l.id.0)), Sense::click_and_drag());
     resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, sel.selected, &l.name));
-    if !ui.is_rect_visible(rect) && crate::layer_row_ui::renaming(&ctx) != Some(l.id.0) && !resp.context_menu_opened() {
+    let is_dragged = ctx.data(|d| d.get_temp::<u64>(drag_key())) == Some(l.id.0);
+    if !ui.is_rect_visible(rect) && crate::layer_row_ui::renaming(&ctx) != Some(l.id.0) && !resp.context_menu_opened() && !is_dragged {
         return rect;
     }
     let painter = ui.painter_at(rect.expand(6.0));
@@ -301,6 +316,12 @@ fn card(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, d
     }
     card_menu(app, ui, &c, &masks, actions);
     drag_and_drop(app, &ctx, ui, doc, l, rect, &c.resp, taken, actions);
+    if ctx.data(|d| d.get_temp::<u64>(drag_key())) == Some(l.id.0) {
+        // Lifted: the place it left stays visible, faint and outlined.
+        let t = Tokens::get(&ctx);
+        painter.rect_filled(rect, RADIUS, t.dock.gamma_multiply(0.7));
+        painter.rect_stroke(rect, RADIUS, Stroke::new(1.0, t.accent), StrokeKind::Inside);
+    }
     rect
 }
 
@@ -631,13 +652,11 @@ fn drag_and_drop(
     let Some(p) = ctx.input(|i| i.pointer.interact_pos()) else { return };
     let copy = ctx.input(|i| i.modifiers.alt);
     if dragged == l.id.0 {
-        crate::layer_transfer::ghost(ctx, p, &l.name);
-        if copy {
-            ctx.set_cursor_icon(egui::CursorIcon::Copy);
-        }
+        drag_ghost(app, ctx, doc, l, p);
+        ctx.set_cursor_icon(if copy { egui::CursorIcon::Copy } else { egui::CursorIcon::Grabbing });
         return;
     }
-    if !rect.contains(p) {
+    if !over_card(rect, p) {
         return;
     }
     let position = drop_position((p.x - rect.left()) / rect.width().max(1.0), l.is_group() && l.frame.is_none());
@@ -660,6 +679,34 @@ fn drag_and_drop(
         actions.push(("layer.moveTo".into(), payload));
     } else if ctx.input(|i| i.pointer.primary_down()) {
         crate::layers_panel_ui::preview_reorder(app, &payload);
+    }
+}
+
+/// The pointer is over this card for a drop. The gap beside it counts, and so does some height: the
+/// hand drifts up while it drags sideways, and nothing should go dark for that.
+fn over_card(rect: Rect, p: Pos2) -> bool {
+    rect.x_range().expand(5.0).contains(p.x) && (rect.top() - 70.0..=rect.bottom() + 24.0).contains(&p.y)
+}
+
+/// The dragged card, small, under the pointer: its thumbnail and name.
+fn drag_ghost(app: &mut PhotocraftApp, ctx: &egui::Context, doc: &Document, l: &Layer, p: Pos2) {
+    let t = Tokens::get(ctx);
+    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Tooltip, egui::Id::unique("studio-card-ghost")));
+    let card = Rect::from_min_size(p + vec2(10.0, -30.0), vec2(190.0, 60.0));
+    painter.add(egui::Shadow { offset: [0, 6], blur: 18, spread: 0, color: t.shadow }.as_shape(card, RADIUS));
+    painter.rect(card, RADIUS, t.card, Stroke::new(1.5, t.accent), StrokeKind::Inside);
+    let area = Rect::from_min_size(card.min + vec2(8.0, 8.0), vec2(62.0, 44.0));
+    if l.surface().is_some() {
+        let (tex, frame) = app.layer_thumb(ctx, doc, l);
+        let (fitted, uv) = fit(area, frame.width(), frame.height());
+        widgets::checker(&painter, fitted, 4.0);
+        painter.image(tex, fitted, uv, egui::Color32::WHITE);
+    } else {
+        painter.rect_filled(area, 4.0, t.field);
+    }
+    let name = crate::layer_row_ui::truncated(&painter, &shown_name(crate::i18n::current(), &l.name), FontId::proportional(13.0), t.text, false, card.right() - area.right() - 18.0);
+    if let Some(g) = name {
+        painter.galley(pos2(area.right() + 10.0, card.center().y - g.size().y / 2.0), g, t.text);
     }
 }
 
@@ -849,6 +896,100 @@ mod tests {
             assert_eq!(rows.iter().any(|(d, n)| *d == 1 && n == "inner"), expanded, "{rows:?}");
             assert_eq!(rows.last().map(|(d, _)| *d), Some(0), "the Background comes last");
         }
+    }
+
+    fn many_layers(window: egui::Vec2) -> egui_kittest::Harness<'static, PhotocraftApp> {
+        let mut h = egui_kittest::Harness::builder().with_size(window).with_step_dt(1.0 / 60.0).build_eframe(|cc| {
+            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
+            for i in 1..=12 {
+                app.run("layer.new.layer", json!({"name": format!("L{i}")})).unwrap();
+            }
+            app
+        });
+        h.run_steps(5);
+        h
+    }
+
+    /// With more cards than room, the wheel reaches the ones past the edge.
+    #[test]
+    fn the_wheel_scrolls_the_cards() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = many_layers(vec2(1280.0, 800.0));
+        let before = h.get_by_label("L12").rect();
+        h.hover_at(before.center());
+        h.run_steps(1);
+        for _ in 0..4 {
+            h.event(egui::Event::MouseWheel {
+                source: egui::MouseWheelSource::Unknown,
+                unit: egui::MouseWheelUnit::Line,
+                delta: vec2(0.0, -3.0),
+                phase: egui::TouchPhase::Move,
+                modifiers: egui::Modifiers::NONE,
+            });
+            h.run_steps(2);
+        }
+        h.run_steps(30);
+        let after = h.get_by_label("L12").rect();
+        assert!(after.left() < before.left() - 50.0, "the wheel did not scroll: {before:?} -> {after:?}");
+    }
+
+    /// A drop lands wherever the hand is along the strip, a little above it or in a gap too.
+    #[test]
+    fn a_drop_target_is_forgiving() {
+        let card = Rect::from_min_size(pos2(100.0, 500.0), vec2(200.0, 100.0));
+        assert!(over_card(card, pos2(150.0, 550.0)));
+        assert!(over_card(card, pos2(303.0, 550.0)), "the gap");
+        assert!(over_card(card, pos2(150.0, 450.0)), "drifted up");
+        assert!(!over_card(card, pos2(150.0, 300.0)), "the canvas is not the strip");
+        assert!(!over_card(card, pos2(320.0, 550.0)));
+    }
+
+    /// Dragging a card over another reorders the stack: on a laptop too, with Codex open and groups.
+    #[test]
+    fn dragging_a_card_on_a_laptop_with_codex_open() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = many_layers(vec2(1100.0, 620.0));
+        h.state_mut().run("layer.groupLayers", json!({})).unwrap();
+        h.state_mut().codex.open = true;
+        h.run_steps(5);
+        // Only a few cards fit beside Codex: from one visible card into the visible group.
+        let (from, to) = (h.get_by_label("L11").rect(), h.get_by_label("Group 1").rect());
+        let order = |h: &egui_kittest::Harness<'static, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+        let start = order(&h);
+        h.drag_at(from.center());
+        h.run_steps(2);
+        let goal = pos2(to.center().x, to.center().y - 40.0);
+        for k in 1..=10 {
+            h.hover_at(from.center() + (goal - from.center()) * (k as f32 / 10.0));
+            h.run_steps(1);
+        }
+        assert!(h.ctx.data(|d| d.get_temp::<u64>(drag_key())).is_some(), "the press never became a drag");
+        h.drop_at(goal);
+        h.run_steps(3);
+        assert_ne!(order(&h), start, "the drop did not move the layer");
+    }
+
+    /// Dragging a card over another reorders the stack.
+    #[test]
+    fn dragging_a_card_reorders_the_layers() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = many_layers(vec2(1600.0, 900.0));
+        let (from, to) = (h.get_by_label("L12").rect(), h.get_by_label("L10").rect());
+        let order = |h: &egui_kittest::Harness<'static, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+        let start = order(&h);
+        h.drag_at(from.center());
+        h.run_steps(2);
+        let goal = pos2(to.right() - 8.0, to.center().y);
+        for k in 1..=10 {
+            h.hover_at(from.center() + (goal - from.center()) * (k as f32 / 10.0));
+            h.run_steps(1);
+        }
+        assert!(h.ctx.data(|d| d.get_temp::<u64>(drag_key())).is_some(), "the press never became a drag");
+        h.drop_at(goal);
+        h.run_steps(3);
+        assert_ne!(order(&h), start, "the drop did not move the layer");
     }
 
     #[test]

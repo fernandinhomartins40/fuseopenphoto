@@ -1057,7 +1057,7 @@ async fn fake_app_with_screenshot(screenshot_png: Option<Vec<u8>>) -> (String, t
                     json!({"id": id, "ok": true, "result": [{"id": "file.new", "label": "New…", "enabled": true}]})
                 }
                 "ui.pointer" => json!({"id": id, "ok": true, "result": req["params"]}),
-                "ui.screenshot" => {
+                "ui.screenshot" | "ui.renderPreview" => {
                     let bytes = screenshot_png.clone().unwrap_or_else(|| {
                         let img = photocraft_codecs::Image::from_u8(40, 20, photocraft_codecs::ChannelLayout::Rgba, vec![9; 3200]).unwrap();
                         photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap()
@@ -1223,7 +1223,7 @@ async fn bridge_previews_reject_document_indices() {
     let seen = tokio::time::timeout(std::time::Duration::from_secs(5), app).await.unwrap().unwrap();
 
     assert!(errors.iter().all(|(_, error)| error.as_ref().is_some_and(|error| error.contains("index"))), "{errors:?}");
-    assert_eq!(seen.iter().filter(|request| request["method"] == "ui.screenshot").count(), 2, "rejected indices must not reach the app");
+    assert_eq!(seen.iter().filter(|request| request["method"] == "ui.screenshot" || request["method"] == "ui.renderPreview").count(), 2, "rejected indices must not reach the app");
     assert!(schema["properties"].get("index").is_none(), "{schema:?}");
     assert!(schema["properties"].get("max_side").is_some(), "{schema:?}");
     assert_eq!(schema.get("additionalProperties"), Some(&json!(false)));

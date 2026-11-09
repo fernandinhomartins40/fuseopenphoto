@@ -186,6 +186,7 @@ fn shell_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequ
             ok(Value::Null)
         }
         "ui.screenshot" => screenshot(app, ctx, p),
+        "ui.renderPreview" => render_preview(app, p),
         _ => return None,
     })
 }
@@ -212,6 +213,40 @@ fn simulate_gpu_loss(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) ->
     app.check_gpu(ctx);
     ctx.request_repaint();
     ok(json!({"wasActive": active, "gpuInfo": app.perf.gpu_info}))
+}
+
+/// The active document, or a `[x, y, width, height]` region of it, as a PNG of at most `maxSide`
+/// pixels: what a model checks its work against, without the app's interface over it.
+fn render_preview(app: &mut PhotocraftApp, p: &Value) -> Outcome {
+    let Some(st) = app.session.active() else { return err("no document is open") };
+    let max = u64_param(p, "maxSide").unwrap_or(1024).clamp(16, 2048) as u32;
+    let bounds = st.doc.bounds();
+    let rect = match p.get("region").filter(|r| !r.is_null()) {
+        None => bounds,
+        Some(region) => {
+            let Some([x, y, w, h]) = region_param(region) else { return err("`region` must be [x, y, width, height] with a positive size") };
+            let wanted = photocraft_geom::Rect::new(x, y, x.saturating_add(w), y.saturating_add(h)).intersect(&bounds);
+            if wanted.width() <= 0 || wanted.height() <= 0 {
+                return err("`region` is outside the document");
+            }
+            wanted
+        }
+    };
+    let scale = (f64::from(max) / f64::from(rect.width().max(rect.height()))).min(1.0);
+    let (w, h) = (((f64::from(rect.width()) * scale).round() as u32).max(1), ((f64::from(rect.height()) * scale).round() as u32).max(1));
+    let image = photocraft_compose::render_reduced_rect(&st.doc, rect, w, h).to_rgba8();
+    let Some(encode) = app.services.encode_png.as_ref() else { return err("PNG encoding is not available") };
+    match encode(image.width, image.height, &image.pixels) {
+        Ok(png) => ok(json!({"base64": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, png), "width": image.width, "height": image.height})),
+        Err(e) => err(e),
+    }
+}
+
+fn region_param(region: &Value) -> Option<[i32; 4]> {
+    let v = region.as_array()?;
+    let n = |i: usize| v.get(i)?.as_i64().and_then(|n| i32::try_from(n).ok());
+    let (x, y, w, h) = (n(0)?, n(1)?, n(2)?, n(3)?);
+    (v.len() == 4 && w > 0 && h > 0).then_some([x, y, w, h])
 }
 
 fn screenshot(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Outcome {

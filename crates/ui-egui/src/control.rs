@@ -206,6 +206,7 @@ pub(super) const METHODS: &[&str] = &[
     "ui.menu.list",
     "ui.move",
     "ui.pointer",
+    "ui.renderPreview",
     "ui.resize",
     "ui.screenshot",
     "ui.set",
