@@ -73,6 +73,8 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let block = vec2(size.x.max(quick_size.x), size.y + BELOW_GAP + quick_size.y);
     let offset = clamp_offset(app.studio.tools.offset.unwrap_or(DEFAULT_OFFSET), block, canvas);
     let area = egui::Area::new(egui::Id::unique("studio_tools_menu")).order(egui::Order::Foreground).fixed_pos(canvas.min + offset).show(&ctx, |ui| {
+        // The block's height is exactly what `quick_layout` counted: no extra spacing under the button.
+        ui.spacing_mut().item_spacing.y = 0.0;
         // Drag anywhere on the button to move it; a click (no drag) opens the menu.
         let (r, resp) = ui.allocate_exact_size(size, Sense::click_and_drag());
         if resp.dragged() {
