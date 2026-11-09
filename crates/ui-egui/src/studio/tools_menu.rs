@@ -359,15 +359,17 @@ mod tests {
             app
         });
         h.run_steps(5);
+        // The options bar can name the active tool too: the strip's button is the one left of it.
+        let strip_right = h.state().last_canvas_rect.left() + RESERVED_W;
         for name in QUICK {
             let tool = crate::tool_shortcuts::tool(&format!("tools.select.{name}")).unwrap();
-            h.get_by_label(tool.label()).click();
+            h.get_all_by_label(tool.label()).find(|n| n.rect().right() < strip_right).unwrap_or_else(|| panic!("{name} is not in the strip")).click();
             h.run_steps(3);
             assert_eq!(crate::tool_memory::selected(h.state()), tool, "{name}");
             assert!(!h.state().studio.tools.open, "the strip picks without opening the menu");
         }
         let canvas = h.state().last_canvas_rect;
-        let hand = h.get_by_label(Tool::Hand.label()).rect();
+        let hand = h.get_all_by_label(Tool::Hand.label()).find(|n| n.rect().right() < strip_right).unwrap().rect();
         assert!(canvas.contains_rect(hand), "the strip fits a laptop's canvas: {hand:?} in {canvas:?}");
     }
 

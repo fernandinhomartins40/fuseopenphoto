@@ -1129,7 +1129,7 @@ mod tests {
                 context_chip(ui, &t, Some(&(name.to_string(), 3)));
             });
             h.run_steps(2);
-            let text = h.get_by_label_contains(name).rect();
+            let text = h.get_by_label_contains("Current document").rect();
             let count = h.get_by_label("3 layers").rect();
             (text, count)
         };
