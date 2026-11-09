@@ -28,6 +28,7 @@ mod contour;
 mod gradient_field;
 #[cfg(test)]
 mod gradient_method_tests;
+pub mod panel;
 
 #[derive(Clone, Copy)]
 enum P {
@@ -947,7 +948,7 @@ pub fn body_with_response(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Ma
                 .id_salt("layer-style-page")
                 .max_height(h)
                 .auto_shrink(false)
-                .show(ui, |ui| page(app, ui, f, &selected, invalid.as_deref(), &mut style_click));
+                .show(ui, |ui| page(app, ui, f, &selected, invalid.as_deref(), &mut style_click, true));
         });
         ui.vertical(|ui| {
             ui.set_width(SIDE_W);
@@ -1570,7 +1571,8 @@ fn checkbox_line(ui: &mut egui::Ui, on: &mut bool, label: &str) -> bool {
 }
 
 /// The selected page: the Styles gallery, Blending Options, or an effect's parameters.
-fn page(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>, selected: &str, invalid: Option<&str>, style_click: &mut Option<String>) {
+/// `titled`: the page's name heads it (the dialog); the studio's inline editor names it on its row.
+fn page(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>, selected: &str, invalid: Option<&str>, style_click: &mut Option<String>, titled: bool) {
     let t = Tokens::get(ui.ctx());
     // Photoshop's rows sit close together: every page fits the dialog without scrolling.
     ui.spacing_mut().item_spacing.y = 3.0;
@@ -1611,8 +1613,10 @@ fn page(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>, 
         entry(f, selected).and_then(|e| e.get("kind").and_then(Value::as_str)).unwrap_or("").to_string()
     };
     let label = KINDS.iter().find(|k| k.0 == sel_kind).map(|k| k.1).unwrap_or(if selected == BLENDING { "Blending Options" } else { "" });
-    ui.label(RichText::new(tl!(&label)).font(crate::theme::semibold(14.0)).color(t.text));
-    ui.add_space(6.0);
+    if titled {
+        ui.label(RichText::new(tl!(&label)).font(crate::theme::semibold(14.0)).color(t.text));
+        ui.add_space(6.0);
+    }
     // Only reachable through `ui.dialog.set`: say what is wrong once, keep the bad value.
     if let Some(error) = invalid {
         ui.colored_label(t.danger, error);

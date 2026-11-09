@@ -88,11 +88,19 @@ fn section(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
     open
 }
 
-/// Right-aligned field label in a fixed-width column.
+/// Right-aligned field label in a fixed-width column (wider when the label is: it never draws
+/// left of its row, as a long translation did, "Preenchimento").
 fn field_label(ui: &mut egui::Ui, s: &str, w: f32) {
     let t = Tokens::get(ui.ctx());
-    let (r, _) = ui.allocate_exact_size(vec2(w, 22.0), Sense::hover());
+    let w = w.max(label_width(ui, &[s]));
+    let (r, resp) = ui.allocate_exact_size(vec2(w, 22.0), Sense::hover());
     ui.painter().text(pos2(r.right() - 4.0, r.center().y), Align2::RIGHT_CENTER, s, egui::FontId::proportional(12.0), t.text_dim);
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, s));
+}
+
+/// The label column's width: the widest of `labels`, plus the gap before the field.
+fn label_width(ui: &egui::Ui, labels: &[&str]) -> f32 {
+    labels.iter().map(|s| ui.painter().layout_no_wrap((*s).to_owned(), egui::FontId::proportional(12.0), egui::Color32::WHITE).size().x + 8.0).fold(0.0, f32::max)
 }
 
 /// A number field that only reports a committed value (drag released, Enter, focus lost).
@@ -138,7 +146,7 @@ pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     ui.add_space(4.0);
     widgets::hairline(ui);
     ui.add_space(2.0);
-    let label_w = 44.0;
+    let label_w = label_width(ui, &[tl!("Mode"), tl!("Fill")]).max(44.0);
     if section(ui, "canvas", tl!("Canvas")) {
         let link_key = egui::Id::unique("doc-props-link");
         let linked = ui.data(|d| d.get_temp::<bool>(link_key)).unwrap_or(false);
@@ -183,7 +191,7 @@ pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         ui.add_space(2.0);
         ui.horizontal(|ui| {
             ui.add_space(label_w + 6.0);
-            ui.label(RichText::new(crate::i18n::fmt(tl!("Resolution: {dpi} pixels/inch"), &[("dpi", &widgets::fmt_num(dpi as f64))])).color(t.text));
+            ui.add(egui::Label::new(RichText::new(crate::i18n::fmt(tl!("Resolution: {dpi} pixels/inch"), &[("dpi", &widgets::fmt_num(dpi as f64))])).color(t.text)).wrap());
         });
         ui.add_space(2.0);
         ui.horizontal(|ui| {

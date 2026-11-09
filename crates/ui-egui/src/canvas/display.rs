@@ -184,13 +184,17 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> (std::sync::Ar
     // The Preview checkbox off shows the document as it was when the dialog opened;
     // edits still land in the dialog state and OK applies them whatever it says.
     let preview_on = style.and_then(|d| d.fields.get("preview")).and_then(serde_json::Value::as_bool).unwrap_or(true);
-    if style.is_none() || !preview_on {
+    // Without the dialog, the studio's inline Efeitos editor previews its unapplied edits.
+    let fields = match style {
+        Some(d) => preview_on.then(|| crate::layer_style::color_picker::preview_fields(app, d.id, &d.fields)),
+        None => crate::layer_style::panel::preview(app.studio.panel.fx.as_ref()).map(std::borrow::Cow::Borrowed),
+    };
+    if fields.is_none() {
         app.style_preview = None;
     }
-    if let Some(d) = style.filter(|_| preview_on)
+    if let Some(fields) = fields
         && app.session.active_index() == Some(idx)
     {
-        let fields = crate::layer_style::color_picker::preview_fields(app, d.id, &d.fields);
         let key = (crate::layer_style::preview_hash(&fields) ^ st.revision.wrapping_mul(0x9e37_79b9_7f4a_7c15)) | 1 << 63;
         if app.style_preview.as_ref().map(|p| p.0) != Some(key) {
             let shown = crate::layer_style::preview_document(&st.doc, &app.session.patterns, &fields).map(std::sync::Arc::new);
