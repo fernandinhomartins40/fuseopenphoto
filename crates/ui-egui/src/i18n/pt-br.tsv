@@ -3991,9 +3991,7 @@ layerLabel	No Color	Sem cor
 	Wind	Vento
 	ZigZag	Zigue-zague
 	Vertical Type Tool	Ferramenta Texto vertical
-	About {app}	Sobre o {app}
 	Hide {app}	Ocultar {app}
-	Quit {app}	Sair do {app}
 	Services	Serviços
 	Hide Others	Ocultar outros
 	Lut	LUT
@@ -4593,3 +4591,56 @@ studio	Paths	Caminhos
 	{app} — a native image editor by {company}.	{app} — um editor de imagens nativo da {company}.
 	Screen Color Picker	Seletor de cor da tela
 	{app} could not start	Não foi possível iniciar o {app}
+
+# Studio tools menu: short tool names
+studio-tool	Single Row	Linha única
+studio-tool	Single Column	Coluna única
+studio-tool	Polygonal Lasso	Laço poligonal
+studio-tool	Magic Wand	Varinha mágica
+studio-tool	Color Sampler	Amostrador de cor
+studio-tool	Note	Anotação
+studio-tool	Magic Eraser	Borracha mágica
+studio-tool	Paint Bucket	Lata de tinta
+studio-tool	Horizontal Type	Texto horizontal
+studio-tool	Vertical Type	Texto vertical
+studio-tool	Horizontal Type Mask	Máscara de texto horizontal
+studio-tool	Vertical Type Mask	Máscara de texto vertical
+studio-tool	Object Selection	Seleção de objeto
+studio-tool	Freeform Pen	Caneta de forma livre
+studio-tool	Curvature Pen	Caneta de curvatura
+studio-tool	Add Anchor Point	Adicionar ponto de ancoragem
+studio-tool	Delete Anchor Point	Excluir ponto de ancoragem
+studio-tool	Convert Point	Converter ponto
+studio-tool	Path Selection	Seleção de demarcador
+studio-tool	Direct Selection	Seleção direta
+studio-tool	Polygon	Polígono
+studio-tool	Custom Shape	Forma personalizada
+studio-tool	Slice	Fatia
+studio-tool	Slice Select	Seleção de fatia
+	Disconnected	Desconectado
+	Connecting…	Conectando…
+	Connected	Conectado
+	Opening the browser…	Abrindo o navegador…
+	Sign in with your ChatGPT account to use Codex.	Entre com sua conta do ChatGPT para usar o Codex.
+	Codex CLI not found: install it (npm install -g @openai/codex) or set PHOTOCRAFT_CODEX	Codex CLI não encontrado: instale-o (npm install -g @openai/codex) ou defina PHOTOCRAFT_CODEX
+	What shall we create today?	O que vamos criar hoje?
+	Start from scratch or open an idea.	Comece do zero ou abra uma ideia.
+	Drag an image or PSD to start	Arraste uma imagem ou PSD para começar
+	or	ou
+	choose a file	escolha um arquivo
+	Your recent documents will appear here.	Seus documentos recentes aparecerão aqui.
+	Start with a format	Começar com um formato
+	Paste an image from the clipboard to create quickly.	Cole uma imagem da área de transferência para criar rapidamente.
+	See all formats	Ver todos os formatos
+	Choose a format	Escolha um formato
+	Configure document	Configurar documento
+	Create document	Criar documento
+	Document preview	Prévia do documento
+	Unlink width and height	Desvincular largura e altura
+	Prepare your next creation.	Prepare sua próxima criação.
+	Set the format, adjust the settings and create your document.	Defina o formato, ajuste as configurações e crie seu documento.
+	Dimensions	Dimensões
+	Advanced Options	Opções avançadas
+newDocument	Print	Impressão
+newDocument	Saved	Salvos
+newDocument	Background	Fundo

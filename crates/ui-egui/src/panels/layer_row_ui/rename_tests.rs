@@ -23,7 +23,7 @@ fn harness(ppp: f32) -> (Harness<'static, PhotocraftApp>, [u64; 3]) {
     let mut h =
         Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(ppp).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            PhotocraftApp::new(s, crate::Services::default())
+            PhotocraftApp::new_classic(s, crate::Services::default())
         });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));

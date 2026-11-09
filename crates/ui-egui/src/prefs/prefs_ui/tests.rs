@@ -186,14 +186,14 @@ use std::sync::{Arc, Mutex};
 #[test]
 fn appearance_resolves_both_saved_themes_and_follows_system() {
     let mut interface = prefs::Interface { appearance_mode: AppearanceMode::Auto, ..prefs::Interface::default() };
-    assert_eq!(selected_theme(&interface, Some(egui::Theme::Dark)), ThemeKind::ProMedium);
-    assert_eq!(selected_theme(&interface, Some(egui::Theme::Light)), ThemeKind::ProLight);
-    interface.dark_theme = DarkTheme::Studio;
-    interface.light_theme = LightTheme::Classic;
     assert_eq!(selected_theme(&interface, Some(egui::Theme::Dark)), ThemeKind::Studio);
+    assert_eq!(selected_theme(&interface, Some(egui::Theme::Light)), ThemeKind::ProLight);
+    interface.dark_theme = DarkTheme::SolarizedDark;
+    interface.light_theme = LightTheme::Classic;
+    assert_eq!(selected_theme(&interface, Some(egui::Theme::Dark)), ThemeKind::SolarizedDark);
     assert_eq!(selected_theme(&interface, Some(egui::Theme::Light)), ThemeKind::Classic);
     interface.appearance_mode = AppearanceMode::Dark;
-    assert_eq!(selected_theme(&interface, Some(egui::Theme::Light)), ThemeKind::Studio);
+    assert_eq!(selected_theme(&interface, Some(egui::Theme::Light)), ThemeKind::SolarizedDark);
     interface.appearance_mode = AppearanceMode::Light;
     assert_eq!(selected_theme(&interface, Some(egui::Theme::Dark)), ThemeKind::Classic);
 }
@@ -250,7 +250,7 @@ fn darken_and_lighten_interface_step_through_photoshops_brightnesses_and_stop_at
     let ctx = egui::Context::default();
     let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
     sync_appearance(&mut app, &ctx);
-    assert_eq!(app.ui.theme, ThemeKind::ProMedium, "Photoshop's default brightness");
+    assert_eq!(app.ui.theme, ThemeKind::Studio, "the Studio house default");
     let press = |app: &mut PhotocraftApp, id: &str| crate::menus::invoke(app, &ctx, id, json!({})).unwrap();
     for expected in [ThemeKind::ProLightGray, ThemeKind::ProLight, ThemeKind::ProLight] {
         press(&mut app, "view.lightenInterface");
@@ -350,7 +350,8 @@ fn auto_appearance_follows_live_changes_without_saving_resolved_palettes() {
         for (appearance, expected) in [(Some(egui::Theme::Light), light), (Some(egui::Theme::Dark), dark), (None, dark)] {
             let (mut restarted, store) = app_with_saved(Some(saved.clone()));
             let fresh = egui::Context::default();
-            PhotocraftApp::setup_context(&fresh, Default::default());
+            // Like the app's first frame (`app/frame.rs`): the context starts in the app's theme.
+            PhotocraftApp::setup_context(&fresh, restarted.ui.theme);
             appearance_frame(&mut restarted, &fresh, appearance);
             assert_palette(&fresh, expected);
             assert_eq!(restarted.ui.theme, expected);
@@ -405,7 +406,7 @@ fn auto_appearance_replaces_a_restored_egui_dark_pin() {
     assert_eq!(ctx.options(|o| o.theme_preference), egui::ThemePreference::System);
     assert_palette(&ctx, ThemeKind::ProLight);
     appearance_frame(&mut app, &ctx, Some(egui::Theme::Dark));
-    assert_palette(&ctx, ThemeKind::ProMedium);
+    assert_palette(&ctx, ThemeKind::Studio);
     assert_eq!(app.session.prefs().interface.appearance_mode, AppearanceMode::Auto);
 }
 
@@ -696,13 +697,13 @@ fn an_old_sparse_file_keeps_another_instances_change() {
     let (mut a, mut b) = (app_on(&store, Arc::default()), app_on(&store, Arc::default()));
     tick(&mut a, &ctx);
     tick(&mut b, &ctx);
-    b.run("prefs.set", json!({"values": {"interface.theme": "studio"}})).unwrap();
+    b.run("prefs.set", json!({"values": {"interface.theme": "solarizedDark"}})).unwrap();
     tick(&mut b, &ctx);
-    assert_eq!(stored(&store)["interface"]["theme"], "studio");
+    assert_eq!(stored(&store)["interface"]["theme"], "solarizedDark");
     a.run("prefs.set", json!({"values": {"performance.historyStates": 12}})).unwrap();
     tick(&mut a, &ctx);
     let v = stored(&store);
-    assert_eq!((v["interface"]["theme"].as_str(), v["performance"]["historyStates"].as_u64()), (Some("studio"), Some(12)));
+    assert_eq!((v["interface"]["theme"].as_str(), v["performance"]["historyStates"].as_u64()), (Some("solarizedDark"), Some(12)));
 }
 
 #[test]
@@ -787,14 +788,14 @@ fn saving_keeps_preferences_another_instance_changed() {
     let (mut a, mut b) = (app_on(&store, Arc::default()), app_on(&store, Arc::default()));
     tick(&mut a, &ctx);
     tick(&mut b, &ctx);
-    a.run("prefs.set", json!({"values": {"interface.theme": "studio"}})).unwrap();
+    a.run("prefs.set", json!({"values": {"interface.theme": "solarizedDark"}})).unwrap();
     tick(&mut a, &ctx);
-    assert_eq!(stored(&store)["interface"]["theme"], "studio");
+    assert_eq!(stored(&store)["interface"]["theme"], "solarizedDark");
     // The other one, never reloaded, saves an unrelated change: the theme stays.
     b.run("prefs.set", json!({"values": {"performance.historyStates": 12}})).unwrap();
     tick(&mut b, &ctx);
     let v = stored(&store);
-    assert_eq!((v["interface"]["theme"].as_str(), v["performance"]["historyStates"].as_u64()), (Some("studio"), Some(12)));
+    assert_eq!((v["interface"]["theme"].as_str(), v["performance"]["historyStates"].as_u64()), (Some("solarizedDark"), Some(12)));
     // And the first one's next save keeps the second one's change.
     a.run("prefs.set", json!({"values": {"interface.showTooltips": false}})).unwrap();
     tick(&mut a, &ctx);
@@ -812,7 +813,7 @@ fn saving_keeps_preferences_another_instance_changed() {
     let (mut c, _) = app_with_saved(store.lock().unwrap().clone());
     tick(&mut c, &ctx);
     assert_eq!(c.session.prefs().performance.history_states, 30);
-    assert_eq!(c.session.prefs().interface.theme, Theme::Studio);
+    assert_eq!(c.session.prefs().interface.theme, Theme::SolarizedDark);
 }
 
 #[test]
@@ -822,7 +823,7 @@ fn failed_preference_saves_are_retried() {
     let fail = Arc::new(AtomicBool::new(true));
     let mut app = app_on(&store, fail.clone());
     tick(&mut app, &egui::Context::default());
-    app.run("prefs.set", json!({"values": {"interface.theme": "studio"}})).unwrap();
+    app.run("prefs.set", json!({"values": {"interface.theme": "solarizedDark"}})).unwrap();
     // The write fails: reported, and retried after a backoff rather than marked saved.
     assert_eq!(persist(&mut app, 100.0), Some(SAVE_RETRY_S));
     assert!(app.ui.status.starts_with("Couldn't save preferences: storage is full") && app.ui.status_error);
@@ -831,7 +832,7 @@ fn failed_preference_saves_are_retried() {
     // Storage works again: the pending change is written without another edit.
     fail.store(false, Ordering::Relaxed);
     assert_eq!(persist(&mut app, 102.0), None);
-    assert_eq!(stored(&store)["interface"]["theme"], "studio");
+    assert_eq!(stored(&store)["interface"]["theme"], "solarizedDark");
     assert_eq!(app.ui.status, "Preferences saved");
     assert_eq!(persist(&mut app, 103.0), None, "nothing left to save");
 

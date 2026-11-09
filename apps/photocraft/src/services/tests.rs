@@ -217,8 +217,7 @@ fn open_filters_keep_literal_extensions_on_windows_and_macos() {
 }
 
 #[test]
-fn native_services_never_check_upstream_for_updates() {
-    // The upstream release feed is not this product's: no update transport, so no network call.
+fn native_services_never_check_for_upstream_updates() {
     assert!(native(None).check_updates.is_none());
 }
 

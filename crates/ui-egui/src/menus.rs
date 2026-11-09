@@ -21,6 +21,7 @@ pub mod view_cmds;
 pub mod workspace_ui;
 
 pub use bar::menu_bar;
+pub(crate) use bar::{run_clicked, tree_menu};
 #[cfg(test)]
 use bar::pointer_reaches_title;
 pub use invoke::{apply_workspace, invoke};

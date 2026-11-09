@@ -32,7 +32,7 @@ fn layer_of(app: &PhotocraftApp, id: u64) -> Layer {
 fn harness(session: photocraft_engine::Session, ppp: f32, dock_width: f32) -> Harness<'static, PhotocraftApp> {
     let mut h = Harness::builder().with_size(vec2(1440.0, 1600.0)).with_pixels_per_point(ppp).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        PhotocraftApp::new_classic(session, crate::Services::default())
     });
     set(&mut h, json!({"dockWidth": dock_width, "dock": {"collapsed": ["color", "navigator", "history", "layers"]}}));
     h
@@ -58,7 +58,7 @@ fn headers(h: &Harness<'_, PhotocraftApp>) -> Vec<(String, Rect)> {
 fn quick_actions_fit_the_layer_kind() {
     let ids = |c: &LayerContent| quick_actions(c).iter().map(|(_, id)| *id).collect::<Vec<_>>();
     let (s, layers) = kinds();
-    let app = PhotocraftApp::new(s, crate::Services::default());
+    let app = PhotocraftApp::new_classic(s, crate::Services::default());
     for (kind, id) in layers {
         let l = layer_of(&app, id);
         let all = ids(&l.content);
@@ -203,7 +203,7 @@ fn layers_opacity_and_fill_rows_keep_a_gap() {
         let (s, layers) = kinds();
         let mut h = Harness::builder().with_size(vec2(1440.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::new(s, crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
             app.ui.tool = crate::state::Tool::Brush;
             app
         });
@@ -261,7 +261,7 @@ fn layers_opacity_and_fill_share_one_right_column() {
         let (s, layers) = kinds();
         let mut h = Harness::builder().with_size(vec2(1440.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            PhotocraftApp::new(s, crate::Services::default())
+            PhotocraftApp::new_classic(s, crate::Services::default())
         });
         set(&mut h, json!({"theme": theme}));
         select(&mut h, layers[0].1);

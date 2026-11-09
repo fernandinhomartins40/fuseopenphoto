@@ -504,7 +504,6 @@
 	4-up	4 nézet
 	6-up	6 nézet
 	About {app}	A {app} névjegye
-	About {app}	Névjegy: {app}
 	Actions	Műveletsorok
 	Activate Panel	Panel aktiválása
 	Actual Pixels	Tényleges méret
@@ -4019,7 +4018,6 @@ cameraRaw	Yellow	Sárga
 	Profile Mismatches: Ask When Opening	Profileltérés: rákérdezés megnyitáskor
 	Province / State	Megye / állam
 	Quick Sync	Gyors szinkronizálás
-	Quit {app}	Kilépés a {app}ból
 	Recent Items	Legutóbbi elemek
 	Reference point location	Viszonyítási pont helye
 	Rendering…	Renderelés…

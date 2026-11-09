@@ -98,7 +98,7 @@ use navigator::{NAV_ROW_H, navigator, navigator_zoom_drag_id, navigator_zoom_to}
 pub(crate) use navigator::{last_navigator_controls, last_navigator_preview};
 #[cfg(test)]
 use options_bar::LAYER_PCT_W;
-pub use options_bar::options_bar;
+pub use options_bar::{options_bar, tool_options};
 #[cfg(test)]
 use options_bar::options_bar_height;
 pub(crate) use options_bar::{FIXED_SIZE_MAX_PX, opt_label};
@@ -141,7 +141,7 @@ mod title_tests {
     }
 
     fn app(custom_titlebar: bool) -> crate::PhotocraftApp {
-        let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.custom_titlebar = custom_titlebar;
         // The preference that makes the shell launch without its own title bar.
         app.session.edit_prefs(|p| p.interface.system_title_bar = !custom_titlebar);
@@ -151,7 +151,7 @@ mod title_tests {
     #[test]
     fn without_the_preference_the_mark_stays() {
         // The default (e.g. the web build or snapshot example): the integrated title bar.
-        let app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = crate::PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         assert!(!system_title_bar(&app));
     }
 
@@ -285,7 +285,7 @@ mod navigator_wheel_tests {
     /// The painted viewport follows the camera visible on the canvas, including preference changes.
     #[test]
     fn navigator_viewport_follows_the_displayed_camera_during_animation() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.sync_views();
         app.last_canvas_rect = Rect::from_min_size(Pos2::ZERO, vec2(80.0, 60.0));
@@ -347,7 +347,7 @@ mod navigator_wheel_tests {
 
     #[test]
     fn navigator_wheel_changes_zoom_only_when_over_preview() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.sync_views();
         app.ui.views[0].zoom = 1.0;
@@ -425,7 +425,7 @@ mod navigator_wheel_tests {
     /// Photoshop; a plain drag still only moves the view.
     #[test]
     fn navigator_command_drag_zooms_to_the_rectangle() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.sync_views();
         app.ui.views[0].zoom = 1.0;
@@ -479,7 +479,7 @@ mod navigator_wheel_tests {
     #[test]
     fn navigator_zoom_row_is_one_line_and_its_buttons_step_the_zoom() {
         use egui_kittest::kittest::Queryable;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.sync_views();
         app.ui.views[0].zoom = 1.0;
@@ -518,7 +518,7 @@ mod symmetry_theme_tests {
     fn brush_pencil_and_eraser_expose_symmetry_menu_in_every_theme() {
         for kind in crate::theme::ThemeKind::ALL {
             for tool in [Tool::Brush, Tool::Pencil, Tool::Eraser] {
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
                 app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
                 app.ui.tool = tool;
                 let mut h = Harness::builder().with_size(vec2(1600.0, 300.0)).build_ui_state(|ui, app| options_bar(app, ui), app);
@@ -542,7 +542,7 @@ mod info_panel_sampler_tests {
     /// the composite RGB/CMYK readout, one composite pixel each.
     #[test]
     fn info_panel_lists_the_sample_points() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 80, "height": 60, "background": "white"})).unwrap();
         app.run("view.colorSamplers.add", json!({"x": 5, "y": 6})).unwrap();
         app.run("view.colorSamplers.add", json!({"x": 40, "y": 30})).unwrap();
@@ -580,7 +580,7 @@ mod history_transform_tests {
     #[test]
     fn history_rows_wait_for_an_open_transform() {
         for transforming in [true, false] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
             app.run("layer.new.layer", json!({})).unwrap();
             app.run("select.rect", json!({"x": 20, "y": 20, "width": 60, "height": 40})).unwrap();
@@ -610,7 +610,7 @@ mod history_transform_tests {
     /// snapshot (#2966), and file-plus makes a new document from the current state.
     #[test]
     fn history_footer_buttons_run_their_commands() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -651,7 +651,7 @@ mod history_transform_tests {
     /// Brush's source through `history.setSource`, without stepping to it.
     #[test]
     fn history_source_column_sets_the_history_brush_source() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
         app.run("edit.fill", json!({"color": "#00ff00"})).unwrap();
@@ -675,7 +675,7 @@ mod history_transform_tests {
     /// returning to it.
     #[test]
     fn history_source_column_on_a_snapshot_row() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
         app.run("history.newSnapshot", json!({})).unwrap();
@@ -717,7 +717,7 @@ mod snapshot_row_tests {
     /// state, and its right-click menu renames or deletes it.
     #[test]
     fn snapshot_rows_select_rename_and_delete() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -773,7 +773,7 @@ mod snapshot_row_tests {
 
     /// A History panel in the Photoshop theme (the footer with the trash) on red, Snapshot 1, blue.
     fn pro_history() -> Harness<'static, PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -922,7 +922,7 @@ mod snapshot_row_tests {
     /// its camera button in view.
     #[test]
     fn many_snapshots_keep_the_footer_in_a_short_panel() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         for _ in 0..6 {
             app.run("history.newSnapshot", json!({})).unwrap();
@@ -943,7 +943,7 @@ mod snapshot_row_tests {
     /// (the Discord report on #2966: "History original file click does not work").
     #[test]
     fn the_top_row_returns_to_the_document_as_opened() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         let opened = app.session.active().unwrap().doc.layers[0].surface().unwrap().rgba(1, 1);
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -961,7 +961,7 @@ mod snapshot_row_tests {
     /// it, and From (Full Document, Merged Layers, Current Layer); OK takes the snapshot.
     #[test]
     fn alt_click_on_the_camera_opens_new_snapshot() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -1017,7 +1017,7 @@ mod snapshot_row_tests {
     #[test]
     fn show_new_snapshot_dialog_by_default_makes_a_click_open_the_dialog() {
         for (dialog_by_default, modifiers) in [(true, egui::Modifiers::NONE), (true, egui::Modifiers::ALT), (false, egui::Modifiers::NONE)] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
             app.run("history.options", json!({"showNewSnapshotDialogByDefault": dialog_by_default})).unwrap();
             let mut h = Harness::builder().with_size(vec2(900.0, 700.0)).build_ui_state(
@@ -1068,7 +1068,7 @@ mod snapshot_row_tests {
     #[test]
     fn the_first_snapshot_row_follows_the_option() {
         for first in [true, false] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             app.run("history.options", json!({"automaticallyCreateFirstSnapshot": first})).unwrap();
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
             let name = app.session.active().unwrap().doc.name.clone();
@@ -1083,7 +1083,7 @@ mod snapshot_row_tests {
     /// rather than the closed document's, even before the views are synced.
     #[test]
     fn snapshot_thumbnails_follow_their_document() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         let doc = (*app.session.active().unwrap().doc).clone();
         let doc_id = doc.id;
@@ -1111,7 +1111,7 @@ mod snapshot_row_tests {
     /// carry the edit over to the other document's snapshot with the same id.
     #[test]
     fn a_rename_in_progress_stays_with_its_document() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         for _ in 0..2 {
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
             app.run("history.newSnapshot", json!({})).unwrap();
@@ -1163,7 +1163,7 @@ mod lock_tests {
     fn simple_lock_button_never_locks_the_eraser_out_of_the_background() {
         // #76: the simple themes' lock button used to toggle "lock all" on the Background, which
         // kept showing as locked and then refused every paint tool.
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
         app.run("tools.setColors", json!({"background": "#ff0000"})).unwrap();
         app.run("tools.setBrush", json!({"brush": {"size": 12, "hardness": 1.0}})).unwrap();
@@ -1197,7 +1197,7 @@ mod swatch_type_tests {
     /// was selected.
     #[test]
     fn idle_color_field_leaves_the_foreground_and_selected_type_alone() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
         let id = app.run("type.create", json!({"text": "Hello world", "size": 40, "x": 20, "y": 100, "color": "#ffffff"})).unwrap()["layer"].as_u64().unwrap();
         app.run("tools.setColors", json!({"foreground": "#d8452e"})).unwrap();
@@ -1262,7 +1262,7 @@ mod tool_flyout_drag_tests {
     /// delay is needed; releasing over the second row picks it and closes the flyout.
     #[test]
     fn flyout_press_drag_release_selects_the_row_without_long_press() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
@@ -1329,7 +1329,7 @@ mod toolbar_hidden_tests {
 
     #[test]
     fn hidden_tools_leave_the_toolbar() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         let all = tool_buttons(&mut app);
         let slots: usize = TOOL_SECTIONS.iter().map(|section| section.len()).sum();
         hide(&mut app, &Tool::ALL);
@@ -1371,7 +1371,7 @@ mod properties_card_tests {
         }
         // The layer selected next already shows 25, the value the edited one has when `25*` stops it.
         s.execute("layer.setProps", json!({"layer": ids[0].0, "opacity": 0.25})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
         app.ui.panels.properties = true;
         let mut h = Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
             |ui, app: &mut PhotocraftApp| {
@@ -1415,7 +1415,7 @@ mod toolbar_tests {
             crate::theme::ThemeKind::SolarizedDark,
             crate::theme::ThemeKind::BreezeDark,
         ] {
-            let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 1400.0)).build_ui_state(
                 |ui, app: &mut PhotocraftApp| {
                     if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
@@ -1448,7 +1448,7 @@ mod toolbar_tests {
     #[test]
     fn every_theme_has_the_toolbar_controls() {
         for kind in crate::theme::ThemeKind::ALL {
-            let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 1400.0)).build_ui_state(
                 |ui, app: &mut PhotocraftApp| {
                     if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
@@ -1470,7 +1470,7 @@ mod toolbar_tests {
     #[test]
     fn quick_mask_and_screen_mode_follow_the_toolbar_columns() {
         for theme in [crate::theme::ThemeKind::Pro, crate::theme::ThemeKind::Studio, crate::theme::ThemeKind::Classic] {
-            let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 1400.0)).build_ui_state(
                 |ui, app: &mut PhotocraftApp| {
                     if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
@@ -1539,7 +1539,7 @@ mod toolbar_tests {
     /// picks the tool.
     #[test]
     fn double_clicking_the_hand_tool_fits_on_screen() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.ui.tool = Tool::Move;
         app.ui.views[0].fit_pending = false;
@@ -1559,7 +1559,7 @@ mod toolbar_tests {
     /// With no document open the double-click still picks the tool and doesn't panic.
     #[test]
     fn double_clicking_the_hand_tool_without_a_document_is_harmless() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.ui.tool = Tool::Move;
         let mut h = toolbar_harness(app);
         let p = hand_button(&h);
@@ -1572,7 +1572,7 @@ mod toolbar_tests {
     /// Double-clicking the Zoom tool zooms to 100% (Photoshop); a single click only picks the tool.
     #[test]
     fn double_clicking_the_zoom_tool_zooms_to_actual_pixels() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.ui.tool = Tool::Move;
         app.ui.views[0].fit_pending = true;
@@ -1594,7 +1594,7 @@ mod toolbar_tests {
     /// With no document open the double-click still picks the tool and doesn't panic.
     #[test]
     fn double_clicking_the_zoom_tool_without_a_document_is_harmless() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.ui.tool = Tool::Move;
         let mut h = toolbar_harness(app);
         let p = tool_button(&h, Tool::Zoom);
@@ -1609,7 +1609,7 @@ mod toolbar_tests {
     #[test]
     fn a_click_without_a_prior_hover_picks_the_tool() {
         for tool in [Tool::Brush, Tool::Type] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             app.ui.tool = Tool::Move;
             let mut h = toolbar_harness(app);
             let p = tool_button(&h, tool);
@@ -1634,7 +1634,7 @@ mod embedding_tests {
             let mut session = photocraft_engine::Session::new();
             // An empty workspace with its docks, not the Home screen.
             session.edit_prefs(|p| p.general.auto_show_home_screen = false);
-            let mut app = PhotocraftApp::new(session, crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(session, crate::Services::default());
             app.ui.panels.rail = rail;
             app.ui.panels.menu_bar = menu_bar;
             app
@@ -1853,7 +1853,7 @@ mod properties_target_regressions {
 
     #[test]
     fn pending_transform_arithmetic_does_not_apply_to_another_document_with_the_same_layer_id() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width":200,"height":200,"background":"transparent"})).unwrap();
         app.run("select.rect", json!({"x":10,"y":20,"width":100,"height":50})).unwrap();
         app.run("edit.fill", json!({"color":"#ff0000"})).unwrap();
@@ -1899,7 +1899,7 @@ mod navigator_animated_zoom_tests {
 
     #[test]
     fn animated_zoom_off_navigator_buttons_jump_without_a_transition() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.run("prefs.set", json!({"values": {"general.animatedZoom": false}})).unwrap();
         app.sync_views();
@@ -1937,7 +1937,7 @@ mod layer_click_type_commit_tests {
     use egui_kittest::{Harness, kittest::Queryable};
 
     fn harness(kind: theme::ThemeKind) -> (Harness<'static, PhotocraftApp>, LayerId, LayerId) {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
         let text = LayerId(app.run("type.create", json!({"text": "Before", "size": 24, "x": 20, "y": 80})).unwrap()["layer"].as_u64().unwrap());
         app.run("layer.setProps", json!({"layer": text.0, "name": "Edited type"})).unwrap();
@@ -2048,7 +2048,7 @@ mod sampler_readout_tests {
     /// edit recomputes them (#4528).
     #[test]
     fn sampler_readouts_are_reused_until_the_document_changes() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 32, "background": "white"})).unwrap();
         app.run("view.colorSamplers.add", json!({"x": 4, "y": 4})).unwrap();
         let a = sampler_readouts(&mut app);

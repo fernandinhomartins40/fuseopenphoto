@@ -3498,7 +3498,6 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	(none)	(aucun)
 	32-bit Preview Options	Options d'aperçu 32 bits
 	AI Integrations	Intégrations d'IA
-	About {app}	À propos de {app}
 	Accented Edges	Contours accentués
 	Action playback failed: {error}	Échec de la lecture de l'action : {error}
 	Actual Pixels	Pixels réels
@@ -4145,7 +4144,6 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	Push Left	Pixels poussés vers la gauche
 	Pyramids	Pyramides
 	Quit	Quitter
-	Quit {app}	Quitter {app}
 	Quit {app}	Quitter {app}
 	Radial Blur	Flou radial
 	Radius X	Rayon X

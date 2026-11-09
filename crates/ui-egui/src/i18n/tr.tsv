@@ -3642,9 +3642,7 @@ cameraRaw	Whites	Beyazlar
 	Vertical Type Tool	Dikey Metin Aracı
 	Click the first point or press {key} to close · {del} removes a point · Esc cancels	İlk noktayı tıklayın veya kapatmak için {key} tuşuna basın · {del} bir noktayı kaldırır · Esc iptal eder
 	Click, then move along an edge · click to fasten a point · {alt}-click for a straight segment · double-click to close	Tıklayın, ardından bir kenar boyunca hareket edin · bir noktayı sabitlemek için tıklayın · düz bir parça için {alt}-tıklayın · kapatmak için çift tıklayın
-	About {app}	{app} Hakkında
 	Hide {app}	{app}'ı gizle
-	Quit {app}	{app}'dan çık
 	Services	Hizmetler
 	Hide Others	Diğerlerini Gizle
 	3D	3B

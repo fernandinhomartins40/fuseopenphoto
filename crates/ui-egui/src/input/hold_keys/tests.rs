@@ -11,7 +11,7 @@ use super::*;
 use crate::canvas::ViewXform;
 
 fn harness(tool: Tool) -> Harness<'static, PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -460,7 +460,7 @@ fn fill_key_on_a_locked_layer_reports_instead_of_crashing() {
 
 #[test]
 fn keyboard_shortcuts_dialog_lists_the_keys_under_tools() {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let items = crate::prefs_ui::shortcut_items(&app);
     let find = |id: &str| items.iter().find(|i| i.0 == id).map(|i| (i.2.clone(), i.3.clone()));
     let tools = || vec!["Tools".to_string()];
@@ -484,7 +484,7 @@ fn keyboard_shortcuts_dialog_lists_the_keys_under_tools() {
 #[test]
 fn agents_reposition_a_marquee_with_space() {
     use crate::control::{ControlRequest, Outcome, handle};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     let ctx = egui::Context::default();
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     let mut call = |p: serde_json::Value| {
@@ -827,7 +827,7 @@ fn rebound_brush_eraser_uses_the_new_key_only() {
 fn clear_in_the_mode_dropdown_erases_until_another_mode_is_chosen() {
     use crate::canvas::{ToolEvent, tool_event};
     use egui_kittest::kittest::{NodeT, Queryable};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
     app.ui.tool = Tool::Pencil;
     let mut h = Harness::builder().with_size(vec2(1600.0, 400.0)).build_ui_state(

@@ -34,7 +34,7 @@ fn steps(app: &PhotocraftApp) -> usize {
 #[test]
 fn a_hovered_mode_shows_on_the_canvas_until_the_pointer_leaves() {
     let (s, top) = session();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     let (undo, revision) = (steps(&app), app.session.active().unwrap().revision);
     hover(&mut app, &[top], Some(BlendMode::Multiply));
     let (shown, key) = display_doc(&mut app, 0).expect("previewed");
@@ -63,7 +63,7 @@ fn a_hovered_mode_shows_on_the_canvas_until_the_pointer_leaves() {
 fn harness(session: photocraft_engine::Session) -> Harness<'static, PhotocraftApp> {
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        PhotocraftApp::new_classic(session, crate::Services::default())
     });
     h.run_steps(8);
     h
@@ -130,7 +130,7 @@ fn a_hovered_mode_previews_on_every_selected_layer() {
     let (mut s, top) = session();
     let other = LayerId(s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap());
     s.execute("edit.fill", json!({"color": "#3366cc"})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     hover(&mut app, &[top, other], Some(BlendMode::Multiply));
     let (shown, key) = display_doc(&mut app, 0).expect("previewed");
     assert_eq!((shown.layer(top).unwrap().blend, shown.layer(other).unwrap().blend), (BlendMode::Multiply, BlendMode::Multiply));
@@ -142,7 +142,7 @@ fn a_hovered_mode_previews_on_every_selected_layer() {
 #[test]
 fn blend_hover_disjoint_coverage_retains_views_without_hiding_gaps() {
     let (s, top) = session();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     hover(&mut app, &[top], Some(BlendMode::Multiply));
     let (_, key) = display_doc(&mut app, 0).unwrap();
     let st = app.session.active().unwrap();

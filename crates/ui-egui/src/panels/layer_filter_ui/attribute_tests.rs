@@ -219,7 +219,7 @@ fn the_empty_layers_are_found_once_per_document() {
     let mut s = photocraft_engine::Session::new();
     s.execute("file.new", json!({"width": 40, "height": 30, "background": "transparent"})).unwrap();
     s.execute("edit.fill", json!({"color": "#ff0000"})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     app.ui.layer_filter_by = FilterBy::Attribute;
     app.ui.layer_filter_attribute = Attribute::Empty;
     let first = Filter::of_app(&app).empty.expect("found for Empty");
@@ -303,7 +303,7 @@ fn the_panel_filters_by_the_attribute_picked_in_the_dropdown() {
     let session = session();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        PhotocraftApp::new_classic(session, crate::Services::default())
     });
     h.run_steps(8);
     h.get_by_value("Kind").click();

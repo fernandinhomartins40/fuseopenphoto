@@ -519,7 +519,7 @@ fn first_options_bar_open_searches_without_changing_the_tool_or_edited_text() {
     for editing in [false, true] {
         let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+            let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default());
             app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
             app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
             app.ui.tool = crate::state::Tool::Type;
@@ -702,7 +702,7 @@ fn empty_font_list_ignores_navigation() {
 fn font_cycle_in_options_bar_edits_the_layer_and_can_be_undone() {
     use crate::{PhotocraftApp, Services};
     use serde_json::json;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
     let mut h = Harness::builder().with_size(vec2(900.0, 700.0)).with_max_steps(SETTLE_STEPS).build_ui_state(
@@ -742,7 +742,7 @@ fn hovering_a_font_does_not_pollute_history_and_clears_on_close() {
     use crate::{PhotocraftApp, Services};
     use serde_json::json;
 
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
 
@@ -804,7 +804,7 @@ fn options_bar_hover_previews_on_canvas_without_committing() {
     // over a few frames, more than the default four steps.
     let mut h = Harness::builder().with_size(vec2(900.0, 700.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::ThemeKind::ALL[0]);
-        PreviewApp { app: PhotocraftApp::new(photocraft_engine::Session::new(), Services::default()) }
+        PreviewApp { app: PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default()) }
     });
     h.state_mut().app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     h.state_mut().app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
@@ -866,7 +866,7 @@ fn hovering_a_font_previews_only_the_selected_characters() {
     use crate::{PhotocraftApp, Services};
     use serde_json::json;
 
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("type.create", json!({"text": "abcdef", "font": "Inter", "size": 18})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
@@ -1210,7 +1210,7 @@ fn open_menu_without_the_current_family_never_jumps_later() {
 fn options_bar_menu_arrows_walk_on_while_recording_recent_fonts() {
     use crate::{PhotocraftApp, Services};
     use serde_json::json;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
     let mut h = Harness::builder().with_size(vec2(900.0, 700.0)).with_max_steps(SETTLE_STEPS).build_ui_state(
@@ -1410,7 +1410,7 @@ fn the_favorites_filter_explains_an_empty_library() {
 
 #[test]
 fn a_clicked_star_is_saved_to_the_preferences_library() {
-    let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = crate::PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     let mut library = super::FontLibrary::of(&app);
     library.toggled = Some("Bebas Neue".into());
     library.finish(&mut app);
@@ -1587,7 +1587,7 @@ fn popup_width(h: &Harness<'static, LibState>) -> f32 {
 
 #[test]
 fn the_preview_sets_the_type_layers_text_or_the_selection_being_typed() {
-    let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = crate::PhotocraftApp::new_classic(photocraft_engine::Session::new(), Default::default());
     assert_eq!(super::preview_text(&app), None, "no document");
     app.run("file.new", serde_json::json!({"width": 64, "height": 64})).unwrap();
     let id = app.run("type.create", serde_json::json!({"text": "Hello\rworld  ", "size": 24})).unwrap()["layer"].as_u64().unwrap();
@@ -1677,7 +1677,7 @@ fn options_bar_hover_previews_with_the_character_picker_also_shown() {
     let theme = crate::theme::ThemeKind::Pro;
     let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, theme);
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), Services::default());
         app.ui.theme = theme;
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();

@@ -3396,7 +3396,6 @@ curves	Smooth	Jämna ut
 	3D…	3D…
 	A:	V:
 	AI Integrations	AI-integrationer
-	About {app}	Om {app}
 	Accented Edges	Accentuerade kanter
 	Action playback failed: {error}	Uppspelning av åtgärd misslyckades: {error}
 	Actual Pixels	Faktiska pixlar
@@ -4242,7 +4241,6 @@ curves	Smooth	Jämna ut
 	Pyramids	Pyramider
 	Quick Actions	Snabbåtgärder
 	Quit	Avsluta
-	Quit {app}	Avsluta {app}
 	Quit {app}	Avsluta {app}
 	R G B	RGB
 	R g b	RGB

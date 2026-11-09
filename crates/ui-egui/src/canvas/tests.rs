@@ -1434,7 +1434,7 @@ fn start_screen_buttons_stay_inside_a_narrow_canvas() {
         PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::default());
         h.state_mut().1 = true;
         h.run_steps(3);
-        for label in ["New document", "Open…"] {
+        for label in ["New document", "Open File"] {
             let nodes: Vec<_> = h.query_all_by_label(label).collect();
             assert!(!nodes.is_empty(), "`{label}` is rendered in a {width}-point-wide canvas");
             for node in nodes {
@@ -1487,7 +1487,7 @@ fn start_screen_narrow_window_renders_actions_row() {
     h.state_mut().1 = true;
     h.run_steps(3);
     assert!(h.query_by_label("New document").is_some(), "New document button must be present in narrow mode");
-    assert!(h.query_all_by_label("Open…").next().is_some(), "Open… button must be present in narrow mode");
+    assert!(h.query_all_by_label("Open File").next().is_some(), "Open File button must be present in narrow mode");
 }
 
 /// The Home screen's × takes a file off Recent without opening it, and its right-click menu
@@ -1499,7 +1499,8 @@ fn home_recent_entries_can_be_removed() {
     for name in ["c.tif", "b.psd", "a.png"] {
         app.push_recent(&format!("/tmp/photocraft-2691/{name}"));
     }
-    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 760.0)).build_ui_state(
+    // Tall enough that the Recent cards sit below Home's preset cards without scrolling.
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 1400.0)).build_ui_state(
         |ui, (app, ready): &mut (PhotocraftApp, bool)| {
             if *ready {
                 egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| document_area(app, ui));

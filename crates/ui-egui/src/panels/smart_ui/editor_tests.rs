@@ -9,7 +9,8 @@ use crate::{
 
 /// The app with a recorded Smart Object, in a `width`-point dock and the given theme, ready to click.
 fn harness(width: f32, scale: f32, theme: crate::theme::ThemeKind) -> Harness<'static, PhotocraftApp> {
-    let (app, _) = app(8, "rgb");
+    let (mut app, _) = app(8, "rgb");
+    app.studio.classic = true;
     let mut h =
         Harness::builder().with_size(vec2(1200.0, 850.0)).with_pixels_per_point(scale).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, theme);
@@ -297,7 +298,7 @@ fn adjustment_filter(mode: &str, command: &str, params: serde_json::Value) -> (P
     s.execute("edit.fill", json!({"contents": "black"})).unwrap();
     let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
     s.execute(command, params).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(s, crate::Services::default());
     app.background_jobs = false;
     (app, id)
 }

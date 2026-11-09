@@ -3425,7 +3425,6 @@ curves	Smooth	Сгладить
 	3D…	3D…
 	A:	Ш:
 	AI Integrations	Интеграции ИИ
-	About {app}	О программе {app}
 	Accented Edges	Акцентированные края
 	Action playback failed: {error}	Не удалось воспроизвести операцию: {error}
 	Actual Pixels	Реальный размер
@@ -4262,7 +4261,6 @@ smartSvg	AI/PDF/EPS contents will be edited as SVG. Saving replaces the embedded
 	Pyramids	Пирамиды
 	Quick Actions	Быстрые действия
 	Quit	Выход
-	Quit {app}	Выйти из {app}
 	Quit {app}	Выйти из {app}
 	R G B	R G B
 	R g b	R g b

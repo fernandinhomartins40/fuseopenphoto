@@ -41,7 +41,7 @@ fn harness() -> Option<(Harness, Writes)> {
                     })),
                     ..Default::default()
                 };
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+                let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), services);
                 app.session.prefs.edit(|p| p.interface.language = "en".into());
                 if let Some(rs) = cc.wgpu_render_state.as_ref() {
                     app.set_wgpu(rs.clone());

@@ -222,7 +222,7 @@ mod tests {
     use egui::Rect;
 
     fn app() -> (PhotocraftApp, egui::Context) {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 50})).unwrap();
         app.sync_views();
         (app, egui::Context::default())

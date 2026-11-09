@@ -2818,7 +2818,6 @@ cameraData	Lens	Objektiv
 	Dissolve is approximated: it blends without Photoshop's dither.	Režim Rozpustit je pouze aproximován: prolíná bez ditheringu Photoshopu.
 	32-bit Preview Options	Možnosti 32bitového náhledu
 	3D	3D
-	About {app}	O aplikaci {app}
 	Accented Edges	Zvýrazněné okraje
 	Accurate	Přesné
 	Actual Pixels	Skutečné pixely
@@ -3376,7 +3375,6 @@ cameraData	Lens	Objektiv
 	Pyramids	Pyramidy
 	Quick Selection	Rychlý výběr
 	Quit	Ukončit
-	Quit {app}	Ukončit {app}
 	Quit {app}	Ukončit {app}
 	RGB	RGB
 	Radial Blur	Radiální rozostření

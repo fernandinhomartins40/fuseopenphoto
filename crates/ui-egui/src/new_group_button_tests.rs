@@ -23,7 +23,7 @@ fn selected(both: bool) -> (egui_kittest::Harness<'static, PhotocraftApp>, Layer
     }
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     h.run_steps(4);
     (h, a, b)
@@ -159,7 +159,7 @@ fn two_selected() -> (egui_kittest::Harness<'static, PhotocraftApp>, LayerId, La
     s.execute("layer.select", json!({"layer": b.0, "mode": "add"})).unwrap();
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotocraftApp::new_classic(s, crate::Services::default())
     });
     h.run_steps(4);
     (h, a, b)

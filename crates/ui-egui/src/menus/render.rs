@@ -1,4 +1,5 @@
-use super::bar::released_on;
+use super::bar::{TREE_ROOT, released_on};
+use super::search::help_search;
 use super::items::{MenuItem, menu_tint};
 use super::state::translated_menu_label;
 
@@ -97,7 +98,18 @@ pub(super) fn render_level_rows(ui: &mut egui::Ui, items: &[&MenuItem], depth: u
             let title = crate::menu_keys::menu_row_text(ui, false, &shown, mnemonic.filter(|_| nav.underline));
             ui.add_enabled_ui(enabled, |ui| {
                 nav.row(ui, depth - 1, enabled, None, mnemonic, |ui, nav| {
-                    let (response, inner) = submenu_row(ui, title, |ui| render_level(ui, &child, depth + 1, clicked, nav));
+                    let (response, inner) = submenu_row(ui, title, |ui| {
+                        if depth == 1 && name == "Help" && it.path.first().map(String::as_str) == Some(TREE_ROOT) {
+                            // Help under ☰ (`tree_menu`): its search field over the rows, as in
+                            // the menu bar's Help, finding anything in the tree (`items`).
+                            crate::menu_nav::level(ui, depth + 1, nav, |ui, nav| {
+                                help_search(ui, items.iter().copied(), false, depth, clicked, nav);
+                                render_level_rows(ui, &child, depth + 1, clicked, nav);
+                            });
+                        } else {
+                            render_level(ui, &child, depth + 1, clicked, nav);
+                        }
+                    });
                     if inner.is_some() {
                         // Where the submenu hangs from, to keep it below the menu bar (#319).
                         nav.set_anchor(depth, response.rect);

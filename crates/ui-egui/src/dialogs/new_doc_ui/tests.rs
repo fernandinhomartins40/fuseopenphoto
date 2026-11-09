@@ -327,7 +327,9 @@ mod dialog {
             })),
             ..Default::default()
         };
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        // These drive the classic dialog; the studio page has its own tests (page/tests.rs).
+        app.studio.classic = true;
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_ui_state(
             |ui, app| {
                 crate::prefs_ui::tick(app, ui.ctx());
@@ -465,7 +467,8 @@ mod dialog {
     }
 
     fn harness() -> Harness<'static, PhotocraftApp> {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        app.studio.classic = true;
         let mut h =
             Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(1.0 / 60.0).build_ui_state(|ui, app| crate::dialogs::show(app, ui.ctx()), app);
         PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);

@@ -57,53 +57,32 @@ pub fn menu_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> f32 {
                     button = button.fill(ui.visuals().widgets.hovered.weak_bg_fill);
                 }
                 let title = ui.add(button);
-                // The bar's close behaviour and style, as a menu (not bar) config so submenus inside
-                // render as submenus.
-                let bar = egui::containers::menu::MenuConfig::find(ui);
-                let config = egui::containers::menu::MenuConfig::new().close_behavior(bar.close_behavior).style(bar.style.clone());
-                let open = title_press(ui.ctx(), &title);
-                // The release ending the press that opened this menu is a click "outside" the
-                // popup: it must not close it again.
-                let opening = title.clicked() && ui.ctx().data(|d| d.get_temp::<bool>(press_gesture_id())).unwrap_or(false);
-                let close = if opening {
-                    egui::PopupCloseBehavior::IgnoreClicks
-                } else if *top == "Help" {
-                    // Menus close on any click, inside them too; a click in Help's search field
-                    // must keep it open. Its items close it themselves when chosen.
-                    egui::PopupCloseBehavior::CloseOnClickOutside
-                } else {
-                    config.close_behavior
-                };
-                egui::Popup::menu(&title)
-                    .align(crate::direction::below())
-                    .open_memory(open)
-                    .close_behavior(close)
-                    .style(config.style.clone())
-                    .info(egui::UiStackInfo::new(egui::UiKind::Menu).with_tag_value(egui::containers::menu::MenuConfig::MENU_CONFIG_TAG, config))
-                    .show(|ui| {
-                        let items = &built
-                            .get_or_init(|| {
-                                let state = crate::native_menu::state_hash(app_ref, None);
-                                let input = crate::native_menu::had_input(ui.ctx());
-                                let items = kept.take().and_then(|c| c.reuse(state, input)).unwrap_or_else(|| menu_items(app_ref));
-                                ItemCache { state, items }
-                            })
-                            .items;
-                        let mine: Vec<&MenuItem> = items.iter().filter(|i| i.path.first().map(String::as_str) == Some(*top)).collect();
-                        ui.set_min_width(220.0);
-                        if mine.is_empty() {
-                            ui.weak(crate::i18n::tr(lang, "(coming soon)"));
-                        }
-                        if *top == "Help" {
-                            // The search field scrolls with the rows, as part of the menu's content.
-                            crate::menu_nav::level(ui, 1, &mut nav, |ui, nav| {
-                                help_search(ui, items, opening, &mut clicked, nav);
-                                render_level_rows(ui, &mine, 1, &mut clicked, nav);
-                            });
-                        } else {
-                            render_level(ui, &mine, 1, &mut clicked, &mut nav);
-                        }
-                    });
+                // Menus close on any click, inside them too; a click in Help's search field must
+                // keep it open. Its items close it themselves when chosen.
+                title_popup(ui, &title, *top == "Help", |ui, opening| {
+                    let items = &built
+                        .get_or_init(|| {
+                            let state = crate::native_menu::state_hash(app_ref, None);
+                            let input = crate::native_menu::had_input(ui.ctx());
+                            let items = kept.take().and_then(|c| c.reuse(state, input)).unwrap_or_else(|| menu_items(app_ref));
+                            ItemCache { state, items }
+                        })
+                        .items;
+                    let mine: Vec<&MenuItem> = items.iter().filter(|i| i.path.first().map(String::as_str) == Some(*top)).collect();
+                    ui.set_min_width(220.0);
+                    if mine.is_empty() {
+                        ui.weak(crate::i18n::tr(lang, "(coming soon)"));
+                    }
+                    if *top == "Help" {
+                        // The search field scrolls with the rows, as part of the menu's content.
+                        crate::menu_nav::level(ui, 1, &mut nav, |ui, nav| {
+                            help_search(ui, items.iter(), opening, 0, &mut clicked, nav);
+                            render_level_rows(ui, &mine, 1, &mut clicked, nav);
+                        });
+                    } else {
+                        render_level(ui, &mine, 1, &mut clicked, &mut nav);
+                    }
+                });
                 buttons.push(title);
             }
             edge = if rtl { buttons.iter().map(|b| b.rect.left()).fold(edge, f32::min) } else { buttons.iter().map(|b| b.rect.right()).fold(edge, f32::max) };
@@ -128,30 +107,116 @@ pub fn menu_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> f32 {
     nav.store(ui.ctx());
     // No menu open this frame: nothing is kept.
     app.menu_cache = built.into_inner();
-    // The press-drag gesture ends with the button (its release was handled by the rows above).
-    if ui.input(|i| i.pointer.primary_released() || !i.pointer.primary_down()) {
-        ui.ctx().data_mut(|d| d.remove::<bool>(press_gesture_id()));
-    }
+    end_press_gesture(ui.ctx());
     if let Some(id) = clicked {
-        let ctx = ui.ctx().clone();
-        let alt = ctx.input(|i| i.modifiers.alt);
-        // ⌥ while choosing an Image › Adjustments item opens it at its last settings (#8900).
-        let r = if alt && crate::adjust_dialog::has_dialog(&id) {
-            let opened = crate::adjust_dialog::open_last(app, &id).map(|_| Value::Null).ok_or_else(|| "no document".to_string());
-            // Edit › Search's recents, as `invoke` notes a plain click.
-            if opened.is_ok() {
-                crate::palette::note_recent(&ctx, &id);
-            }
-            opened
-        } else {
-            invoke(app, &ctx, &alt_click(id, alt), json!({}))
-        };
-        if let Err(e) = r {
-            app.ui.status = e;
-            app.ui.status_error = true;
-        }
+        run_clicked(app, &ui.ctx().clone(), id);
     }
     edge
+}
+
+/// The press-drag gesture ends with the button (its release was handled by the rows).
+fn end_press_gesture(ctx: &egui::Context) {
+    if ctx.input(|i| i.pointer.primary_released() || !i.pointer.primary_down()) {
+        ctx.data_mut(|d| d.remove::<bool>(press_gesture_id()));
+    }
+}
+
+/// Runs a command chosen in a menu (or on the studio top bar): ⌥ + Merge runs the Stamp
+/// variant, and ⌥ + an Image › Adjustments item opens it at its last settings (#8900).
+pub(crate) fn run_clicked(app: &mut PhotocraftApp, ctx: &egui::Context, id: String) {
+    let alt = ctx.input(|i| i.modifiers.alt);
+    let r = if alt && crate::adjust_dialog::has_dialog(&id) {
+        let opened = crate::adjust_dialog::open_last(app, &id).map(|_| Value::Null).ok_or_else(|| "no document".to_string());
+        // Edit › Search's recents, as `invoke` notes a plain click.
+        if opened.is_ok() {
+            crate::palette::note_recent(ctx, &id);
+        }
+        opened
+    } else {
+        invoke(app, ctx, &alt_click(id, alt), json!({}))
+    };
+    if let Err(e) = r {
+        app.ui.status = e;
+        app.ui.status_error = true;
+    }
+}
+
+/// A menu title's popup: opened on the press ([`title_press`]), hung below the title, closing on
+/// any click unless `keep` (a search field in it must keep it open; its rows close it
+/// themselves). `content` learns whether this frame's release ends the press that opened it.
+fn title_popup(ui: &egui::Ui, title: &egui::Response, keep: bool, content: impl FnOnce(&mut egui::Ui, bool)) {
+    use egui::PopupCloseBehavior as Close;
+    use egui::containers::menu::MenuConfig;
+    // The bar's close behaviour and style, as a menu (not bar) config so submenus inside render
+    // as submenus.
+    let bar = MenuConfig::find(ui);
+    let config = MenuConfig::new().close_behavior(if keep { Close::CloseOnClickOutside } else { bar.close_behavior }).style(bar.style.clone());
+    let open = title_press(ui.ctx(), title);
+    // The release ending the press that opened this menu is a click "outside" the popup: it must
+    // not close it again.
+    let opening = title.clicked() && ui.ctx().data(|d| d.get_temp::<bool>(press_gesture_id())).unwrap_or(false);
+    let close = if opening { Close::IgnoreClicks } else { config.close_behavior };
+    egui::Popup::menu(title)
+        .align(crate::direction::below())
+        .open_memory(open)
+        .close_behavior(close)
+        .style(config.style.clone())
+        .info(egui::UiStackInfo::new(egui::UiKind::Menu).with_tag_value(MenuConfig::MENU_CONFIG_TAG, config))
+        .show(|ui| content(ui, opening));
+}
+
+/// The first element of every path in [`tree_menu`]'s items: its first level lists the top menus
+/// as submenus.
+pub(super) const TREE_ROOT: &str = "\u{2630}";
+
+/// The studio shell's ☰ (`title`): the whole menu tree, File … Help as submenus, drawn and driven
+/// as the menu bar's menus: the keyboard (Alt / F10 open it, arrows, ↩, Esc, mnemonics),
+/// press-drag-release, scrolling levels and Help › Search. `cache` is the tree kept last frame;
+/// the one to keep is returned (none while it is closed).
+pub(crate) fn tree_menu(app: &mut PhotocraftApp, ui: &egui::Ui, title: &egui::Response, cache: Option<ItemCache>) -> Option<ItemCache> {
+    let ctx = ui.ctx().clone();
+    let mut clicked: Option<String> = None;
+    let mut nav = crate::menu_nav::Nav::load(&ctx);
+    let mut keys = crate::menu_keys::Keys::load(&ctx);
+    keys.take_first_row(&mut nav);
+    nav.underline = keys.show_underlines(&ctx);
+    nav.bar_bottom = Some(ui.max_rect().bottom());
+    let mut built = None;
+    let app_ref: &PhotocraftApp = app;
+    title_popup(ui, title, true, |ui, _| {
+        let state = crate::native_menu::state_hash(app_ref, None);
+        let input = crate::native_menu::had_input(ui.ctx());
+        let items = cache.and_then(|c| c.reuse(state, input)).unwrap_or_else(|| rooted(menu_items(app_ref)));
+        let all: Vec<&MenuItem> = items.iter().collect();
+        ui.set_min_width(200.0);
+        render_level(ui, &all, 1, &mut clicked, &mut nav);
+        built = Some(ItemCache { state, items });
+    });
+    let tops = [egui::Popup::default_response_id(title)];
+    nav.keys(&ctx, &tops, &mut clicked);
+    // With the macOS menu bar the keyboard on menus is the system's, as in the classic shell.
+    if app.services.native_menu.is_none() {
+        keys.keys(&ctx, &tops, &[None], &mut nav, &mut clicked);
+        // One title: putting the keyboard on it (Alt, F10) opens it.
+        keys.open_focused(&ctx, &tops);
+    }
+    keys.store(&ctx);
+    nav.store(&ctx);
+    end_press_gesture(&ctx);
+    if let Some(id) = clicked {
+        run_clicked(app, &ctx, id);
+    }
+    built
+}
+
+/// `items` of the top menus hung from [`TREE_ROOT`]; items in no menu (the menu bar never shows
+/// them either) are left out, or they would be rows of the tree's first level.
+fn rooted(mut items: Vec<MenuItem>) -> Vec<MenuItem> {
+    items.retain(|it| it.path.first().is_some_and(|top| TOP_MENUS.contains(&top.as_str())));
+    for it in &mut items {
+        it.path.insert(0, TREE_ROOT.to_string());
+    }
+    items
 }
 
 fn press_gesture_id() -> egui::Id {

@@ -334,18 +334,20 @@ impl Tokens {
                 scrim: Color32::from_black_alpha(110),
             },
             // The house look: near-black chrome, charcoal cards, an amber accent with dark text on it.
+            // Greys sampled from docs/redesign/*.png: bars ~29, canvas/strip ~19, cards ~35 with a
+            // ~54 rim, fields darker than their card (~28) with a ~72 rim.
             ThemeKind::Studio => Tokens {
                 kind,
-                chrome: Color32::from_rgb(17, 17, 18),
-                canvas: Color32::from_rgb(24, 24, 25),
-                canvas_dot: Color32::from_rgb(44, 44, 46),
-                dock: Color32::from_rgb(17, 17, 18),
-                card: Color32::from_rgb(30, 30, 31),
-                card_border: Color32::from_rgb(48, 48, 50),
-                field: Color32::from_rgb(36, 36, 38),
-                field_border: Color32::from_rgb(58, 58, 61),
-                hover: Color32::from_rgb(44, 44, 46),
-                pressed: Color32::from_rgb(56, 56, 59),
+                chrome: Color32::from_rgb(29, 29, 30),
+                canvas: Color32::from_rgb(19, 20, 20),
+                canvas_dot: Color32::from_rgb(40, 40, 42),
+                dock: Color32::from_rgb(20, 20, 21),
+                card: Color32::from_rgb(35, 35, 36),
+                card_border: Color32::from_rgb(54, 54, 56),
+                field: Color32::from_rgb(28, 28, 29),
+                field_border: Color32::from_rgb(72, 72, 74),
+                hover: Color32::from_rgb(48, 48, 50),
+                pressed: Color32::from_rgb(60, 60, 63),
                 text: Color32::from_rgb(240, 240, 240),
                 text_dim: Color32::from_rgb(170, 170, 172),
                 text_faint: Color32::from_rgb(110, 110, 114),
@@ -354,13 +356,14 @@ impl Tokens {
                 accent_soft: Color32::from_rgba_unmultiplied(253, 181, 40, 40),
                 accent_border: Color32::from_rgb(253, 181, 40),
                 accent_text: Color32::from_rgb(253, 196, 84),
-                separator: Color32::from_rgb(40, 40, 42),
+                separator: Color32::from_rgb(54, 54, 56),
                 shadow: Color32::from_black_alpha(150),
                 primary_bg: Color32::from_rgb(253, 181, 40),
                 primary_text: Color32::from_rgb(18, 18, 18),
                 danger: Color32::from_rgb(240, 96, 96),
                 warning: Color32::from_rgb(253, 181, 40),
-                radius_sm: 6.0,
+                // Fields, buttons and chips share the mockups' ~8 px rounding.
+                radius_sm: 8.0,
                 radius: 8.0,
                 radius_lg: 12.0,
                 bevel: false,
@@ -840,6 +843,12 @@ impl Tokens {
         }
     }
 
+    /// The amber house look (docs/redesign.md): outlined secondary buttons, amber checks, slider
+    /// trails and selected tabs. Only the default Studio theme; every other theme keeps its look.
+    pub fn is_studio(&self) -> bool {
+        self.kind == ThemeKind::Studio
+    }
+
     pub fn dark(&self) -> bool {
         self.kind.is_dark()
     }
@@ -1062,6 +1071,11 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
         wv.corner_radius = r;
         wv.expansion = 0.0;
     }
+    if t.is_studio() {
+        // An open dropdown or menu button keeps an amber outline, and the caret is amber.
+        w.open.bg_stroke = Stroke::new(1.0, t.accent_border);
+        v.text_cursor.stroke = Stroke::new(2.0, t.accent);
+    }
     ctx.set_visuals(v);
     ctx.global_style_mut(|s| {
         s.text_styles = [
@@ -1072,12 +1086,13 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
             (TextStyle::Monospace, FontId::monospace(12.0)),
         ]
         .into();
-        s.spacing.item_spacing = egui::vec2(8.0, 6.0);
-        s.spacing.button_padding = egui::vec2(10.0, 4.0);
+        // Studio matches the mockups' slightly airier density.
+        s.spacing.item_spacing = if t.is_studio() { egui::vec2(10.0, 7.0) } else { egui::vec2(8.0, 6.0) };
+        s.spacing.button_padding = if t.is_studio() { egui::vec2(12.0, 5.0) } else { egui::vec2(10.0, 4.0) };
         s.spacing.interact_size = egui::vec2(24.0, 24.0);
         s.spacing.slider_width = 150.0;
         s.spacing.combo_width = 120.0;
-        s.spacing.menu_margin = egui::Margin::same(6);
+        s.spacing.menu_margin = egui::Margin::same(if t.is_studio() { 8 } else { 6 });
         s.spacing.window_margin = egui::Margin::same(16);
         s.spacing.icon_width = 14.0;
         s.visuals.indent_has_left_vline = false;

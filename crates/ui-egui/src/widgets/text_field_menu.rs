@@ -290,7 +290,7 @@ mod tests {
         let layer = s.execute("layer.new.layer", json!({"name": "Alpha"})).unwrap()["layer"].as_u64().unwrap();
         let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            PhotocraftApp::new(s, crate::Services::default())
+            PhotocraftApp::new_classic(s, crate::Services::default())
         });
         h.state_mut().ui.tool = crate::state::Tool::RectMarquee;
         h.run_steps(8);

@@ -105,7 +105,7 @@ fn angle_readout_tracks_rotated_quad_and_handles_degenerate_edges() {
 fn transform_bar_pins_warp_cancel_and_commit() {
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.ui.transform = Some(session());
     let width = 720.0;
     let mut h = Harness::builder().with_size(vec2(width, 48.0)).build_ui_state(
@@ -181,7 +181,7 @@ fn interpolation_selection_is_reused_for_the_next_transform() {
 fn free_transform_bar_buttons_follow_the_fields_on_a_wide_bar() {
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.ui.transform = Some(session());
     let width = 2400.0;
     let mut h = Harness::builder().with_size(vec2(width, 48.0)).build_ui_state(
@@ -203,7 +203,7 @@ fn free_transform_bar_buttons_follow_the_fields_on_a_wide_bar() {
 fn warp_bar_buttons_follow_the_fields_on_a_wide_bar() {
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.ui.transform = Some(session());
     let width = 2000.0;
     let mut h = Harness::builder().with_size(vec2(width, 48.0)).build_ui_state(
@@ -327,7 +327,7 @@ fn type_into_bar_field(n: usize, text: &str) -> TransformSession {
 /// for the fields' unit menu to open below the bar unscrolled.
 fn bar_harness(setup: impl FnOnce(&mut PhotocraftApp)) -> egui_kittest::Harness<'static, PhotocraftApp> {
     use egui_kittest::Harness;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.ui.transform = Some(session());
     setup(&mut app);
     let mut h = Harness::builder().with_size(vec2(1000.0, 360.0)).build_ui_state(
@@ -858,7 +858,7 @@ fn grid_menu_reads_default_and_even_presets() {
 
 #[test]
 fn split_tool_places_the_line_where_the_pointer_releases() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -895,7 +895,7 @@ fn split_tool_places_the_line_where_the_pointer_releases() {
 
 #[test]
 fn split_of_a_grid_cuts_one_section_and_keeps_the_rest() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -1086,7 +1086,7 @@ fn move_rotate_and_distort() {
 
 #[test]
 fn begin_and_commit_through_the_engine() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -2104,7 +2104,7 @@ fn right_click_menu_offers_warp_for_a_path() {
 }
 
 fn app_with_square(size: u32, fill: photocraft_geom::Rect) -> PhotocraftApp {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": size, "height": size})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -2660,7 +2660,7 @@ fn alt_click_moves_the_reference_point_and_edges_skew() {
 #[ignore]
 fn transform_preview_bench() {
     let (w, h) = (6000, 4000);
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": w, "height": h})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -2706,7 +2706,7 @@ fn transform_preview_bench() {
 
 #[test]
 fn transform_selection_moves_only_the_outline() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
@@ -2726,7 +2726,7 @@ fn transform_selection_moves_only_the_outline() {
 
 #[test]
 fn warp_mode_drags_anchor_with_handles_splits_and_commits() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -2825,7 +2825,7 @@ fn warp_drag_from_inside_the_grid_pulls_the_surface_under_the_pointer() {
 #[test]
 fn warp_surface_drag_commits_as_previewed() {
     const N: i32 = 96;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": N, "height": N})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -2951,7 +2951,7 @@ fn replacing_the_warp_mesh_cancels_a_pending_point_drag() {
 /// step); grabbing a point turns it into a custom mesh.
 #[test]
 fn a_press_on_a_preset_warp_converts_it_only_when_it_grabs_the_grid() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -3174,7 +3174,7 @@ fn transform_profile_visual_evidence() {
     for monitor in ["srgb", "display-p3"] {
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 800.0)).with_max_steps(64).wgpu().build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
             app.set_wgpu(cc.wgpu_render_state.as_ref().unwrap().clone());
             app.run("file.new", json!({"width": 400, "height": 300, "background": "transparent"})).unwrap();
             app.run("layer.new.layer", json!({})).unwrap();
@@ -3367,7 +3367,7 @@ fn linked_mask_target_transforms_the_layer() {
 #[test]
 fn free_transform_moves_the_selected_path_not_pixels() {
     let ctx = egui::Context::default();
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.run("path.set", json!({"name": "work", "path": {"subpaths": [{"closed": true, "knots": [[10, 10], [30, 10], [30, 20], [10, 20]]}]}})).unwrap();
@@ -3420,7 +3420,7 @@ fn free_transform_moves_the_selected_path_not_pixels() {
 /// the layer stays type.
 #[test]
 fn warp_on_type_takes_a_style_and_keeps_the_type_editable() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.sync_views();
     app.run("type.create", json!({"x": 10, "y": 60, "text": "Hello"})).unwrap();
@@ -3529,7 +3529,7 @@ fn hovering_edge_with_ctrl_shows_skew_cursor() {
 
 #[test]
 fn hovering_corner_on_text_layer_with_ctrl_retains_resize_cursor() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.sync_views();
     app.run("type.create", json!({"x": 10, "y": 60, "text": "Hello"})).unwrap();

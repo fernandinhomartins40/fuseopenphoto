@@ -295,7 +295,9 @@ impl PhotocraftApp {
         if studio {
             crate::studio::frame(self, ui);
         }
-        if !studio && (chrome || tabbed_in) && self.ui.panels.menu_bar {
+        if home && chrome && !self.studio.classic {
+            canvas::home_bar(self, ui);
+        } else if !studio && (chrome || tabbed_in) && self.ui.panels.menu_bar {
             panels::title_bar(self, ui);
         }
         if !studio {

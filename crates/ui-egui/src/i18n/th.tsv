@@ -3377,7 +3377,6 @@ curves	Smooth	เรียบเนียน
 	3D…	3 มิติ…
 	A:	ตอบ:
 	AI Integrations	บูรณาการ AI
-	About {app}	About {app}
 	Accented Edges	ขอบเน้น
 	Action playback failed: {error}	การเล่นการกระทำล้มเหลว: {error}
 	Actual Pixels	พิกเซลจริง
@@ -4224,7 +4223,6 @@ curves	Smooth	เรียบเนียน
 	Quick Actions	การดำเนินการด่วน
 	Quit	เลิก
 	Quit {app}	ออกจาก{app}
-	Quit {app}	Quit {app}
 	R G B	อาร์ จี บี
 	R g b	อาร์ จี บี
 	Radial	เรเดียล

@@ -3525,9 +3525,7 @@ cameraRaw	Yellow	Κίτρινο
 	Current Tool	Τρέχον εργαλείο
 	Click the first point or press {key} to close · {del} removes a point · Esc cancels	Κάντε κλικ στο πρώτο σημείο ή πατήστε {key} για κλείσιμο · {del} αφαιρεί ένα σημείο · Esc για ακύρωση
 	Click, then move along an edge · click to fasten a point · {alt}-click for a straight segment · double-click to close	Κάντε κλικ και κινηθείτε κατά μήκος μιας ακμής · κάντε κλικ για να στερεώσετε ένα σημείο · {alt}-κλικ για ευθύγραμμο τμήμα · διπλό κλικ για κλείσιμο
-	About {app}	Πληροφορίες για το {app}
 	Hide {app}	Απόκρυψη του {app}
-	Quit {app}	Τερματισμός του {app}
 	Services	Υπηρεσίες
 	Hide Others	Απόκρυψη άλλων
 	100%	100%

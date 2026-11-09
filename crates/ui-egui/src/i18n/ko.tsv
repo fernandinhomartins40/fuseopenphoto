@@ -3854,7 +3854,6 @@ cameraRaw	Magenta	자홍
 cameraRaw	Luminance	휘도
 cameraRaw	Temperature	색온도
 	3D	3D
-	About {app}	{app} 정보
 	Adjustment	조정
 	Adjustment Properties	조정 속성
 	Adobe RGB (1998)	Adobe RGB (1998)

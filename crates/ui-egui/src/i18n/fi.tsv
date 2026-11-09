@@ -3399,7 +3399,6 @@ curves	Smooth	Tasoita
 	3D…	3D…
 	A:	K:
 	AI Integrations	Tekoälyintegraatiot
-	About {app}	Tietoja: {app}
 	Accented Edges	Korostetut reunat
 	Action playback failed: {error}	Toiminnon toisto epäonnistui: {error}
 	Actual Pixels	Todelliset pikselit
@@ -4245,7 +4244,6 @@ curves	Smooth	Tasoita
 	Pyramids	Pyramidit
 	Quick Actions	Pikatoiminnot
 	Quit	Lopeta
-	Quit {app}	Lopeta {app}
 	Quit {app}	Lopeta {app}
 	R G B	R G B
 	R g b	R g b

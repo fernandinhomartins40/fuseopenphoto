@@ -1043,7 +1043,7 @@ mod screen_integration_tests {
         };
         let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::new(session, services);
+            let mut app = PhotocraftApp::new_classic(session, services);
             app.ui.tool = crate::state::Tool::Type;
             app
         });

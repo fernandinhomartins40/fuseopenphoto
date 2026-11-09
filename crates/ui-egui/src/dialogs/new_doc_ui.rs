@@ -424,6 +424,40 @@ impl Card {
     }
 }
 
+impl Card {
+    /// Whether the dialog holds this card's settings (`chosen`: the picked built-in preset).
+    fn selected(&self, f: &Map<String, Value>, chosen: &str) -> bool {
+        match self {
+            Card::Builtin(p) => chosen == p.0,
+            Card::Recent(settings) => holds(f, settings),
+        }
+    }
+
+    /// Put the card's settings in the dialog fields.
+    fn apply(&self, f: &mut Map<String, Value>, units: &UnitsAndRulers) {
+        match self {
+            Card::Builtin(p) => apply_preset(f, p, units),
+            Card::Recent(settings) => apply_settings(f, settings),
+        }
+    }
+}
+
+/// The cards of category `cat`: its built-in presets turned to the picked orientation, or for
+/// Recent (and any unknown name) the [`recent_cards`].
+fn category_cards(app: &crate::PhotocraftApp, f: &Map<String, Value>, cat: &str, units: &UnitsAndRulers) -> Vec<Card> {
+    let presets: Vec<Card> = match CATEGORIES.iter().find(|c| c.0 == cat) {
+        Some(c) if c.0 != CATEGORIES[0].0 => c.1.iter().copied().map(Card::Builtin).collect(),
+        _ => recent_cards(f, &app.session.presets.recent_documents, units),
+    };
+    presets
+        .into_iter()
+        .map(|c| match c {
+            Card::Builtin(p) => Card::Builtin(oriented(&p, f)),
+            recent => recent,
+        })
+        .collect()
+}
+
 /// The Recent category: the Clipboard preset, the documents recently created here (newest
 /// first), then the built-in defaults they don't already cover.
 fn recent_cards(f: &Map<String, Value>, recent: &[DocumentSettings], units: &UnitsAndRulers) -> Vec<Card> {
@@ -523,6 +557,189 @@ fn save_preset(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<St
     }
 }
 
+/// The document name field, `width` wide: it opens focused with the name selected (Photoshop).
+fn name_field(ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    // Keep the canonical English default in state; only the TextEdit shows a translation.
+    let raw = get_s(f, "name", "Untitled-1");
+    let mut name = if raw == "Untitled-1" { tl!("Untitled-1").to_string() } else { raw };
+    let r = ui.add(egui::TextEdit::singleline(&mut name).desired_width(width).font(egui::FontId::proportional(15.0))).accessible_name(tl!("Name"));
+    if r.changed() {
+        f.insert("name".into(), json!(name));
+    }
+    crate::field_tab::register(ui.ctx(), r.id);
+    // Photoshop opens the dialog with the name selected, so typing replaces it and Tab goes
+    // straight on to Width. (`__focused` marks that this instance has had its turn.)
+    if !f.contains_key("__focused") {
+        f.insert("__focused".into(), json!(true));
+        crate::field_tab::focus(ui.ctx(), r.id);
+    }
+    if r.gained_focus() {
+        crate::field_tab::select_all(ui.ctx(), r.id, &name);
+    }
+}
+
+/// The Orientation buttons: pick portrait or landscape, swapping Width and Height when needed.
+pub fn set_orientation(f: &mut Map<String, Value>, portrait: bool) {
+    let (w, h) = (get_f(f, "width", 1920.0), get_f(f, "height", 1080.0));
+    // The pick also turns the presets (`oriented`), even when the size already has it.
+    f.insert("__orientation".into(), json!(if portrait { "portrait" } else { "landscape" }));
+    if (h > w) != portrait {
+        swap_size(f);
+    }
+}
+
+/// The Width or Height (`key`) field, in the display unit; returns whether it was edited.
+fn size_field(ui: &mut egui::Ui, f: &mut Map<String, Value>, key: &str, width: f32) -> bool {
+    let ppi = get_f(f, "resolution", 72.0);
+    let unit = get_s(f, "__unit", "px");
+    // A typed unit (`210mm` while in pixels) converts at the new document's resolution.
+    let units = widgets::FieldUnits { unit: widgets::unit_of_key(&unit), dpi: f64::from(ppi), ppi: 72.0 };
+    let (d, label) = if key == "width" { (1920.0, tl!("Width")) } else { (1080.0, tl!("Height")) };
+    let mut v = shown_size(f, key, d, &unit, ppi);
+    let changed = widgets::value_field_units(ui, &mut v, 0.0..=300_000.0, width, widgets::unit_decimals(&unit), units).accessible_name(label).changed();
+    if changed {
+        set_size(f, key, v, &unit, ppi);
+    }
+    changed
+}
+
+/// The Width/Height units menu.
+fn units_dropdown(ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    let mut unit = get_s(f, "__unit", "px");
+    let opts: Vec<(String, &str)> = UNITS.iter().map(|u| (u.0.to_string(), u.1)).collect();
+    if widgets::dropdown(ui, "nd-unit", tl!("Units"), &mut unit, &opts, width) {
+        f.insert("__unit".into(), json!(unit));
+        f.remove("__savedPreset");
+    }
+}
+
+/// The Resolution field, in pixels per inch or per centimetre.
+fn resolution_field(ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    let ppi = get_f(f, "resolution", 72.0);
+    let per_cm = get_s(f, "__resUnit", "in") == "cm";
+    let mut r = if per_cm { ppi / 2.54 } else { ppi };
+    if widgets::value_field(ui, &mut r, 1.0..=30_000.0, "", width).accessible_name(tl!("Resolution")).changed() {
+        set_resolution(f, if per_cm { r * 2.54 } else { r });
+    }
+}
+
+/// Pixels/Inch or Pixels/Centimeter for the Resolution field.
+fn resolution_unit_dropdown(ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    let mut ru = get_s(f, "__resUnit", "in");
+    let opts = [("in".to_string(), tl!("Pixels/Inch")), ("cm".to_string(), tl!("Pixels/Centimeter"))];
+    if widgets::dropdown(ui, "nd-resunit", tl!("Resolution"), &mut ru, &opts, width) {
+        f.insert("__resUnit".into(), json!(ru));
+        f.remove("__savedPreset");
+    }
+}
+
+/// The Color Mode menu.
+fn mode_dropdown(ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    let mut mode = get_s(f, "mode", "rgb");
+    let opts = [
+        ("gray".to_string(), tl!("Grayscale")),
+        ("rgb".to_string(), tl!("RGB Color")),
+        ("cmyk".to_string(), tl!("CMYK Color")),
+        ("lab".to_string(), tl!("Lab Color")),
+    ];
+    if widgets::dropdown(ui, "nd-mode", tl!("Color Mode"), &mut mode, &opts, width) {
+        f.insert("mode".into(), json!(mode));
+        // A profile of the old mode's colour space doesn't suit the new one.
+        f.remove("profile");
+        f.remove("__savedPreset");
+    }
+}
+
+/// The bit depth menu beside Color Mode.
+fn depth_dropdown(ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    let mut depth = f.get("depth").and_then(Value::as_u64).unwrap_or(8);
+    let depth_options: Vec<(u64, &str, &str)> = DEPTH_OPTIONS.iter().map(|(bits, label, tooltip)| (*bits, *label, *tooltip)).collect();
+    if widgets::dropdown_with_tooltips(ui, "nd-depth", tl!("Depth"), &mut depth, &depth_options, width) {
+        f.insert("depth".into(), json!(depth));
+        f.remove("__savedPreset");
+    }
+}
+
+/// Photoshop's Advanced Options › Color Profile (#321): the working space by default, or another
+/// profile of the mode's colour space, built in or installed in the system.
+fn profile_dropdown(app: &crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    let mode = get_s(f, "mode", "rgb");
+    let space = color_mode_of(&mode).map(photocraft_engine::color_cmds::mode_space);
+    let working = color_mode_of(&mode).map(|m| app.session.color.working(m).description.clone()).unwrap_or_default();
+    let installed = photocraft_engine::installed_profiles::installed();
+    let opts = profile_options(space, &working, &installed);
+    let mut profile = get_s(f, "profile", "working");
+    if !opts.iter().any(|(v, _)| *v == profile) {
+        // Not a profile of this mode (or no longer installed): Create must not send it.
+        profile = "working".into();
+        f.remove("profile");
+    }
+    let shown: Vec<(String, &str)> = opts.iter().map(|(v, l)| (v.clone(), l.as_str())).collect();
+    if widgets::dropdown(ui, "nd-profile", tl!("Color Profile"), &mut profile, &shown, width) {
+        if profile == "working" {
+            f.remove("profile");
+        } else {
+            f.insert("profile".into(), json!(profile));
+        }
+        f.remove("__savedPreset");
+    }
+}
+
+/// Background Contents: the menu (`width` with the swatch) and the swatch beside it.
+fn background_row(app: &crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>, width: f32) {
+    // A custom colour is kept as its "#rrggbb", which `file.new` takes as is (#4789).
+    let current = get_s(f, "background", "white");
+    let mut bg = if crate::color_picker_ui::parse_hex(&current).is_some() { CUSTOM.to_string() } else { current.clone() };
+    let opts = [
+        ("white".to_string(), tl!("White")),
+        ("black".to_string(), tl!("Black")),
+        ("backgroundColor".to_string(), tl!("Background Color")),
+        ("transparent".to_string(), tl!("Transparent")),
+        (CUSTOM.to_string(), tl!("Custom…")),
+    ];
+    let shown = background_rgb(app, f);
+    let mut pick = false;
+    if widgets::dropdown(ui, "nd-bg", tl!("Background"), &mut bg, &opts, width - SWATCH - 6.0) {
+        if bg == CUSTOM {
+            // Custom… opens the Color Picker on the colour shown so far.
+            pick = true;
+        } else {
+            f.insert("background".into(), json!(bg));
+        }
+        f.remove("__savedPreset");
+        // A fresh choice of Background Color uses today's toolbox colour. Selecting a
+        // saved preset instead restores the colour captured when it was saved.
+        f.remove("backgroundColor");
+    }
+    // Photoshop's swatch beside the menu: the colour the canvas starts with; a click
+    // opens the Color Picker, as Custom… does.
+    let (r, resp) = ui.allocate_exact_size(vec2(SWATCH, SWATCH), Sense::click());
+    match shown {
+        Some(c) => {
+            ui.painter().rect_filled(r, 2.0, rgb32(c));
+        }
+        None => widgets::checker(ui.painter(), r, 4.0),
+    }
+    ui.painter().rect_stroke(r, 2.0, Stroke::new(1.0, Tokens::get(ui.ctx()).field_border), StrokeKind::Inside);
+    let resp = resp.on_hover_text(tl!("Custom background color")).on_hover_cursor(egui::CursorIcon::PointingHand);
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Custom background color")));
+    if resp.clicked() {
+        pick = true;
+        f.remove("__savedPreset");
+    }
+    if pick {
+        let start = shown.unwrap_or([1.0; 3]);
+        f.insert("background".into(), json!(crate::color_picker_ui::hex(start)));
+        f.remove("backgroundColor");
+        crate::color_picker_ui::request_field(f, "background", &crate::color_picker_ui::title_for(tl!("Background Contents")));
+    }
+}
+
+fn rgb32(c: [f32; 3]) -> egui::Color32 {
+    let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+    egui::Color32::from_rgb(b(c[0]), b(c[1]), b(c[2]))
+}
+
 /// Returns whether a preset double-click requested creation, after applying its settings.
 /// A recent category click can make egui count the preset double-click as a triple-click.
 pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) -> bool {
@@ -553,17 +770,7 @@ pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
     widgets::hairline(ui);
     ui.add_space(8.0);
     let units = app.session.prefs().units_and_rulers.clone();
-    let presets: Vec<Card> = match CATEGORIES.iter().find(|c| c.0 == cat) {
-        Some(c) if c.0 != CATEGORIES[0].0 => c.1.iter().copied().map(Card::Builtin).collect(),
-        _ => recent_cards(f, &app.session.presets.recent_documents, &units),
-    };
-    let presets: Vec<Card> = presets
-        .into_iter()
-        .map(|c| match c {
-            Card::Builtin(p) => Card::Builtin(oriented(&p, f)),
-            recent => recent,
-        })
-        .collect();
+    let presets = category_cards(app, f, &cat, &units);
     let chosen = get_s(f, "__preset", "");
     ui.horizontal_top(|ui| {
         // Left: preset grid.
@@ -585,10 +792,7 @@ pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
                             let (r, resp) = ui.allocate_exact_size(card, Sense::click());
                             let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
                             let (w, h, _) = c.size(&units);
-                            let on = match c {
-                                Card::Builtin(p) => chosen == p.0,
-                                Card::Recent(settings) => holds(f, settings),
-                            };
+                            let on = c.selected(f, &chosen);
                             ui.painter().rect_filled(
                                 r,
                                 t.radius,
@@ -625,10 +829,7 @@ pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
                                 Card::Builtin(_) => resp,
                             };
                             if resp.clicked() {
-                                match c {
-                                    Card::Builtin(p) => apply_preset(f, p, &units),
-                                    Card::Recent(settings) => apply_settings(f, settings),
-                                }
+                                c.apply(f, &units);
                                 // Touch-tolerant double-tap (finger jitter > egui's 6 px); see `widgets::second_click`.
                                 create |= widgets::second_click(ui, &resp);
                             }
@@ -644,48 +845,16 @@ pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
             ui.set_width(260.0);
             ui.label(RichText::new(tl!("PRESET DETAILS")).size(11.0).color(t.text_faint));
             ui.add_space(4.0);
-            // Keep the canonical English default in state; only the TextEdit shows a translation.
-            let raw = get_s(f, "name", "Untitled-1");
-            let mut name = if raw == "Untitled-1" { tl!("Untitled-1").to_string() } else { raw };
-            let r = ui.add(egui::TextEdit::singleline(&mut name).desired_width(250.0).font(egui::FontId::proportional(15.0))).accessible_name(tl!("Name"));
-            if r.changed() {
-                f.insert("name".into(), json!(name));
-            }
-            crate::field_tab::register(ui.ctx(), r.id);
-            // Photoshop opens the dialog with the name selected, so typing replaces it and Tab goes
-            // straight on to Width. (`__focused` marks that this instance has had its turn.)
-            if !f.contains_key("__focused") {
-                f.insert("__focused".into(), json!(true));
-                crate::field_tab::focus(ui.ctx(), r.id);
-            }
-            if r.gained_focus() {
-                crate::field_tab::select_all(ui.ctx(), r.id, &name);
-            }
+            name_field(ui, f, 250.0);
             ui.add_space(8.0);
-            let ppi = get_f(f, "resolution", 72.0);
-            let mut unit = get_s(f, "__unit", "px");
-            // A typed unit (`210mm` while in pixels) converts at the new document's resolution.
-            let units = widgets::FieldUnits { unit: widgets::unit_of_key(&unit), dpi: f64::from(ppi), ppi: 72.0 };
             small_label(ui, tl!("Width"));
             ui.horizontal(|ui| {
-                let mut w = shown_size(f, "width", 1920.0, &unit, ppi);
-                if widgets::value_field_units(ui, &mut w, 0.0..=300_000.0, 110.0, widgets::unit_decimals(&unit), units).accessible_name(tl!("Width")).changed()
-                {
-                    set_size(f, "width", w, &unit, ppi);
-                }
-                let opts: Vec<(String, &str)> = UNITS.iter().map(|u| (u.0.to_string(), u.1)).collect();
-                if widgets::dropdown(ui, "nd-unit", tl!("Units"), &mut unit, &opts, 120.0) {
-                    f.insert("__unit".into(), json!(unit));
-                    f.remove("__savedPreset");
-                }
+                size_field(ui, f, "width", 110.0);
+                units_dropdown(ui, f, 120.0);
             });
             small_label(ui, tl!("Height"));
             ui.horizontal(|ui| {
-                let mut h = shown_size(f, "height", 1080.0, &unit, ppi);
-                if widgets::value_field_units(ui, &mut h, 0.0..=300_000.0, 110.0, widgets::unit_decimals(&unit), units).accessible_name(tl!("Height")).changed()
-                {
-                    set_size(f, "height", h, &unit, ppi);
-                }
+                size_field(ui, f, "height", 110.0);
                 ui.add_space(6.0);
                 // Page orientation (≠ Type › Orientation → Hướng chữ).
                 small_label(ui, crate::i18n::tr_ctx(crate::i18n::current(), "document", "Orientation"));
@@ -693,11 +862,7 @@ pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
                 for (icon, portrait) in [("rectangle-vertical", true), ("rectangle-horizontal", false)] {
                     // Tooltip strings are looked up via `icons::button` → `tl!`; enum/state is aspect swap only.
                     if icons::button(ui, icon, 24.0, (h > w) == portrait, if portrait { "Portrait" } else { "Landscape" }).clicked() {
-                        // The pick also turns the presets (`oriented`), even when the size already has it.
-                        f.insert("__orientation".into(), json!(if portrait { "portrait" } else { "landscape" }));
-                        if (h > w) != portrait {
-                            swap_size(f);
-                        }
+                        set_orientation(f, portrait);
                     }
                 }
             });
@@ -709,138 +874,30 @@ pub fn body(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
             ui.add_space(4.0);
             small_label(ui, tl!("Resolution"));
             ui.horizontal(|ui| {
-                let per_cm = get_s(f, "__resUnit", "in") == "cm";
-                let mut r = if per_cm { ppi / 2.54 } else { ppi };
-                if widgets::value_field(ui, &mut r, 1.0..=30_000.0, "", 110.0).accessible_name(tl!("Resolution")).changed() {
-                    set_resolution(f, if per_cm { r * 2.54 } else { r });
-                }
-                let mut ru = get_s(f, "__resUnit", "in");
-                if widgets::dropdown(
-                    ui,
-                    "nd-resunit",
-                    tl!("Resolution"),
-                    &mut ru,
-                    &[("in".to_string(), tl!("Pixels/Inch")), ("cm".to_string(), tl!("Pixels/Centimeter"))],
-                    120.0,
-                ) {
-                    f.insert("__resUnit".into(), json!(ru));
-                    f.remove("__savedPreset");
-                }
+                resolution_field(ui, f, 110.0);
+                resolution_unit_dropdown(ui, f, 120.0);
             });
             ui.add_space(4.0);
             small_label(ui, tl!("Color Mode"));
             ui.horizontal(|ui| {
-                let mut mode = get_s(f, "mode", "rgb");
-                if widgets::dropdown(
-                    ui,
-                    "nd-mode",
-                    tl!("Color Mode"),
-                    &mut mode,
-                    &[
-                        ("gray".to_string(), tl!("Grayscale")),
-                        ("rgb".to_string(), tl!("RGB Color")),
-                        ("cmyk".to_string(), tl!("CMYK Color")),
-                        ("lab".to_string(), tl!("Lab Color")),
-                    ],
-                    110.0,
-                ) {
-                    f.insert("mode".into(), json!(mode));
-                    // A profile of the old mode's colour space doesn't suit the new one.
-                    f.remove("profile");
-                    f.remove("__savedPreset");
-                }
-                let mut depth = f.get("depth").and_then(Value::as_u64).unwrap_or(8);
-                let depth_options: Vec<(u64, &str, &str)> = DEPTH_OPTIONS.iter().map(|(bits, label, tooltip)| (*bits, *label, *tooltip)).collect();
-                if widgets::dropdown_with_tooltips(ui, "nd-depth", tl!("Depth"), &mut depth, &depth_options, 120.0) {
-                    f.insert("depth".into(), json!(depth));
-                    f.remove("__savedPreset");
-                }
+                mode_dropdown(ui, f, 110.0);
+                depth_dropdown(ui, f, 120.0);
             });
             ui.add_space(4.0);
             // Photoshop's Advanced Options › Color Profile (#321): the working space by default,
             // or another profile of the mode's colour space, built in or installed in the system.
             small_label(ui, tl!("Color Profile"));
-            {
-                let mode = get_s(f, "mode", "rgb");
-                let space = color_mode_of(&mode).map(photocraft_engine::color_cmds::mode_space);
-                let working = color_mode_of(&mode).map(|m| app.session.color.working(m).description.clone()).unwrap_or_default();
-                let installed = photocraft_engine::installed_profiles::installed();
-                let opts = profile_options(space, &working, &installed);
-                let mut profile = get_s(f, "profile", "working");
-                if !opts.iter().any(|(v, _)| *v == profile) {
-                    // Not a profile of this mode (or no longer installed): Create must not send it.
-                    profile = "working".into();
-                    f.remove("profile");
-                }
-                let shown: Vec<(String, &str)> = opts.iter().map(|(v, l)| (v.clone(), l.as_str())).collect();
-                if widgets::dropdown(ui, "nd-profile", tl!("Color Profile"), &mut profile, &shown, 240.0) {
-                    if profile == "working" {
-                        f.remove("profile");
-                    } else {
-                        f.insert("profile".into(), json!(profile));
-                    }
-                    f.remove("__savedPreset");
-                }
-            }
+            profile_dropdown(app, ui, f, 240.0);
             ui.add_space(4.0);
             small_label(ui, tl!("Background Contents"));
-            // A custom colour is kept as its "#rrggbb", which `file.new` takes as is (#4789).
-            let current = get_s(f, "background", "white");
-            let mut bg = if crate::color_picker_ui::parse_hex(&current).is_some() { CUSTOM.to_string() } else { current.clone() };
-            let opts = [
-                ("white".to_string(), tl!("White")),
-                ("black".to_string(), tl!("Black")),
-                ("backgroundColor".to_string(), tl!("Background Color")),
-                ("transparent".to_string(), tl!("Transparent")),
-                (CUSTOM.to_string(), tl!("Custom…")),
-            ];
-            let shown = background_rgb(app, f);
-            let mut pick = false;
-            ui.horizontal(|ui| {
-                if widgets::dropdown(ui, "nd-bg", tl!("Background"), &mut bg, &opts, 240.0 - SWATCH - 6.0) {
-                    if bg == CUSTOM {
-                        // Custom… opens the Color Picker on the colour shown so far.
-                        pick = true;
-                    } else {
-                        f.insert("background".into(), json!(bg));
-                    }
-                    f.remove("__savedPreset");
-                    // A fresh choice of Background Color uses today's toolbox colour. Selecting a
-                    // saved preset instead restores the colour captured when it was saved.
-                    f.remove("backgroundColor");
-                }
-                // Photoshop's swatch beside the menu: the colour the canvas starts with; a click
-                // opens the Color Picker, as Custom… does.
-                let (r, resp) = ui.allocate_exact_size(vec2(SWATCH, SWATCH), Sense::click());
-                match shown {
-                    Some(c) => {
-                        ui.painter().rect_filled(
-                            r,
-                            2.0,
-                            egui::Color32::from_rgb((c[0] * 255.0).round() as u8, (c[1] * 255.0).round() as u8, (c[2] * 255.0).round() as u8),
-                        );
-                    }
-                    None => widgets::checker(ui.painter(), r, 4.0),
-                }
-                ui.painter().rect_stroke(r, 2.0, Stroke::new(1.0, Tokens::get(ui.ctx()).field_border), StrokeKind::Inside);
-                let resp = resp.on_hover_text(tl!("Custom background color")).on_hover_cursor(egui::CursorIcon::PointingHand);
-                resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, tl!("Custom background color")));
-                if resp.clicked() {
-                    pick = true;
-                    f.remove("__savedPreset");
-                }
-            });
-            if pick {
-                let start = shown.unwrap_or([1.0; 3]);
-                f.insert("background".into(), json!(crate::color_picker_ui::hex(start)));
-                f.remove("backgroundColor");
-                crate::color_picker_ui::request_field(f, "background", &crate::color_picker_ui::title_for(tl!("Background Contents")));
-            }
+            ui.horizontal(|ui| background_row(app, ui, f, 240.0));
             save_preset(app, ui, f);
         });
     });
     create
 }
+
+pub(crate) mod page;
 
 #[cfg(test)]
 mod tests;

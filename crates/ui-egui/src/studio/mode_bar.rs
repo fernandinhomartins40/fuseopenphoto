@@ -2,8 +2,7 @@
 //! the top bar; picking a mode selects its default tool, and picking a tool anywhere else
 //! (shortcut, menu, palette) moves the bar to a mode that lists it.
 //!
-//! Under it, the classic tool options bar stays as a second thin row until context bars replace
-//! it, so every tool option (brush size, feather, …) stays reachable.
+//! The active tool's options float over the canvas (`options_pill`), not in a row under the bar.
 
 use egui::{FontId, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
@@ -197,8 +196,6 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 }
             }
         });
-    // shortcut: the classic options bar as a second row, until context bars hold every option.
-    crate::panels::options_bar(app, ui);
 }
 
 #[cfg(test)]

@@ -578,6 +578,35 @@ fn default_max_width(d: &Dialog, compact: bool, curves: bool, about_tabs: bool, 
     }
 }
 
+/// Keep a dialog's edited `fields`, then act on what it answered this frame (`None`: still open).
+fn settle(app: &mut PhotocraftApp, id: u64, fields: Fields, outcome: Option<bool>, apply_requested: bool) {
+    if let Some(dm) = app.ui.dialog_mut(id) {
+        dm.fields = fields;
+    }
+    // A colour swatch (Edit › Fill, Edit › Stroke) opens the Color Picker over the dialog.
+    if outcome.is_none() {
+        crate::color_picker_ui::open_requested(app, id);
+    }
+    if apply_requested && outcome.is_none() {
+        let _ = crate::prefs_ui::apply(app, id);
+    }
+    match outcome {
+        Some(true) => {
+            if let Err(error) = confirm(app, id) {
+                app.ui.status = error;
+            }
+        }
+        Some(false) => {
+            let _ = cancel(app, id);
+        }
+        None => {
+            if let Err(error) = crate::layer_style::color_picker::take_request(app, id) {
+                app.ui.status = error;
+            }
+        }
+    }
+}
+
 pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
     if crate::guide_edit::sync(app) {
         ctx.request_repaint();
@@ -601,6 +630,14 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
         let mut apply_requested = false;
         let title = display_title(&d);
         let id = egui::Id::unique(("dialog", d.id));
+        // The studio shell shows New Document as a full-window page; Classic Layout keeps the dialog.
+        if d.kind == DialogKind::NewDocument && !app.studio.classic {
+            let tab = if interactive && !egui::Popup::is_any_open(ctx) { crate::field_tab::take_step(ctx) } else { 0 };
+            let (done, rect) = crate::new_doc_ui::page::show(app, ctx, &mut fields, id, interactive, tab);
+            shown.push(rect);
+            settle(app, d.id, fields, done, false);
+            continue;
+        }
         // Opens where the same dialog was last left (centred the first time), then its top-left
         // stays put (offset from the window's top-left, moved by dragging the title bar; view
         // state only, so egui memory): a dialog whose body grows, like Layer Style switching
@@ -770,31 +807,7 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
         {
             outcome = Some(false);
         }
-        if let Some(dm) = app.ui.dialog_mut(d.id) {
-            dm.fields = fields;
-        }
-        // A colour swatch (Edit › Fill, Edit › Stroke) opens the Color Picker over the dialog.
-        if outcome.is_none() {
-            crate::color_picker_ui::open_requested(app, d.id);
-        }
-        if apply_requested && outcome.is_none() {
-            let _ = crate::prefs_ui::apply(app, d.id);
-        }
-        match outcome {
-            Some(true) => {
-                if let Err(error) = confirm(app, d.id) {
-                    app.ui.status = error;
-                }
-            }
-            Some(false) => {
-                let _ = cancel(app, d.id);
-            }
-            None => {
-                if let Err(error) = crate::layer_style::color_picker::take_request(app, d.id) {
-                    app.ui.status = error;
-                }
-            }
-        }
+        settle(app, d.id, fields, outcome, apply_requested);
     }
     if crate::guide_edit::sync(app) {
         ctx.request_repaint();
