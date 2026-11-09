@@ -202,7 +202,7 @@ fn render_main(app: &mut PhotocraftApp, ui: &mut egui::Ui, recent: &[String], w:
 
     // Keep the recents in view: the drop zone takes what is left, within reason.
     let used = ui.cursor().top() - top;
-    let drop_h = (h - used - if recent.is_empty() { 120.0 } else { 260.0 }).clamp(170.0, 400.0);
+    let drop_h = if recent.is_empty() { (h - used - 120.0).clamp(170.0, 400.0) } else { (h - used - 300.0).clamp(110.0, 260.0) };
     if drop_zone(app, ui, vec2(w, drop_h)).clicked() {
         *act = Some(Act::Open);
     }
@@ -239,12 +239,16 @@ fn drop_zone(app: &PhotocraftApp, ui: &mut egui::Ui, size: egui::Vec2) -> egui::
     let s = (size.y * 0.33).clamp(44.0, 130.0);
     let c = pos2(r.center().x, r.top() + size.y * 0.42 - s * 0.1);
     let ink = if hov { t.accent } else { t.text };
-    crate::icons::paint(ui, Rect::from_center_size(c + vec2(s * 0.14, -s * 0.12), vec2(s, s)), "file", s * 0.8, ink);
-    p.rect_filled(Rect::from_center_size(c + vec2(-s * 0.14, s * 0.12), vec2(s * 0.52, s * 0.66)), 6.0, if hov { t.hover } else { t.chrome });
-    crate::icons::paint(ui, Rect::from_center_size(c + vec2(-s * 0.14, s * 0.12), vec2(s, s)), "file", s * 0.8, ink);
-
     let head_s = (size.x / 26.0).clamp(15.0, 24.0);
-    let y = (r.top() + size.y * 0.42 + s * 0.62).min(r.bottom() - head_s * 2.8);
+    // A short zone (recents below it) keeps only the two lines of text.
+    let y = if size.y >= 170.0 {
+        crate::icons::paint(ui, Rect::from_center_size(c + vec2(s * 0.14, -s * 0.12), vec2(s, s)), "file", s * 0.8, ink);
+        p.rect_filled(Rect::from_center_size(c + vec2(-s * 0.14, s * 0.12), vec2(s * 0.52, s * 0.66)), 6.0, if hov { t.hover } else { t.chrome });
+        crate::icons::paint(ui, Rect::from_center_size(c + vec2(-s * 0.14, s * 0.12), vec2(s, s)), "file", s * 0.8, ink);
+        (r.top() + size.y * 0.42 + s * 0.62).min(r.bottom() - head_s * 2.8)
+    } else {
+        r.center().y - head_s * 1.4
+    };
     p.text(pos2(r.center().x, y), egui::Align2::CENTER_TOP, tl!("Drag an image or PSD to start"), semibold(head_s), t.text);
     // "or choose a file", the second half an amber, underlined link.
     let small = medium(head_s * 0.86);
