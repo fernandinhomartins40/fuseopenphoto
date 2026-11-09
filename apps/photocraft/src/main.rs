@@ -336,7 +336,7 @@ fn codex_service(
     dir: std::path::PathBuf,
     ctx: egui::Context,
 ) -> photocraft_ui_egui::codex_panel::CodexStartFn {
-    Box::new(move || {
+    Box::new(move |account| {
         let codex = codex::find_codex().ok_or(codex::NOT_FOUND)?;
         let (port, token) = match &server {
             Some(server) => server.clone(),
@@ -351,8 +351,8 @@ fn codex_service(
             }
         };
         // Outside `dir`, the control channel's file root: the sign-in must not be readable through it.
-        let home = dir.with_file_name("codex-home");
-        std::fs::create_dir_all(&home).map_err(|e| format!("could not create {}: {e}", home.display()))?;
+        let base = dir.parent().ok_or("no folder for the Codex accounts")?;
+        let home = codex::account_home(base, account)?;
         codex::start(&codex, port, &token, &dir, &home, ctx.clone())
     })
 }

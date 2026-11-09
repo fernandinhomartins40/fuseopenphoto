@@ -24,14 +24,24 @@ pub enum CodexRequest {
     SignIn,
     /// Sign out of ChatGPT.
     SignOut,
-    /// Send a message (starts a conversation when there is none).
-    Send(String),
+    /// Send a message with files as references (starts a conversation when there is none).
+    Send { text: String, files: Vec<String> },
     /// Interrupt the running turn.
     Stop,
     /// Forget the conversation; the next message starts a new one.
     NewChat,
     /// Use this model from the next message on, and remember it.
     SetModel(String),
+}
+
+/// What [`CodexStartFn`] gets to add an account, in place of an existing account's id.
+pub const NEW_ACCOUNT: &str = "new";
+
+/// A ChatGPT account signed in on this computer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodexAccount {
+    pub id: String,
+    pub label: String,
 }
 
 /// A model Codex offers.
@@ -48,6 +58,10 @@ pub struct CodexModel {
 pub enum CodexEvent {
     /// Who is signed in (`None`: nobody).
     Account(Option<String>),
+    /// The accounts signed in on this computer and the one in use, by id.
+    Accounts { list: Vec<CodexAccount>, current: String },
+    /// This account has run out of its plan's usage.
+    LimitReached,
     /// The models on offer and the one in use.
     Models { models: Vec<CodexModel>, current: Option<String> },
     /// Streamed text of the assistant message `item`.
@@ -77,8 +91,9 @@ pub struct CodexLink {
     pub rx: Receiver<CodexEvent>,
 }
 
-/// Starts the backend. Called when the window first opens and again after Codex stopped.
-pub type CodexStartFn = Box<dyn FnMut() -> Result<CodexLink, String>>;
+/// Starts the backend, on the account with this id, on [`NEW_ACCOUNT`], or (`None`) on the last one
+/// used. Called when the window first opens, after Codex stopped and to change accounts.
+pub type CodexStartFn = Box<dyn FnMut(Option<&str>) -> Result<CodexLink, String>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Entry {
@@ -150,6 +165,15 @@ pub struct CodexPanel {
     models: Vec<CodexModel>,
     /// The model in use, by id.
     model: Option<String>,
+    accounts: Vec<CodexAccount>,
+    /// The account in use, by id.
+    account_id: Option<String>,
+    /// The last turn stopped on this account's usage limit.
+    limit: bool,
+    /// Paths of the files going with the next message.
+    attachments: Vec<String>,
+    /// Where the dock was last drawn: files dropped there are attachments.
+    dock_rect: Option<Rect>,
 }
 
 impl CodexPanel {
@@ -160,6 +184,11 @@ impl CodexPanel {
                 self.account = Some(account);
                 self.signing_in = false;
             }
+            CodexEvent::Accounts { list, current } => {
+                self.accounts = list;
+                self.account_id = Some(current);
+            }
+            CodexEvent::LimitReached => self.limit = true,
             CodexEvent::Models { models, current } => {
                 self.models = models;
                 self.model = current;
@@ -190,7 +219,8 @@ impl CodexPanel {
             }
             CodexEvent::TurnFinished => self.finish_turn(),
             CodexEvent::Error(e) => {
-                self.entries.push(Entry::Error(e));
+                // The backend's fixed messages have catalogue entries.
+                self.entries.push(Entry::Error(crate::i18n::t(&e).to_string()));
                 self.signing_in = false;
             }
             CodexEvent::Exited(why) => {
@@ -210,6 +240,14 @@ impl CodexPanel {
         self.mcp = false;
         self.models.clear();
         self.model = None;
+        self.accounts.clear();
+        self.account_id = None;
+        self.limit = false;
+    }
+
+    /// The signed-in accounts other than the one in use.
+    fn other_accounts(&self) -> impl Iterator<Item = &CodexAccount> {
+        self.accounts.iter().filter(|a| Some(&a.id) != self.account_id.as_ref())
     }
 
     /// The footer's status and its English text.
@@ -303,8 +341,36 @@ fn place_image(app: &mut PhotocraftApp, path: &std::path::Path) {
     }
 }
 
+/// Files as attachments of the next message, each once.
+fn attach(app: &mut PhotocraftApp, paths: Vec<String>) {
+    for path in paths {
+        if !app.codex.attachments.contains(&path) {
+            app.codex.attachments.push(path);
+        }
+    }
+}
+
+/// Files dropped on the dock become attachments (`true`); anywhere else they open as usual.
+pub(crate) fn take_drop(app: &mut PhotocraftApp, files: &[egui::DroppedFileHandle], at: Option<egui::Pos2>) -> bool {
+    if !app.codex.dock_rect.zip(at).is_some_and(|(dock, at)| dock.contains(at)) {
+        return false;
+    }
+    attach(app, files.iter().filter(|f| f.path().is_absolute()).map(|f| f.path().to_string_lossy().into_owned()).collect());
+    true
+}
+
+/// A file's name, for showing.
+fn file_name(path: &str) -> String {
+    std::path::Path::new(path).file_name().map_or_else(|| path.to_string(), |n| n.to_string_lossy().into_owned())
+}
+
 /// Start the backend if it isn't running.
 fn ensure_started(app: &mut PhotocraftApp) {
+    start_on(app, None);
+}
+
+/// Start the backend on an account, if it isn't running.
+fn start_on(app: &mut PhotocraftApp, account: Option<&str>) {
     if app.codex.link.is_some() {
         return;
     }
@@ -316,7 +382,7 @@ fn ensure_started(app: &mut PhotocraftApp) {
         app.codex.entries.push(Entry::Error(crate::i18n::app(tl!("Codex is not available in this version of {app}."))));
         return;
     };
-    match start() {
+    match start(account) {
         Ok(link) => app.codex.link = Some(link),
         // The backend's fixed messages (Codex not installed, …) have catalogue entries.
         Err(e) => app.codex.entries.push(Entry::Error(crate::i18n::t(&e).to_string())),
@@ -340,6 +406,11 @@ enum Act {
     Restart,
     Close,
     History,
+    /// Ask for files to send with the next message.
+    Attach,
+    Detach(String),
+    /// Move to this account (or [`NEW_ACCOUNT`]), which starts a new conversation.
+    SwitchAccount(String),
 }
 
 fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
@@ -348,14 +419,36 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
             Act::Send(text) => {
                 let p = &mut app.codex;
                 let text = text.trim().to_string();
-                if text.is_empty() || p.link.is_none() || p.busy {
+                if (text.is_empty() && p.attachments.is_empty()) || p.link.is_none() || p.busy {
                     continue;
                 }
-                let prompt = p.scope.prompt(&text);
+                let files = std::mem::take(&mut p.attachments);
+                let asked = if text.is_empty() { "Use the attached files as references." } else { &text };
+                let prompt = p.scope.prompt(asked);
+                let shown = std::iter::once(text.clone()).filter(|t| !t.is_empty()).chain(files.iter().map(|f| file_name(f))).collect::<Vec<_>>().join("\n");
                 p.turn_start = p.entries.len();
-                p.entries.push(Entry::User(text));
+                p.entries.push(Entry::User(shown));
                 p.busy = true;
-                p.request(CodexRequest::Send(prompt));
+                p.limit = false;
+                p.request(CodexRequest::Send { text: prompt, files });
+            }
+            Act::Attach => {
+                let picked = app.pick_paths(attach);
+                if let Err(e) = picked
+                    && e != crate::file_dialog::CANCELLED
+                {
+                    app.codex.entries.push(Entry::Error(e));
+                }
+            }
+            Act::Detach(path) => app.codex.attachments.retain(|p| *p != path),
+            Act::SwitchAccount(id) => {
+                let name = app.codex.accounts.iter().find(|a| a.id == id).map(|a| a.label.clone());
+                // Dropping the link stops the Codex of the old account.
+                app.codex.reset();
+                start_on(app, Some(&id));
+                if let (Some(name), true) = (name, app.codex.link.is_some()) {
+                    app.codex.step(crate::i18n::fmt(tl!("Now using {name}. This is a new conversation: Codex doesn't remember the earlier messages."), &[("name", &name)]));
+                }
             }
             Act::Request(request) => {
                 if request == CodexRequest::SignIn {
@@ -392,6 +485,7 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, acts: Vec<Act>) {
 
 /// The studio shell's docked Codex panel (mockup 1), drawn before the canvas claims the centre.
 pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
+    app.codex.dock_rect = None;
     if !app.codex.open || app.studio.classic {
         return;
     }
@@ -407,6 +501,7 @@ pub fn dock(app: &mut PhotocraftApp, ui: &mut Ui) {
         .frame(Frame::NONE.fill(t.chrome).inner_margin(Margin::symmetric(8, 10)))
         .show(ui, |ui| {
             let card = ui.max_rect();
+            p.dock_rect = Some(card);
             // The content is drawn in a child: without this the panel thinks it is empty and shrinks to its minimum.
             ui.expand_to_include_rect(card);
             ui.painter().rect(card, 12.0, t.card, Stroke::new(1.0, t.card_border), StrokeKind::Inside);
@@ -461,6 +556,10 @@ fn header(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
                 ui.set_min_width(180.0);
                 if let Some(Some(who)) = &p.account {
                     ui.label(RichText::new(who).small().color(t.text_dim));
+                    ui.separator();
+                }
+                if running {
+                    account_buttons(ui, p, acts);
                     ui.separator();
                 }
                 let account = (running).then_some(p.account.as_ref()).flatten();
@@ -600,6 +699,31 @@ fn conversation(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
             }),
         }
     }
+    if p.limit {
+        limit_card(ui, t, p, acts);
+    }
+}
+
+/// The other accounts, one click away, and the way to add one.
+fn account_buttons(ui: &mut Ui, p: &CodexPanel, acts: &mut Vec<Act>) {
+    for account in p.other_accounts() {
+        if ui.button(crate::i18n::fmt(tl!("Switch to {name}"), &[("name", &account.label)])).clicked() {
+            acts.push(Act::SwitchAccount(account.id.clone()));
+        }
+    }
+    if ui.button(tl!("Add account")).clicked() {
+        acts.push(Act::SwitchAccount(NEW_ACCOUNT.to_string()));
+    }
+}
+
+/// This account ran out: where to go on.
+fn limit_card(ui: &mut Ui, t: &Tokens, p: &CodexPanel, acts: &mut Vec<Act>) {
+    card().fill(t.field).stroke(Stroke::new(1.0, t.accent_border)).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.add(egui::Label::new(RichText::new(tl!("This account reached its usage limit. Switch to another account to keep going.")).color(t.text)).wrap());
+        ui.add_space(8.0);
+        account_buttons(ui, p, acts);
+    });
 }
 
 /// Signed out: what Codex needs and the amber button that opens ChatGPT's sign-in in the browser.
@@ -736,6 +860,22 @@ fn composer(ui: &mut Ui, t: &Tokens, p: &mut CodexPanel, acts: &mut Vec<Act>) {
     let running = p.link.is_some();
     Frame::new().fill(t.field).stroke(Stroke::new(1.0, t.field_border)).corner_radius(12.0).inner_margin(Margin::symmetric(12, 10)).show(ui, |ui| {
         ui.set_width(ui.available_width());
+        if !p.attachments.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                for path in &p.attachments {
+                    // The whole chip removes it: there is nothing else to do with it here.
+                    let chip = egui::Button::image_and_text(crate::icons::image("x", 12.0, t.icon), RichText::new(file_name(path)).small().color(t.text))
+                        .fill(t.card)
+                        .stroke(Stroke::new(1.0, t.field_border))
+                        .corner_radius(8.0)
+                        .truncate();
+                    if ui.add(chip).on_hover_text(tl!("Remove")).clicked() {
+                        acts.push(Act::Detach(path.clone()));
+                    }
+                }
+            });
+            ui.add_space(6.0);
+        }
         let edit = ui.add_enabled(
             running,
             egui::TextEdit::multiline(&mut p.input)
@@ -747,8 +887,25 @@ fn composer(ui: &mut Ui, t: &Tokens, p: &mut CodexPanel, acts: &mut Vec<Act>) {
         // Enter sends; Shift+Enter is a new line.
         let enter = edit.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter) && !i.modifiers.shift);
         ui.add_space(6.0);
+        let attach = |ui: &mut Ui, acts: &mut Vec<Act>| {
+            if crate::icons::button(ui, "paperclip", 30.0, false, tl!("Attach files")).clicked() {
+                acts.push(Act::Attach);
+            }
+        };
+        // Narrow: Send takes the next line rather than running over the menu.
+        let narrow = ui.available_width() < 215.0;
+        if narrow {
+            ui.horizontal(|ui| {
+                attach(ui, acts);
+                scope_menu(ui, t, &mut p.scope);
+            });
+            ui.add_space(4.0);
+        }
         ui.horizontal(|ui| {
-            scope_menu(ui, t, &mut p.scope);
+            if !narrow {
+                attach(ui, acts);
+                scope_menu(ui, t, &mut p.scope);
+            }
             ui.with_layout(crate::direction::trailing(), |ui| {
                 let (icon, tip) = if p.busy { ("square", tl!("Stop")) } else { ("navigation", tl!("Send")) };
                 let (rect, resp) = ui.allocate_exact_size(vec2(44.0, 32.0), if running { Sense::click() } else { Sense::hover() });
@@ -1112,7 +1269,7 @@ mod tests {
             let edge = h.get_by_label("Close").rect().right() + 2.0;
             let (a, b) = (h.get_by_label("Doc read").rect(), h.get_by_label("Layer add").rect());
             assert!((a.left() - b.left()).abs() < 1.0 && b.top() > a.bottom() - 1.0, "at {w}: steps side by side: {a:?} {b:?}");
-            for label in ["Doc read", "Layer add", "Shape draw with a long tool name that needs room", "Run details", "Show History", "Adjust colors", "Organize layers", "Conversation", "Activity"] {
+            for label in ["Doc read", "Layer add", "Shape draw with a long tool name that needs room", "Run details", "Show History", "Adjust colors", "Organize layers", "Conversation", "Activity", "Attach files", "Send"] {
                 let r = h.get_by_label(label).rect();
                 assert!(r.right() <= edge, "at {w}: {label} runs past the card: {r:?}, edge {edge}");
             }
@@ -1138,6 +1295,68 @@ mod tests {
         let (text, count) = chip("a very long document name that cannot share a line with anything");
         assert!(count.top() >= text.bottom() - 1.0 && text.right() <= 260.0, "stacked and inside: {text:?} {count:?}");
         assert!(text.height() > 20.0, "the name wraps rather than being cut: {text:?}");
+    }
+
+    /// Files go with the next message, shown by name, and only with that one.
+    #[test]
+    fn attachments_go_with_the_next_message() {
+        let (tx, requests) = std::sync::mpsc::channel();
+        let (_events, rx) = std::sync::mpsc::channel();
+        let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        app.codex.link = Some(CodexLink { tx, rx });
+        let ctx = egui::Context::default();
+        attach(&mut app, vec!["C:\\refs\\logo.png".into(), "C:\\refs\\logo.png".into(), "C:\\refs\\brief.pdf".into()]);
+        assert_eq!(app.codex.attachments.len(), 2, "each once");
+        run(&mut app, &ctx, vec![Act::Detach("C:\\refs\\brief.pdf".into())]);
+        run(&mut app, &ctx, vec![Act::Send("make it like this".into())]);
+        assert_eq!(requests.try_recv().ok(), Some(CodexRequest::Send { text: "make it like this".into(), files: vec!["C:\\refs\\logo.png".into()] }));
+        assert!(app.codex.attachments.is_empty(), "only for that message");
+        let Some(Entry::User(shown)) = app.codex.entries.last() else { panic!("no message") };
+        assert!(shown.starts_with("make it like this") && shown.contains('\n'), "{shown}");
+        // Files alone are enough to send, and nothing at all isn't.
+        app.codex.busy = false;
+        run(&mut app, &ctx, vec![Act::Send("  ".into())]);
+        assert!(requests.try_recv().is_err());
+        attach(&mut app, vec!["/refs/a.png".into()]);
+        run(&mut app, &ctx, vec![Act::Send(String::new())]);
+        assert!(matches!(requests.try_recv(), Ok(CodexRequest::Send { files, .. }) if files.len() == 1));
+    }
+
+    /// At the limit the chat offers the other accounts; picking one restarts Codex on it.
+    #[test]
+    fn the_limit_card_switches_accounts() {
+        use egui_kittest::kittest::Queryable;
+        let (tx, _requests) = std::sync::mpsc::channel();
+        let (events, rx) = std::sync::mpsc::channel();
+        let asked = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Option<String>>::new()));
+        let seen = asked.clone();
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 900.0)).build_eframe(move |cc| {
+            crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
+            app.codex.link = Some(CodexLink { tx, rx });
+            app.codex.open = true;
+            app.services.codex = Some(Box::new(move |account| {
+                seen.lock().unwrap().push(account.map(str::to_owned));
+                let (tx, _) = std::sync::mpsc::channel();
+                let (_, rx) = std::sync::mpsc::channel();
+                Ok(CodexLink { tx, rx })
+            }));
+            app
+        });
+        let account = |id: &str, label: &str| CodexAccount { id: id.into(), label: label.into() };
+        events.send(CodexEvent::Account(Some("one@example.com".into()))).unwrap();
+        events.send(CodexEvent::Accounts { list: vec![account("codex-home", "one@example.com"), account("codex-home-2", "two@example.com")], current: "codex-home".into() }).unwrap();
+        h.run_steps(3);
+        assert!(h.query_by_label("Switch to two@example.com").is_none(), "only at the limit, or in the menu");
+        events.send(CodexEvent::LimitReached).unwrap();
+        h.run_steps(3);
+        assert!(h.query_by_label("Switch to one@example.com").is_none(), "not the account in use");
+        h.get_by_label("Switch to two@example.com").click();
+        h.run_steps(3);
+        assert_eq!(*asked.lock().unwrap(), [Some("codex-home-2".to_string())]);
+        assert!(!h.state().codex.limit, "the new account starts clean");
+        assert!(h.state().codex.link.is_some());
     }
 
     /// The footer lists Codex's models and asks for the one picked.

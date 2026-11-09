@@ -5,7 +5,8 @@
 //!
 //! Codex runs with its own home (`CODEX_HOME`, sign-in and history) and without plugins, apps or
 //! computer use, so the user's other Codex MCP servers and plugins don't crowd out PhotoCraft's
-//! tools: the model sees `photocraft` and image generation. The control token reaches the bridge through the environment only
+//! tools: the model sees `photocraft` and image generation. Each ChatGPT account has its own home
+//! (`codex-home`, `codex-home-2`, …), so changing accounts never touches a sign-in. The control token reaches the bridge through the environment only
 //! (`PHOTOCRAFT_CONTROL_TOKEN`, passed on with `env_vars`), never a file or a command line.
 
 use std::collections::HashMap;
@@ -14,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Stdio};
 use std::sync::mpsc::{Sender, channel};
 
-use photocraft_ui_egui::codex_panel::{CodexEvent, CodexLink, CodexModel, CodexRequest};
+use photocraft_ui_egui::codex_panel::{CodexAccount, CodexEvent, CodexLink, CodexModel, CodexRequest, NEW_ACCOUNT};
 use serde_json::{Value, json};
 
 /// What Codex is told about where it runs.
@@ -22,6 +23,8 @@ const INSTRUCTIONS: &str = "You are running inside {app}, an image editor, as it
 Act on the user's open documents only with the `photocraft` MCP tools (never the shell or screen control): `command_list` finds the editor's commands, \
 `command_run` and `command_batch` run them, `doc_inspect` reads the document and `render_preview` shows it. \
 Inspect before you edit, and check the result with a preview. \
+Images the user attaches are references for the design: follow their style, colours and composition, also when you generate an image, and don't add them to the document unless asked. \
+A `Reference file:` line gives the path of another attached file, which you may read with read-only commands. \
 When the user wants a new image, create it with your image generation tool: {app} adds every generated \
 image to the active document as a new layer by itself (or opens it when no document is open), so never place \
 it again. Answer in the user's language, briefly.";
@@ -76,6 +79,74 @@ fn server_args(cli: &Path, port: u16) -> Vec<String> {
     .collect()
 }
 
+/// The first account's home; the others add `-2`, `-3`, ….
+const HOME: &str = "codex-home";
+/// Who is signed in, in each home that has someone: only this app reads it.
+const LABEL: &str = "account-label";
+/// The file beside the homes naming the one last used.
+const ACTIVE: &str = "codex-active-account";
+const MAX_ACCOUNTS: usize = 64;
+
+fn valid_home(id: &str) -> bool {
+    id == HOME || id.strip_prefix("codex-home-").is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+fn account_label(base: &Path, id: &str) -> Option<String> {
+    let label = std::fs::read_to_string(base.join(id).join(LABEL)).ok()?;
+    Some(label.trim().to_owned()).filter(|l| !l.is_empty())
+}
+
+/// The accounts signed in under `base`.
+fn accounts(base: &Path) -> Vec<CodexAccount> {
+    let names = std::fs::read_dir(base).into_iter().flatten().flatten().filter_map(|e| e.file_name().into_string().ok());
+    let mut list: Vec<CodexAccount> = names.filter(|id| valid_home(id)).filter_map(|id| Some(CodexAccount { label: account_label(base, &id)?, id })).collect();
+    list.sort_by(|a, b| a.label.cmp(&b.label));
+    list
+}
+
+/// The home of `choice` (an account's id, [`NEW_ACCOUNT`], or `None` for the last one used), created
+/// and remembered as the last one used.
+pub fn account_home(base: &Path, choice: Option<&str>) -> Result<PathBuf, String> {
+    let saved = std::fs::read_to_string(base.join(ACTIVE)).ok().map(|s| s.trim().to_owned()).filter(|s| valid_home(s)).unwrap_or_else(|| HOME.to_owned());
+    let id = match choice {
+        None => saved.clone(),
+        Some(NEW_ACCOUNT) => (1..=MAX_ACCOUNTS)
+            .map(|n| if n == 1 { HOME.to_owned() } else { format!("{HOME}-{n}") })
+            .find(|id| account_label(base, id).is_none())
+            .ok_or("too many Codex accounts")?,
+        Some(id) if valid_home(id) => id.to_owned(),
+        Some(_) => return Err("unknown Codex account".into()),
+    };
+    let home = base.join(&id);
+    std::fs::create_dir_all(&home).map_err(|e| format!("could not create {}: {e}", home.display()))?;
+    if id != saved {
+        // The chosen model goes along: a new account must not fall back to the catalog's costly default.
+        let _ = std::fs::copy(base.join(&saved).join("config.toml"), home.join("config.toml"));
+    }
+    std::fs::write(base.join(ACTIVE), &id).map_err(|e| format!("could not save the Codex account: {e}"))?;
+    Ok(home)
+}
+
+/// Images Codex can look at itself; any other file is a path it may read.
+fn is_image(path: &str) -> bool {
+    Path::new(path).extension().and_then(|e| e.to_str()).is_some_and(|e| ["png", "jpg", "jpeg", "webp", "gif"].iter().any(|i| e.eq_ignore_ascii_case(i)))
+}
+
+/// The `input` of `turn/start`.
+fn turn_input(text: &str, files: &[String]) -> Value {
+    let mut prompt = text.to_owned();
+    for file in files.iter().filter(|f| !is_image(f)) {
+        prompt.push_str(&format!("\n\nReference file: {file}"));
+    }
+    let images = files.iter().filter(|f| is_image(f)).map(|f| json!({"type": "localImage", "path": f}));
+    Value::Array(std::iter::once(json!({"type": "text", "text": prompt})).chain(images).collect())
+}
+
+/// This error means the account ran out, so another account would get through.
+fn is_limit(error: &Value) -> bool {
+    matches!(error.get("codexErrorInfo").and_then(Value::as_str), Some("usageLimitExceeded" | "rateLimitExceeded"))
+}
+
 /// The error when [`find_codex`] finds nothing.
 pub const NOT_FOUND: &str = "Codex CLI not found: install it (npm install -g @openai/codex) or set PHOTOCRAFT_CODEX";
 
@@ -126,9 +197,10 @@ pub fn start(codex: &Path, port: u16, token: &str, cwd: &Path, home: &Path, ctx:
         let _ = in_tx.send(Input::Closed);
     });
     let cwd = cwd.to_string_lossy().into_owned();
+    let home = home.to_path_buf();
     std::thread::spawn(move || {
         let mut driver =
-            Driver { stdin, next_id: 0, pending: HashMap::new(), thread: None, turn: None, starting: false, queued: Vec::new(), model: None, events: ev_tx, ctx, cwd };
+            Driver { stdin, next_id: 0, pending: HashMap::new(), thread: None, turn: None, starting: false, queued: Vec::new(), model: None, events: ev_tx, ctx, cwd, home };
         driver.request("initialize", json!({"clientInfo": {"name": "photocraft", "title": photocraft_ui_egui::studio::style::APP_NAME, "version": env!("CARGO_PKG_VERSION")}}));
         for input in in_rx {
             match input {
@@ -167,13 +239,14 @@ struct Driver {
     turn: Option<String>,
     /// A `thread/start` is on its way.
     starting: bool,
-    /// Messages waiting for the conversation to start.
-    queued: Vec<String>,
+    /// Messages and their files, waiting for the conversation to start.
+    queued: Vec<(String, Vec<String>)>,
     /// The model picked in the chat or saved in Codex's config (`None`: the catalog's default).
     model: Option<String>,
     events: Sender<CodexEvent>,
     ctx: egui::Context,
     cwd: String,
+    home: PathBuf,
 }
 
 fn text(v: &Value, key: &str) -> Option<String> {
@@ -216,10 +289,10 @@ impl Driver {
         match request {
             CodexRequest::SignIn => self.request("account/login/start", json!({"type": "chatgpt"})),
             CodexRequest::SignOut => self.request("account/logout", json!({})),
-            CodexRequest::Send(message) => match self.thread.clone() {
-                Some(thread) => self.turn_start(&thread, &message),
+            CodexRequest::Send { text, files } => match self.thread.clone() {
+                Some(thread) => self.turn_start(&thread, &text, &files),
                 None => {
-                    self.queued.push(message);
+                    self.queued.push((text, files));
                     if !self.starting {
                         self.starting = true;
                         let params = json!({"cwd": self.cwd, "approvalPolicy": "never", "sandbox": "read-only", "developerInstructions": INSTRUCTIONS.replace("{app}", photocraft_ui_egui::studio::style::APP_NAME)});
@@ -241,9 +314,29 @@ impl Driver {
         }
     }
 
-    fn turn_start(&mut self, thread: &str, message: &str) {
+    /// Note who is signed in on this home and report the accounts. A browser still signed in to
+    /// another account signs in to that one again: it isn't a new account then.
+    fn remember_account(&mut self, who: Option<&str>) {
+        let Some((base, id)) = self.home.parent().zip(self.home.file_name().and_then(|n| n.to_str())) else { return };
+        let (base, id) = (base.to_path_buf(), id.to_owned());
+        let label = self.home.join(LABEL);
+        match who {
+            Some(who) if who.contains('@') && accounts(&base).iter().any(|a| a.id != id && a.label == who) => {
+                self.emit(CodexEvent::Error("This account is already added. To add another, sign out of it in your browser and sign in again.".into()));
+            }
+            Some(who) => {
+                let _ = std::fs::write(&label, who);
+            }
+            None => {
+                let _ = std::fs::remove_file(&label);
+            }
+        }
+        self.emit(CodexEvent::Accounts { list: accounts(&base), current: id });
+    }
+
+    fn turn_start(&mut self, thread: &str, message: &str, files: &[String]) {
         // Also for a conversation already running: the model may have changed since it started.
-        self.request("turn/start", json!({"threadId": thread, "input": [{"type": "text", "text": message}], "model": self.model}));
+        self.request("turn/start", json!({"threadId": thread, "input": turn_input(message, files), "model": self.model}));
     }
 
     fn message(&mut self, v: &Value) {
@@ -271,6 +364,7 @@ impl Driver {
             "account/read" => {
                 let account = result.get("account").filter(|a| !a.is_null());
                 let who = account.map(|a| text(a, "email").or_else(|| text(a, "type")).unwrap_or_else(|| "signed in".into()));
+                self.remember_account(who.as_deref());
                 self.emit(CodexEvent::Account(who));
                 self.request("config/read", json!({}));
             }
@@ -299,8 +393,8 @@ impl Driver {
                     return;
                 };
                 self.thread = Some(thread.clone());
-                for message in std::mem::take(&mut self.queued) {
-                    self.turn_start(&thread, &message);
+                for (message, files) in std::mem::take(&mut self.queued) {
+                    self.turn_start(&thread, &message, &files);
                 }
             }
             _ => {}
@@ -338,14 +432,24 @@ impl Driver {
             "turn/completed" => {
                 self.turn = None;
                 let turn = p.get("turn").unwrap_or(&Value::Null);
-                if let Some(message) = turn.get("error").and_then(|e| text(e, "message")) {
-                    self.emit(CodexEvent::Error(message));
+                if let Some(error) = turn.get("error") {
+                    if is_limit(error) {
+                        self.emit(CodexEvent::LimitReached);
+                    }
+                    if let Some(message) = text(error, "message") {
+                        self.emit(CodexEvent::Error(message));
+                    }
                 }
                 self.emit(CodexEvent::TurnFinished);
             }
             "error" if p.get("willRetry").and_then(Value::as_bool) != Some(true) => {
-                if let Some(message) = p.get("error").and_then(|e| text(e, "message")) {
-                    self.emit(CodexEvent::Error(message));
+                if let Some(error) = p.get("error") {
+                    if is_limit(error) {
+                        self.emit(CodexEvent::LimitReached);
+                    }
+                    if let Some(message) = text(error, "message") {
+                        self.emit(CodexEvent::Error(message));
+                    }
                 }
             }
             "item/agentMessage/delta" => {
@@ -374,6 +478,7 @@ impl Driver {
                 "imageGeneration" => match text(item, "savedPath") {
                     Some(path) => self.emit(CodexEvent::Image(PathBuf::from(path))),
                     None if item.get("failure").is_some_and(|f| !f.is_null()) => {
+                        self.emit(CodexEvent::LimitReached);
                         self.emit(CodexEvent::Error("Image generation failed: the usage limit was reached.".into()));
                     }
                     None => self.emit(CodexEvent::Error("Image generation failed.".into())),
@@ -411,6 +516,58 @@ impl Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn images_go_as_images_and_other_files_as_paths() {
+        let input = turn_input("like this", &["C:/a/logo.PNG".to_string(), "C:/a/brief.pdf".to_string()]);
+        assert_eq!(
+            input,
+            json!([
+                {"type": "text", "text": "like this\n\nReference file: C:/a/brief.pdf"},
+                {"type": "localImage", "path": "C:/a/logo.PNG"},
+            ])
+        );
+        assert_eq!(turn_input("hi", &[]), json!([{"type": "text", "text": "hi"}]));
+    }
+
+    #[test]
+    fn only_running_out_of_usage_is_a_limit() {
+        assert!(is_limit(&json!({"message": "x", "codexErrorInfo": "usageLimitExceeded"})));
+        assert!(is_limit(&json!({"message": "x", "codexErrorInfo": "rateLimitExceeded"})));
+        assert!(!is_limit(&json!({"message": "x", "codexErrorInfo": "badRequest"})));
+        assert!(!is_limit(&json!({"message": "x"})));
+    }
+
+    #[test]
+    fn accounts_keep_their_own_homes() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        let label = |home: &Path, who: &str| std::fs::write(home.join(LABEL), who).unwrap();
+        // Today's install: the first home, the last one used by default.
+        let first = account_home(base, None).unwrap();
+        assert_eq!(first, base.join(HOME));
+        label(&first, "one@example.com");
+        std::fs::write(first.join("config.toml"), "model = \"cheap\"\n").unwrap();
+        std::fs::write(first.join("auth.json"), "first").unwrap();
+        // A new account gets a home of its own, with the chosen model, and is remembered.
+        let second = account_home(base, Some(NEW_ACCOUNT)).unwrap();
+        assert_eq!(second, base.join("codex-home-2"));
+        assert_eq!(std::fs::read_to_string(second.join("config.toml")).unwrap(), "model = \"cheap\"\n");
+        assert!(!second.join("auth.json").exists(), "a sign-in never moves");
+        assert_eq!(account_home(base, None).unwrap(), second);
+        // Until someone signs in there it isn't an account, and is reused rather than piling up.
+        assert_eq!(accounts(base).len(), 1);
+        assert_eq!(account_home(base, Some(NEW_ACCOUNT)).unwrap(), second);
+        label(&second, "two@example.com");
+        assert_eq!(accounts(base).iter().map(|a| a.label.as_str()).collect::<Vec<_>>(), ["one@example.com", "two@example.com"]);
+        // Back to the first, whose sign-in is untouched.
+        assert_eq!(account_home(base, Some(HOME)).unwrap(), first);
+        assert_eq!(std::fs::read_to_string(first.join("auth.json")).unwrap(), "first");
+        // An id is only ever one of these folders.
+        for bad in ["../evil", "codex-home-", "codex-home-2/..", "other", ""] {
+            assert!(account_home(base, Some(bad)).is_err(), "{bad}");
+        }
+    }
 
     #[test]
     fn model_list_reads_the_catalog_and_the_saved_choice_wins() {

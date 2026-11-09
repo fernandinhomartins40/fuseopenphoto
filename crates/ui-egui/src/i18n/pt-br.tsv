@@ -2391,6 +2391,12 @@
 	Luminance Smoothness	Suavidade da luminância
 	Make	Fabricante
 	Model	Modelo
+	Attach files	Anexar arquivos
+	Add account	Adicionar conta
+	Switch to {name}	Trocar para {name}
+	This account reached its usage limit. Switch to another account to keep going.	Esta conta atingiu o limite de uso. Troque para outra conta para continuar.
+	Now using {name}. This is a new conversation: Codex doesn't remember the earlier messages.	Usando {name} agora. Esta é uma nova conversa: o Codex não lembra das mensagens anteriores.
+	This account is already added. To add another, sign out of it in your browser and sign in again.	Esta conta já foi adicionada. Para adicionar outra, saia dela no navegador e entre de novo.
 	Lens	Lente
 	F	F
 	ISO	ISO

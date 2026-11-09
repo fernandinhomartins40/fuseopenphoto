@@ -278,6 +278,18 @@ impl PhotocraftApp {
         })
     }
 
+    /// Asks for files of any type and hands over their paths, without reading them (desktop).
+    pub(crate) fn pick_paths(&mut self, then: impl FnOnce(&mut Self, Vec<String>) + 'static) -> Result<Value, String> {
+        let initial_dir = last_used_dir(&self.ui.recent_files);
+        self.ask_file(FileDialogRequest::Open { multiple: true, initial_dir, extensions: None }, move |app, answer| match answer {
+            FileDialogAnswer::Paths(paths) => {
+                then(app, paths);
+                Ok(Value::Null)
+            }
+            _ => Err(UNEXPECTED.into()),
+        })
+    }
+
     /// File › Open: opens every chosen file, reporting each failure (see [`Self::open_paths`]).
     pub fn open_dialog_file(&mut self) -> Result<Value, String> {
         let initial_dir = last_used_dir(&self.ui.recent_files);
