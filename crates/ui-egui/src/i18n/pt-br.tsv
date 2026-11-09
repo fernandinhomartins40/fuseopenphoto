@@ -4652,3 +4652,25 @@ studio	Preview	Pré-visualização
 	Quick actions for the type layer	Ações rápidas da camada de texto
 	The layer's mask	A máscara da camada
 	Opacity and fill of the layer	Opacidade e preenchimento da camada
+
+# Default layer names, shown on the studio layer cards
+layerName	Background	Fundo
+layerName	Layer	Camada
+layerName	Group	Grupo
+layerName	Brightness/Contrast	Brilho/Contraste
+layerName	Levels	Níveis
+layerName	Curves	Curvas
+layerName	Exposure	Exposição
+layerName	Vibrance	Vibração
+layerName	Hue/Saturation	Matiz/Saturação
+layerName	Color Balance	Equilíbrio de cores
+layerName	Black & White	Preto e branco
+layerName	Photo Filter	Filtro de fotos
+layerName	Channel Mixer	Mixer de canais
+layerName	Color Lookup	Pesquisa de cores
+layerName	Invert	Inverter
+layerName	Posterize	Posterizar
+layerName	Threshold	Limiar
+layerName	Gradient Map	Mapa de degradê
+layerName	Selective Color	Cor seletiva
+layerName	Adjustment	Ajuste

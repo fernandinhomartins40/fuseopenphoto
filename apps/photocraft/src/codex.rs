@@ -18,11 +18,11 @@ use photocraft_ui_egui::codex_panel::{CodexEvent, CodexLink, CodexRequest};
 use serde_json::{Value, json};
 
 /// What Codex is told about where it runs.
-const INSTRUCTIONS: &str = "You are running inside PhotoCraft, an image editor, as its built-in assistant. \
+const INSTRUCTIONS: &str = "You are running inside {app}, an image editor, as its built-in assistant. \
 Act on the user's open documents only with the `photocraft` MCP tools (never the shell or screen control): `command_list` finds the editor's commands, \
 `command_run` and `command_batch` run them, `doc_inspect` reads the document and `render_preview` shows it. \
 Inspect before you edit, and check the result with a preview. \
-When the user wants a new image, create it with your image generation tool: PhotoCraft adds every generated \
+When the user wants a new image, create it with your image generation tool: {app} adds every generated \
 image to the active document as a new layer by itself (or opens it when no document is open), so never place \
 it again. Answer in the user's language, briefly.";
 
@@ -64,6 +64,10 @@ fn server_args(cli: &Path, port: u16) -> Vec<String> {
         r#"mcp_servers.photocraft.env_vars=["PHOTOCRAFT_CONTROL_TOKEN"]"#.into(),
         "-c".into(),
         "mcp_servers.photocraft.startup_timeout_sec=30".into(),
+        // With approval policy "never" (no shell, no file changes), Codex refuses any MCP tool that
+        // edits unless the server is pre-approved: editing the document is what this server is for.
+        "-c".into(),
+        r#"mcp_servers.photocraft.default_tools_approval_mode="approve""#.into(),
         "--enable".into(),
         "image_generation".into(),
     ]
@@ -78,7 +82,7 @@ pub const NOT_FOUND: &str = "Codex CLI not found: install it (npm install -g @op
 /// Start `codex` for a control server on `port` with `token`, working in `cwd`, with its sign-in
 /// and history in `home`.
 pub fn start(codex: &Path, port: u16, token: &str, cwd: &Path, home: &Path, ctx: egui::Context) -> Result<CodexLink, String> {
-    let cli = sibling("photocraft-cli").ok_or("photocraft-cli was not found next to PhotoCraft")?;
+    let cli = sibling("photocraft-cli").ok_or("photocraft-cli was not found next to the app")?;
     let mut cmd = Command::new(codex);
     cmd.args(server_args(&cli, port))
         .current_dir(cwd)
@@ -199,7 +203,7 @@ impl Driver {
                     self.queued.push(message);
                     if !self.starting {
                         self.starting = true;
-                        let params = json!({"cwd": self.cwd, "approvalPolicy": "never", "sandbox": "read-only", "developerInstructions": INSTRUCTIONS});
+                        let params = json!({"cwd": self.cwd, "approvalPolicy": "never", "sandbox": "read-only", "developerInstructions": INSTRUCTIONS.replace("{app}", photocraft_ui_egui::studio::style::APP_NAME)});
                         self.request("thread/start", params);
                     }
                 }
@@ -359,7 +363,7 @@ impl Driver {
             "mcpServer/elicitation/request" => json!({"action": "decline"}),
             "item/commandExecution/requestApproval" | "item/fileChange/requestApproval" => json!({"decision": "decline"}),
             _ => {
-                self.write(&json!({"id": id, "error": {"code": -32601, "message": format!("PhotoCraft does not handle {method}")}}));
+                self.write(&json!({"id": id, "error": {"code": -32601, "message": format!("This app does not handle {method}")}}));
                 return;
             }
         };
@@ -378,5 +382,6 @@ mod tests {
         let command = args.iter().find_map(|a| a.strip_prefix("mcp_servers.photocraft.command=")).unwrap_or_default();
         assert_eq!(serde_json::from_str::<String>(command).unwrap_or_default(), r#"C:\Program Files\Art "Craft"\photocraft-cli.exe"#);
         assert!(args.iter().any(|a| a == r#"mcp_servers.photocraft.args=["mcp","--bridge","127.0.0.1:4567"]"#));
+        assert!(args.iter().any(|a| a == r#"mcp_servers.photocraft.default_tools_approval_mode="approve""#), "or Codex refuses every edit");
     }
 }

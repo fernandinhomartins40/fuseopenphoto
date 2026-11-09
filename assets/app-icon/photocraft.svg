@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- App icon: a sun over two peaks on a blue rounded tile. Original geometry, written by hand. -->
-  <rect x="0" y="0" width="512" height="512" rx="112" fill="#2f7bf5"/>
-  <circle cx="352" cy="168" r="56" fill="#ffd25a"/>
-  <polygon points="72,404 200,232 276,330 320,280 440,404" fill="#ffffff"/>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#fdb528"/>
+  <circle cx="352" cy="168" r="56" fill="#ffffff"/>
+  <polygon points="72,404 200,232 276,330 320,280 440,404" fill="#141414"/>
 </svg>

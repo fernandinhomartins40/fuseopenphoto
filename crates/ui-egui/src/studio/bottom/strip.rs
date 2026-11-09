@@ -346,7 +346,8 @@ fn card_header(app: &mut PhotocraftApp, ui: &mut egui::Ui, painter: &egui::Paint
     let fx_rect = Rect::from_min_max(pos2(header.right() - 22.0, header.top()), header.max);
     let name_right = if has_fx { fx_rect.left() - 4.0 } else { header.right() };
     let name_color = if l.visible { t.text } else { t.text_faint };
-    let name = crate::layer_row_ui::truncated(painter, &l.name, FontId::proportional(14.0), name_color, false, name_right - x).map(|g| {
+    let shown = shown_name(crate::i18n::current(), &l.name);
+    let name = crate::layer_row_ui::truncated(painter, &shown, FontId::proportional(14.0), name_color, false, name_right - x).map(|g| {
         let p = pos2(x, header.center().y - g.size().y / 2.0);
         let r = Rect::from_min_size(p, g.size());
         painter.galley(p, g, name_color);
@@ -776,8 +777,32 @@ fn more_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui, actions: &mut Vec<(Stri
     crate::layer_row_ui::panel_menu(app, ui);
 }
 
+/// A default layer name ("Background", "Layer 3", "Levels 1") in the UI's language, for display
+/// only: the document keeps the names PSD files use, and a name the user typed shows as typed.
+fn shown_name(lang: crate::i18n::Lang, name: &str) -> String {
+    let (base, number) = match name.rsplit_once(' ') {
+        Some((base, n)) if !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()) => (base, Some(n)),
+        _ => (name, None),
+    };
+    match (crate::i18n::only_ctx(lang, "layerName", base), number) {
+        (Some(t), Some(n)) => format!("{t} {n}"),
+        (Some(t), None) => t.to_owned(),
+        (None, _) => name.to_owned(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn default_layer_names_show_translated_and_typed_ones_as_typed() {
+        let Some(pt) = crate::i18n::Lang::from_code("pt-br") else { panic!("no pt-br") };
+        assert_eq!(super::shown_name(pt, "Levels 1"), "Níveis 1");
+        assert_eq!(super::shown_name(pt, "Background"), "Fundo");
+        assert_eq!(super::shown_name(pt, "Layer 12"), "Camada 12");
+        assert_eq!(super::shown_name(pt, "Layer one"), "Layer one");
+        assert_eq!(super::shown_name(pt, "Sky 2"), "Sky 2");
+    }
+
     use super::*;
 
     #[test]

@@ -160,8 +160,14 @@ fn main() {
             eprintln!("{:>8.1} ms  {label}", t0.elapsed().as_secs_f64() * 1000.0);
         }
     }
-    for (flag, button) in [("--click-at", egui::PointerButton::Primary), ("--right-click-at", egui::PointerButton::Secondary)] {
-        let Some((x, y)) = arg(&args, flag).and_then(|s| s.split_once(',').and_then(|(x, y)| Some((x.parse::<f32>().ok()?, y.parse::<f32>().ok()?)))) else {
+    // Every occurrence of the flags, in the order given: reaching a panel can take several clicks.
+    let clicks = args.windows(2).filter_map(|w| match w[0].as_str() {
+        "--click-at" => Some((egui::PointerButton::Primary, &w[1])),
+        "--right-click-at" => Some((egui::PointerButton::Secondary, &w[1])),
+        _ => None,
+    });
+    for (button, at) in clicks {
+        let Some((x, y)) = at.split_once(',').and_then(|(x, y)| Some((x.parse::<f32>().ok()?, y.parse::<f32>().ok()?))) else {
             continue;
         };
         let pos = egui::pos2(x, y);
