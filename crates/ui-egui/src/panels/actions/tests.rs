@@ -1476,7 +1476,7 @@ fn new_action_with_no_set_selected_is_in_no_set() {
 #[test]
 fn reopening_the_actions_panel_keeps_the_selected_set_and_empty_sets() {
     use egui_kittest::{Harness, kittest::Queryable};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PhotocraftApp::new_classic(photocraft_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let mut retouch = Action::new("Sharpen", vec![]);
     retouch.set = Some("Retouch".into());

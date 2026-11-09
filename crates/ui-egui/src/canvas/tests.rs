@@ -1499,7 +1499,8 @@ fn home_recent_entries_can_be_removed() {
     for name in ["c.tif", "b.psd", "a.png"] {
         app.push_recent(&format!("/tmp/photocraft-2691/{name}"));
     }
-    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 760.0)).build_ui_state(
+    // Tall enough that the Recent cards sit below Home's preset cards without scrolling.
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 1400.0)).build_ui_state(
         |ui, (app, ready): &mut (PhotocraftApp, bool)| {
             if *ready {
                 egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| document_area(app, ui));

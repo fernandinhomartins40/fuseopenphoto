@@ -236,9 +236,10 @@ impl PhotocraftApp {
 
     /// [`Self::new`] with the pre-redesign look: the classic shell (Window › Classic Layout) in Pro
     /// Medium Gray unless the session already picked a theme. For the tests that drive the classic
-    /// dock, toolbar, options bar, menu bar and status bar and were written against that theme.
-    #[cfg(test)]
-    pub(crate) fn new_classic(mut session: Session, services: Services) -> Self {
+    /// dock, toolbar, options bar, menu bar and status bar and were written against that theme
+    /// (unit and integration tests; not used by the app).
+    #[doc(hidden)]
+    pub fn new_classic(mut session: Session, services: Services) -> Self {
         use photocraft_engine::prefs::{DarkTheme, Theme};
         session.edit_prefs(|p| {
             if (p.interface.theme, p.interface.dark_theme) == (Theme::Studio, DarkTheme::Studio) {
