@@ -973,6 +973,8 @@ mod tests {
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 900.0)).build_eframe(move |cc| {
             crate::PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
             let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            // A document, so the studio shell (not the start screen) is up.
+            app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
             app.codex.link = Some(CodexLink { tx, rx });
             app.codex.open = true;
             app
