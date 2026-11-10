@@ -80,16 +80,7 @@ Com o Codex aberto, ele desce até a linha de status e a faixa inferior fica só
 | Light | Biblioteca · Revelar · Máscaras · Retoque · Exportar | Filme de fotos |
 | Film | Montar · Cortar · Cor · Áudio · Legendas | Linha do tempo |
 | Effect | Compor · Animar · Efeitos · Texto · Renderizar | Linha do tempo com camadas |
-| Design | Página · Texto · Imagens · Estilos · Exportar | Páginas e espelhadas |
-| Pdf | Ler · Editar · Comentar · Formulários · Proteger | Páginas |
-| Ani | Desenhar · Animar · Símbolos · Som · Publicar | Linha do tempo de quadros |
-| Texture | Pintar · Camadas · Máscaras · Assar · Exportar | Conjuntos de textura |
-| Material | Grafo · Nós · Prévia · Exportar | Biblioteca de nós (o grafo é o centro) |
-| Sound | Gravar · Editar · Mixar · Efeitos · Exportar | Faixas e mixer |
 | Fig | Desenhar · Componentes · Protótipo · Inspecionar | Páginas e camadas |
-| Word | Escrever · Formatar · Inserir · Revisar · Layout | Páginas |
-| Grid | Dados · Fórmulas · Gráficos · Formatar · Revisar | Abas das planilhas |
-| Deck | Slides · Texto · Mídia · Transições · Apresentar | Slides |
 | CAD | Desenhar · Modificar · Anotar · Camadas · Plotar | Layouts |
 
 Para cada app: o dono gera os mockups (as mesmas 7 telas, com o conteúdo do app) antes do código, e a

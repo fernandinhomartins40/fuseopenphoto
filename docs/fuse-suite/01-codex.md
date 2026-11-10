@@ -38,18 +38,9 @@ O nome do modo varia. Confirme no `--help` da CLI do app antes de escrever os ar
 | PhotoCraft (feito) | `photocraft-cli mcp --bridge 127.0.0.1:PORTA` | livre |
 | VectorCraft | `vectorcraft-cli mcp --connect 127.0.0.1:PORTA` | 7979 |
 | LightCraft | `lightcraft-cli mcp --connect 127.0.0.1:PORTA` | 7980 |
-| FilmCraft | `filmcraft-cli mcp` (confirmar a opção de ligação) | 9876 |
+| FilmCraft | `filmcraft-cli mcp --bridge 127.0.0.1:PORTA` (token em `FILMCRAFT_CONTROL_TOKEN`) | 9876 |
 | EffectCraft | `effectcraft-cli mcp --bridge PORTA` | 9877 |
-| DesignCraft | confirmar (tem crate `mcp`) | 7979 |
-| PdfCraft | confirmar (o `--control` recebe um arquivo `.json`) | arquivo |
-| AniCraft | `anicraft-cli mcp` (confirmar a ligação) | confirmar |
-| TextureCraft | `texturecraft-cli mcp --bridge PORTA` | 7878 |
-| MaterialCraft | `materialcraft-cli mcp --bridge PORTA` | 7878 |
-| SoundCraft | `soundcraft-cli mcp --connect PORTA` | 7801 |
 | FigCraft | `figcraft-cli mcp --attach PORTA` | 47800 |
-| WordCraft | `wordcraft-cli mcp --connect 127.0.0.1:PORTA` | 7981 |
-| GridCraft | `gridcraft-cli mcp --connect PORTA` (token em `GRIDCRAFT_CONTROL_TOKEN`) | 7979 |
-| DeckCraft | `deckcraft-cli mcp --connect PORTA` | 7990 |
 | CADCraft | `cadcraft-cli mcp --connect 127.0.0.1:PORTA` | 7979 |
 
 Use sempre uma porta livre escolhida pelo app: vários apps Fuse abertos ao mesmo tempo colidiriam nas

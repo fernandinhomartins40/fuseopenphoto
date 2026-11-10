@@ -8,7 +8,7 @@ Espelha **Adobe Premiere Pro**. Repositório: `storytold/filmcraft`. Nome provis
 - Estágio (ROADMAP de 2026-11-09): alpha; beta a ~19 pontos de pronto para trabalho real (~56% hoje) e ~400–700 h, mais abrir `.prproj`. Amplitude ~86%.
 - Crates: 51 crates: codecs próprios (h264, hevc, av1, prores, dnx, mpeg2v, aac, ac3, opus, flac, mp3enc), contêineres (isobmff, matroska, mxf, mpegts, avi, ogg), edit, project, render, scopes, captions, speech, interchange, automation.
 - Formatos: MP4/MOV, MKV, MXF, ProRes, DNxHD; legendas; intercâmbio (XML/EDL/AAF conforme o crate `interchange`).
-- MCP: Servidor MCP no crate `automation`; CLI `filmcraft-cli -- mcp`; app com `--control 9876`. Confirmar no `--help` como ligar ao app aberto.
+- MCP: crate `automation`; app com `filmcraft --control PORTA` e `FILMCRAFT_CONTROL_TOKEN` no ambiente; o Codex liga com `filmcraft-cli mcp --bridge 127.0.0.1:PORTA` (conferido no `.mcp.json` e no `docs/control-protocol.md` do upstream).
 
 Releia o `ROADMAP.md` e o `docs/target-app-parity.md` do app antes de começar.
 
