@@ -14,8 +14,17 @@ mostram como cada passo ficou.
   - **Nunca** abrir, automatizar ou emular navegador, nem disparar login do Codex, ChatGPT ou Google. A
     verificação visual é só pelo exemplo `snapshot` offscreen ou por testes kittest. Repita esta regra em
     toda instrução para subagentes.
-  - Compilar no GitHub sempre que der: a máquina local tem pouco disco e o Controle Inteligente de
-    Aplicativos do Windows bloqueia executáveis novos sem assinatura.
+  - **Trabalhar com agentes.** Divida cada fase em tarefas independentes (por exemplo: barra superior,
+    faixa inferior, painel do Codex, Início) e lance subagentes em paralelo, cada um na sua worktree e com
+    o seu `CARGO_TARGET_DIR`. Cada subagente faz commit do que fez antes de terminar. A sessão principal
+    integra, revisa o diff e faz o push. Toda instrução de subagente repete estas regras. Detalhes em
+    [`04-licoes.md`](04-licoes.md#trabalho-com-agentes).
+  - **Sempre testar, compilar e gerar o instalador no GitHub.** Toda entrega termina com push, o
+    `checks.yml` verde e o `build-windows.yml` publicando o instalador na pré-release `latest-<branch>`.
+    Só diga "pronto" depois de conferir que a pré-release saiu do commit certo (`gh release view`, em
+    [`03-build-release.md`](03-build-release.md#acompanhar-um-build)); se o build falhar, corrija e repita.
+    Compile no GitHub e não na máquina local: ela tem pouco disco, e o Controle Inteligente de Aplicativos
+    do Windows bloqueia executáveis novos sem assinatura.
   - Usar sempre `gh ... -R <dono>/<repo>`: sem isso o `gh` resolve para o upstream da storytold.
   - Consultar o GitHub no máximo a cada 5 minutos (limite de API compartilhado).
   - Commit e push frequentes: sessões caem por limite de uso e o trabalho não salvo se perde.

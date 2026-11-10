@@ -45,6 +45,9 @@ Lotes grandes demoram; mostrar progresso por foto. Nada pode sobrescrever o orig
 Leia docs/fuse-suite/README.md, 00-playbook.md e apps/lightcraft.md do repositório
 fernandinhomartins40/fuseopenphoto (branch studio-redesign). Vamos criar o Fuse Open Light a partir de
 storytold/lightcraft, repetindo o que foi feito no Fuse Open Photo. Regras: nunca abrir ou automatizar
-navegador nem disparar login; compilar no GitHub; gh sempre com -R; commit e push frequentes. Comece pela
+navegador nem disparar login;
+trabalhar com agentes em paralelo (cada um na sua worktree, com estas mesmas regras); a cada entrega,
+testar, compilar e gerar o instalador no GitHub, e só dizer pronto com o instalador publicado do commit
+certo; gh sempre com -R; commit e push frequentes. Comece pela
 fase 1 (fork e repositório) e me pergunte antes de criar o repositório no GitHub.
 ```
